@@ -36,3 +36,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Database config — chứa password, không push lên remote ###
+src/main/resources/database.properties
