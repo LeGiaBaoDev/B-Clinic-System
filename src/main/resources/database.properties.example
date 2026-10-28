@@ -1,0 +1,10 @@
+db.host=localhost
+db.port=1433
+db.name=BClinic
+
+db.username=sa
+db.password=your_password_here
+
+db.pool.minIdle=2
+db.pool.maxPool=10
+db.pool.connectionTimeout=30000
