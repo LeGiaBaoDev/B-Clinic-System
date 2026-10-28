@@ -1,19 +1,10 @@
-# B-Clinic - SQL Server connection config
-# Copy file này thành database.properties và điền thông tin của bạn:
-#   cp database.properties.example database.properties
-
 db.host=localhost
 db.port=1433
 db.name=BClinic
 
-# Xác thực SQL Server (dùng tài khoản SQL Server)
 db.username=sa
 db.password=your_password_here
 
-# Xác thực Windows (để trống username/password và bật dòng này)
-# db.integratedSecurity=true
-
-# Pool cơ bản
 db.pool.minIdle=2
 db.pool.maxPool=10
 db.pool.connectionTimeout=30000
