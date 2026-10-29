@@ -1,30 +1,44 @@
 package com.quanlynhakhoa;
 
-import com.quanlynhakhoa.config.DatabaseConnection;
+import com.formdev.flatlaf.FlatLightLaf;
 import com.quanlynhakhoa.config.FlywayMigration;
+import com.quanlynhakhoa.ui.frame.FrmDangNhap;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import javax.swing.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+/**
+ * Entry point của ứng dụng B-Clinic.
+ * Thứ tự khởi động:
+ * 1. Bật FlatLaf (Look & Feel)
+ * 2. Chạy Flyway migration (tạo/cập nhật schema DB)
+ * 3. Mở FrmDangNhap trên EDT
+ */
 public class App {
-    public static void main(String[] args) {
-        FlywayMigration.migrate();
 
-        String sql = "SELECT maLoaiDV, tenLoaiDV, mucThueGTGT FROM LoaiDichVu";
-        try (Connection conn = DatabaseConnection.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            System.out.println("\n--- Danh sách LoaiDichVu ---");
-            while (rs.next()) {
-                System.out.printf("  [%s] %s - Thuế: %.0f%%%n",
-                        rs.getString("maLoaiDV"),
-                        rs.getString("tenLoaiDV"),
-                        rs.getDouble("mucThueGTGT"));
-            }
-        } catch (SQLException e) {
-            System.err.println("Lỗi truy vấn: " + e.getMessage());
+    private static final Logger LOG = Logger.getLogger(App.class.getName());
+
+    public static void main(String[] args) {
+        // 1. Look & Feel — phải gọi trước khi tạo bất kỳ component nào
+        FlatLightLaf.setup();
+        UIManager.put("defaultFont", new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 13));
+
+        // 2. Flyway migration — chạy trên main thread trước khi mở UI
+        try {
+            FlywayMigration.migrate();
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, "Migration thất bại", e);
+            JOptionPane.showMessageDialog(null,
+                    "Không thể kết nối hoặc khởi tạo cơ sở dữ liệu.\n" + e.getMessage(),
+                    "Lỗi khởi động", JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
         }
+
+        // 3. Mở màn hình đăng nhập trên Event Dispatch Thread
+        SwingUtilities.invokeLater(() -> {
+            FrmDangNhap frm = new FrmDangNhap();
+            frm.setVisible(true);
+        });
     }
 }
