@@ -38,6 +38,13 @@
             <artifactId>flatlaf</artifactId>
             <version>3.5.4</version>
         </dependency>
+
+        <!-- HikariCP: connection pool cho JDBC -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>5.1.0</version>
+        </dependency>
     </dependencies>
 
 </project>

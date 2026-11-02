@@ -1,18 +1,18 @@
 package com.quanlynhakhoa.config;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
 public class DatabaseConnection {
     private static final String PROPS_FILE = "database.properties";
 
-    private final String url;
-    private final String username;
-    private final String password;
+    private final HikariDataSource dataSource;
 
     private DatabaseConnection() {
         Properties props = loadProperties();
@@ -23,22 +23,29 @@ public class DatabaseConnection {
         boolean winAuth = Boolean.parseBoolean(
                 props.getProperty("db.integratedSecurity", "false"));
 
+        HikariConfig config = new HikariConfig();
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30_000);
+        config.setIdleTimeout(600_000);
+        config.setMaxLifetime(1_800_000);
+        config.setPoolName("BClinic-Pool");
+
         if (winAuth) {
-            this.url = String.format(
+            config.setJdbcUrl(String.format(
                     "jdbc:sqlserver://%s:%s;databaseName=%s;" +
-                    "integratedSecurity=true;encrypt=true;" +
-                    "trustServerCertificate=true",
-                    host, port, dbName);
-            this.username = null;
-            this.password = null;
+                    "integratedSecurity=true;encrypt=true;trustServerCertificate=true",
+                    host, port, dbName));
         } else {
-            this.url = String.format(
+            config.setJdbcUrl(String.format(
                     "jdbc:sqlserver://%s:%s;databaseName=%s;" +
                     "encrypt=true;trustServerCertificate=true",
-                    host, port, dbName);
-            this.username = props.getProperty("db.username");
-            this.password = props.getProperty("db.password");
+                    host, port, dbName));
+            config.setUsername(props.getProperty("db.username"));
+            config.setPassword(props.getProperty("db.password"));
         }
+
+        this.dataSource = new HikariDataSource(config);
     }
 
     private static class Holder {
@@ -49,17 +56,12 @@ public class DatabaseConnection {
         return Holder.INSTANCE;
     }
 
-    public String getUrl()      { return url;      }
-
-    public String getUsername() { return username; }
-
-    public String getPassword() { return password; }
+    public HikariDataSource getDataSource() {
+        return dataSource;
+    }
 
     public Connection getConnection() throws SQLException {
-        if (username == null) {
-            return DriverManager.getConnection(url);
-        }
-        return DriverManager.getConnection(url, username, password);
+        return dataSource.getConnection();
     }
 
     public boolean testConnection() {

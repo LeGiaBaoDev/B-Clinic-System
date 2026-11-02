@@ -10,7 +10,7 @@ public class FlywayMigration {
         DatabaseConnection db = DatabaseConnection.getInstance();
 
         Flyway flyway = Flyway.configure()
-                .dataSource(db.getUrl(), db.getUsername(), db.getPassword())
+                .dataSource(db.getDataSource())
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion("0")
