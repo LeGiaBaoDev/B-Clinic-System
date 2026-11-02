@@ -14,15 +14,11 @@ import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * DAO xử lý truy vấn liên quan đến TaiKhoan.
- * Không import javax.swing — ném exception để UI xử lý.
- */
 public class TaiKhoanDAO {
 
     private static final Logger LOG = Logger.getLogger(TaiKhoanDAO.class.getName());
 
-    // UC001 — Đăng nhập
+    // Đăng nhập
     private static final String SQL_DANG_NHAP =
             "SELECT tk.maTK, tk.tenTK, tk.matKhau, tk.vaiTro, tk.trangThai, " +
             "       nv.maNV, nv.hoTenNV, nv.gioiTinh, nv.sdt, nv.email, nv.chuyenMon " +
@@ -30,22 +26,20 @@ public class TaiKhoanDAO {
             "JOIN NhanVien nv ON nv.maNV = tk.maNV " +
             "WHERE tk.tenTK = ?";
 
-    // UC — Quên mật khẩu: xác minh danh tính
-    private static final String SQL_XAC_MINH =
+    // Quên mật khẩu
+    private static final String SQL_XAC_MINH_MA_NV =
             "SELECT tk.maTK FROM TaiKhoan tk " +
-            "JOIN NhanVien nv ON nv.maNV = tk.maNV " +
-            "WHERE nv.hoTenNV = ? AND nv.sdt = ? AND nv.email = ? AND tk.trangThai = 1";
+            "WHERE tk.maNV = ? AND tk.trangThai = 1";
 
-    // UC — Quên mật khẩu: cập nhật mật khẩu mới
+    // Quên mật khẩu
     private static final String SQL_DOI_MAT_KHAU =
             "UPDATE TaiKhoan SET matKhau = ? WHERE maTK = ?";
 
-    // ── Đăng nhập ─────────────────────────────────────────────────────────────
+    // Đăng nhập
 
     /**
      * Xác thực đăng nhập bằng tên đăng nhập + mật khẩu gốc.
-     * Mật khẩu trong DB lưu plain-text hoặc SHA-256 hex.
-     * TODO: thay bằng BCrypt khi tích hợp jBCrypt (T004).
+     * Mật khẩu trong DB lưu SHA-256 hex (hoặc plain-text cho tài khoản cũ chưa đổi).
      *
      * @throws BusinessException   tài khoản không tồn tại, sai mật khẩu, hoặc bị khóa
      * @throws DataAccessException lỗi DB
@@ -74,8 +68,6 @@ public class TaiKhoanDAO {
                     throw new BusinessException("T\u00e0i kho\u1ea3n \u0111\u00e3 b\u1ecb kh\u00f3a. Vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean.");
 
                 NhanVien nv = new NhanVien();
-                // Map trực tiếp vào field — không qua setter có validate
-                // vì PK trong DB là INT IDENTITY, không có format NV###
                 mapNhanVien(nv, rs);
 
                 TaiKhoan tk = new TaiKhoan();
@@ -88,43 +80,37 @@ public class TaiKhoanDAO {
         }
     }
 
-    // ── Quên mật khẩu ────────────────────────────────────────────────────────
+    // Quên mật khẩu
 
     /**
-     * Xác minh danh tính nhân viên qua họ tên + SĐT + email.
+     * Tra cứu maTK theo maNV — dùng cho luồng quên mật khẩu
      *
-     * @return maTK nếu khớp
-     * @throws BusinessException   thông tin không khớp
+     * @return maTK nếu tìm thấy và tài khoản đang hoạt động
+     * @throws BusinessException   mã nhân viên không hợp lệ
      * @throws DataAccessException lỗi DB
      */
-    public String xacMinhDanhTinh(String hoTen, String sdt, String email) {
-        if (hoTen == null || hoTen.isBlank())  throw new BusinessException("Vui l\u00f2ng nh\u1eadp h\u1ecd t\u00ean.");
-        if (sdt   == null || sdt.isBlank())    throw new BusinessException("Vui l\u00f2ng nh\u1eadp s\u1ed1 \u0111i\u1ec7n tho\u1ea1i.");
-        if (email == null || email.isBlank())   throw new BusinessException("Vui l\u00f2ng nh\u1eadp email.");
+    public String xacMinhMaNV(String maNV) {
+        if (maNV == null || maNV.isBlank())
+            throw new BusinessException("Vui l\u00f2ng nh\u1eadp m\u00e3 nh\u00e2n vi\u00ean.");
 
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_XAC_MINH)) {
+             PreparedStatement ps = conn.prepareStatement(SQL_XAC_MINH_MA_NV)) {
 
-            ps.setString(1, hoTen.trim());
-            ps.setString(2, sdt.trim());
-            ps.setString(3, email.trim().toLowerCase());
+            ps.setString(1, maNV.trim());
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next())
-                    throw new BusinessException(
-                            "Th\u00f4ng tin kh\u00f4ng kh\u1edbp v\u1edbi b\u1ea5t k\u1ef3 t\u00e0i kho\u1ea3n n\u00e0o.\n"
-                          + "Vui l\u00f2ng ki\u1ec3m tra l\u1ea1i h\u1ecd t\u00ean, s\u1ed1 \u0111i\u1ec7n tho\u1ea1i v\u00e0 email.");
+                    throw new BusinessException("M\u00e3 nh\u00e2n vi\u00ean kh\u00f4ng h\u1ee3p l\u1ec7.");
                 return rs.getString("maTK");
             }
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "L\u1ed7i x\u00e1c minh danh t\u00ednh", e);
+            LOG.log(Level.SEVERE, "L\u1ed7i tra c\u1ee9u m\u00e3 nh\u00e2n vi\u00ean", e);
             throw new DataAccessException("Kh\u00f4ng th\u1ec3 k\u1ebft n\u1ed1i c\u01a1 s\u1edf d\u1eef li\u1ec7u. Vui l\u00f2ng th\u1eed l\u1ea1i sau.", e);
         }
     }
 
     /**
      * Cập nhật mật khẩu mới cho tài khoản.
-     * TODO: BCrypt hash trước khi lưu khi có jBCrypt.
      *
      * @throws BusinessException   mật khẩu không hợp lệ
      * @throws DataAccessException lỗi DB
@@ -135,7 +121,7 @@ public class TaiKhoanDAO {
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL_DOI_MAT_KHAU)) {
 
-            ps.setString(1, matKhauMoi);  // TODO: BCrypt.hashpw(matKhauMoi, BCrypt.gensalt())
+            ps.setString(1, shaHex(matKhauMoi));
             ps.setString(2, maTK);
             ps.executeUpdate();
 
@@ -145,22 +131,10 @@ public class TaiKhoanDAO {
         }
     }
 
-    // ── Nội bộ ────────────────────────────────────────────────────────────────
+    // Nội bộ
 
-    /**
-     * Map NhanVien từ ResultSet — dùng reflection-style set thẳng vào field
-     * để tránh validate format NV### (PK trong DB là INT IDENTITY).
-     */
     private void mapNhanVien(NhanVien nv, java.sql.ResultSet rs) throws java.sql.SQLException {
-        // Dùng constructor đầy đủ với giá trị thô từ DB
-        // setMaNV validate "NV\\d{3}" nên không dùng — lưu maNV dạng chuỗi số
-        try {
-            java.lang.reflect.Field f = NhanVien.class.getDeclaredField("maNV");
-            f.setAccessible(true);
-            f.set(nv, String.valueOf(rs.getInt("maNV")));
-        } catch (Exception e) {
-            // fallback: bỏ qua maNV nếu không set được
-        }
+        nv.setMaNV(rs.getString("maNV"));
         nv.setHoTenNV(rs.getString("hoTenNV"));
         nv.setGioiTinh(rs.getBoolean("gioiTinh"));
         nv.setSdt(rs.getString("sdt"));
@@ -168,19 +142,10 @@ public class TaiKhoanDAO {
         nv.setChuyenMon(rs.getString("chuyenMon"));
     }
 
-    /**
-     * Map TaiKhoan từ ResultSet — tương tự, bỏ qua validate maTK format.
-     */
     private void mapTaiKhoan(TaiKhoan tk, java.sql.ResultSet rs,
                               NhanVien nv, String matKhauDB, boolean trangThai)
             throws java.sql.SQLException {
-        try {
-            java.lang.reflect.Field f = TaiKhoan.class.getDeclaredField("maTK");
-            f.setAccessible(true);
-            f.set(tk, String.valueOf(rs.getInt("maTK")));
-        } catch (Exception e) {
-            // fallback
-        }
+        tk.setMaTK(rs.getString("maTK"));
         tk.setTenTK(rs.getString("tenTK"));
         tk.setMatKhau(matKhauDB);
         tk.setVaiTro(VaiTro.valueOf(rs.getString("vaiTro")));
