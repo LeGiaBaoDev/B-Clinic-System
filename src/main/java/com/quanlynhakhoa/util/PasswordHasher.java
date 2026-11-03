@@ -6,14 +6,18 @@ import java.util.Base64;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-/** PBKDF2 có salt cho mật khẩu mới; đọc được plaintext/SHA-256 cũ trong giai đoạn chuyển tiếp. */
 public final class PasswordHasher {
+
     private static final int VONG_LAP = 210_000;
     private static final SecureRandom RANDOM = new SecureRandom();
-    private PasswordHasher() { }
+
+    private PasswordHasher() {
+    }
 
     public static String bam(String matKhau) {
-        if (matKhau == null || matKhau.isBlank()) { throw new IllegalArgumentException("Mật khẩu không được rỗng."); }
+        if (matKhau == null || matKhau.isBlank()) {
+            throw new IllegalArgumentException("Mật khẩu không được rỗng.");
+        }
         byte[] salt = new byte[16];
         RANDOM.nextBytes(salt);
         return "PBKDF2$" + VONG_LAP + "$" + Base64.getEncoder().encodeToString(salt)
@@ -21,16 +25,24 @@ public final class PasswordHasher {
     }
 
     public static boolean xacMinh(String matKhau, String stored) {
-        if (matKhau == null || stored == null) { return false; }
+        if (matKhau == null || stored == null) {
+            return false;
+        }
         try {
             if (stored.startsWith("PBKDF2$")) {
                 String[] parts = stored.split("\\$");
-                if (parts.length != 4) { return false; }
+                if (parts.length != 4) {
+                    return false;
+                }
                 int n = Integer.parseInt(parts[1]);
-                if (n < 100_000 || n > 1_000_000) { return false; }
+                if (n < 100_000 || n > 1_000_000) {
+                    return false;
+                }
                 byte[] salt = Base64.getDecoder().decode(parts[2]);
                 byte[] expected = Base64.getDecoder().decode(parts[3]);
-                if (salt.length != 16 || expected.length != 32) { return false; }
+                if (salt.length != 16 || expected.length != 32) {
+                    return false;
+                }
                 return MessageDigest.isEqual(expected, khoa(matKhau, salt, n));
             }
             if (stored.matches("[a-fA-F0-9]{64}")) {
@@ -45,8 +57,12 @@ public final class PasswordHasher {
 
     private static byte[] khoa(String password, byte[] salt, int n) {
         PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, n, 256);
-        try { return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded(); }
-        catch (GeneralSecurityException e) { throw new IllegalStateException("Không thể mã hóa mật khẩu.", e); }
-        finally { spec.clearPassword(); }
+        try {
+            return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Không thể mã hóa mật khẩu.", e);
+        } finally {
+            spec.clearPassword();
+        }
     }
 }

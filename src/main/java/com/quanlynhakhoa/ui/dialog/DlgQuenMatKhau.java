@@ -3,61 +3,60 @@ package com.quanlynhakhoa.ui.dialog;
 import com.quanlynhakhoa.dao.TaiKhoanDAO;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.RoundRectangle2D;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
-/**
- * Dialog quên mật khẩu — 1 bước (UC001 bước 5.5–5.10):
- *   Nhập Mã nhân viên + Mật khẩu mới + Xác nhận mật khẩu mới.
- */
 public class DlgQuenMatKhau extends JDialog {
 
-    // ── Màu ──────────────────────────────────────────────────────────────────
-    private static final Color CLR_TEAL       = new Color(0x1A7A7A);
+    // Màu
+    private static final Color CLR_TEAL = new Color(0x1A7A7A);
     private static final Color CLR_TEAL_HOVER = new Color(0x15686A);
     private static final Color CLR_TEAL_PRESS = new Color(0x115658);
-    private static final Color CLR_ERROR      = new Color(0xCC2222);
-    private static final Color CLR_SUCCESS    = new Color(0x1A7A7A);
-    private static final Color CLR_BORDER     = new Color(0xCCCCCC);
-    private static final Color CLR_FOCUS      = new Color(0x1A7A7A);
-    private static final Color CLR_LABEL      = new Color(0x333333);
-    private static final Color CLR_SUBLABEL   = new Color(0x666666);
+    private static final Color CLR_ERROR = new Color(0xCC2222);
+    private static final Color CLR_SUCCESS = new Color(0x1A7A7A);
+    private static final Color CLR_BORDER = new Color(0xCCCCCC);
+    private static final Color CLR_FOCUS = new Color(0x1A7A7A);
+    private static final Color CLR_LABEL = new Color(0x333333);
+    private static final Color CLR_SUBLABEL = new Color(0x666666);
 
     // Font
-    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD,  18);
-    private static final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD,  13);
+    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 18);
+    private static final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD, 13);
     private static final Font FONT_INPUT = new Font("Segoe UI", Font.PLAIN, 14);
     private static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 11);
-    private static final Font FONT_BTN   = new Font("Segoe UI", Font.BOLD,  13);
+    private static final Font FONT_BTN = new Font("Segoe UI", Font.BOLD, 13);
 
     // Components
-    private JTextField     txtMaNV;
+    private JTextField txtMaNV;
     private JPasswordField txtMatKhauMoi;
     private JPasswordField txtNhapLai;
-    private JButton        btnXacNhan;
-    private JButton        btnToggle1;
-    private JButton        btnToggle2;
-    private JLabel         lblThongBao;
-    private boolean        hien1 = false;
-    private boolean        hien2 = false;
+    private JButton btnXacNhan;
+    private JButton btnHuy;
+    private JButton btnToggle1;
+    private JButton btnToggle2;
+    private JLabel lblThongBao;
+    private boolean hien1 = false;
+    private boolean hien2 = false;
 
     private final TaiKhoanDAO taiKhoanDAO = new TaiKhoanDAO();
 
     public DlgQuenMatKhau(Window owner) {
         super(owner, "Quên mật khẩu", ModalityType.APPLICATION_MODAL);
-        khoiTao();
+        khoiTaoFrame();
+        initComponents();
+        ganSuKien();
     }
 
-    private void khoiTao() {
+    private void khoiTaoFrame() {
         setSize(420, 460);
         setMinimumSize(new Dimension(380, 420));
         setLocationRelativeTo(getOwner());
         setResizable(false);
+    }
 
+    private void initComponents() {
         JPanel root = new JPanel(new BorderLayout(0, 12));
         root.setBackground(Color.WHITE);
         root.setBorder(new EmptyBorder(28, 32, 24, 32));
@@ -68,7 +67,7 @@ public class DlgQuenMatKhau extends JDialog {
         lblTitle.setFont(FONT_TITLE);
         lblTitle.setForeground(CLR_LABEL);
 
-        JLabel lblSub = new JLabel("<html>Nhập mã nhân viên và mật khẩu mới của bạn.</html>");
+        JLabel lblSub = new JLabel("<html>Nhập số điện thoại hoặc email và mật khẩu mới của bạn.</html>");
         lblSub.setFont(FONT_SMALL);
         lblSub.setForeground(CLR_SUBLABEL);
 
@@ -84,15 +83,12 @@ public class DlgQuenMatKhau extends JDialog {
         form.setOpaque(false);
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
 
-        txtMaNV = taoInput("VD: NV001");
+        txtMaNV = taoInput("VD: 0912345678 hoặc nv@clinic.vn");
         JPanel pnlMk1 = taoPasswordPanel(true);
         JPanel pnlMk2 = taoPasswordPanel(false);
 
         btnXacNhan = taoBtnChinh("Xác nhập đặt lại mật khẩu");
-        btnXacNhan.addActionListener(e -> thucHien());
-
-        JButton btnHuy = taoBtnPhu("Hủy");
-        btnHuy.addActionListener(e -> dispose());
+        btnHuy = taoBtnPhu("Hủy");
 
         // Thông báo lỗi/thành công
         lblThongBao = new JLabel(" ");
@@ -100,7 +96,7 @@ public class DlgQuenMatKhau extends JDialog {
         lblThongBao.setForeground(CLR_ERROR);
         lblThongBao.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        form.add(taoLabel("Mã nhân viên *"));
+        form.add(taoLabel("Số điện thoại hoặc email *"));
         form.add(Box.createVerticalStrut(5));
         form.add(txtMaNV);
         form.add(Box.createVerticalStrut(14));
@@ -119,30 +115,54 @@ public class DlgQuenMatKhau extends JDialog {
         form.add(btnHuy);
 
         root.add(header, BorderLayout.NORTH);
-        root.add(form,   BorderLayout.CENTER);
+        root.add(form, BorderLayout.CENTER);
+    }
+
+    private void ganSuKien() {
+        btnXacNhan.addActionListener(this::xuLyXacNhan);
+        btnHuy.addActionListener(this::xuLyHuy);
+        btnToggle1.addActionListener(this::xuLyHienMk1);
+        btnToggle2.addActionListener(this::xuLyHienMk2);
+    }
+
+    private void xuLyXacNhan(ActionEvent e) {
+        thucHien();
+    }
+
+    private void xuLyHuy(ActionEvent e) {
+        dispose();
+    }
+
+    private void xuLyHienMk1(ActionEvent e) {
+        hien1 = !hien1;
+        txtMatKhauMoi.setEchoChar(hien1 ? (char) 0 : '●');
+        btnToggle1.repaint();
+    }
+
+    private void xuLyHienMk2(ActionEvent e) {
+        hien2 = !hien2;
+        txtNhapLai.setEchoChar(hien2 ? (char) 0 : '●');
+        btnToggle2.repaint();
     }
 
     // Logic
-
     private void thucHien() {
-        String maNV = txtMaNV.getText().trim();
-        String mk1  = new String(txtMatKhauMoi.getPassword());
-        String mk2  = new String(txtNhapLai.getPassword());
+        String lienHe = txtMaNV.getText().trim();
+        String mk1 = new String(txtMatKhauMoi.getPassword());
+        String mk2 = new String(txtNhapLai.getPassword());
 
         // Validate phía client
-        if (maNV.isEmpty()) {
-            hienLoi("Vui lòng nhập mã nhân viên.");
-            txtMaNV.requestFocus();
-            return;
-        }
-        if (mk1.length() < 6) {
-            hienLoi("Mật khẩu phải có ít nhất 6 ký tự.");
-            txtMatKhauMoi.requestFocus();
-            return;
-        }
-        if (!mk1.equals(mk2)) {
-            hienLoi("Mật khẩu xác nhập không khớp.");
-            txtNhapLai.requestFocus();
+        String loi = com.quanlynhakhoa.util.KiemTraXacThuc
+                .loiDatLaiMatKhau(lienHe, mk1, mk2);
+        if (loi != null) {
+            hienLoi(loi);
+            if (!com.quanlynhakhoa.util.KiemTraXacThuc.laLienHeHopLe(lienHe)) {
+                txtMaNV.requestFocus();
+            } else if (mk1.length() < com.quanlynhakhoa.util.KiemTraXacThuc.DO_DAI_MAT_KHAU_TOI_THIEU) {
+                txtMatKhauMoi.requestFocus();
+            } else {
+                txtNhapLai.requestFocus();
+            }
             return;
         }
 
@@ -151,12 +171,15 @@ public class DlgQuenMatKhau extends JDialog {
         hienLoi("");
 
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
-            @Override protected Void doInBackground() {
-                String maTK = taiKhoanDAO.xacMinhMaNV(maNV);
+            @Override
+            protected Void doInBackground() {
+                String maTK = taiKhoanDAO.xacMinh(lienHe);
                 taiKhoanDAO.doiMatKhau(maTK, mk1);
                 return null;
             }
-            @Override protected void done() {
+
+            @Override
+            protected void done() {
                 btnXacNhan.setEnabled(true);
                 btnXacNhan.setText("Xác nhập đặt lại mật khẩu");
                 try {
@@ -184,7 +207,6 @@ public class DlgQuenMatKhau extends JDialog {
     }
 
     // Helper UI
-
     private JLabel taoLabel(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setFont(FONT_LABEL);
@@ -195,7 +217,8 @@ public class DlgQuenMatKhau extends JDialog {
 
     private JTextField taoInput(String placeholder) {
         JTextField tf = new JTextField() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
@@ -210,7 +233,9 @@ public class DlgQuenMatKhau extends JDialog {
                 }
                 g2.dispose();
             }
-            @Override protected void paintBorder(Graphics g) {
+
+            @Override
+            protected void paintBorder(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(isFocusOwner() ? CLR_FOCUS : CLR_BORDER);
@@ -226,15 +251,23 @@ public class DlgQuenMatKhau extends JDialog {
         tf.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         tf.setAlignmentX(Component.LEFT_ALIGNMENT);
         tf.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) { tf.repaint(); }
-            @Override public void focusLost(FocusEvent e)   { tf.repaint(); }
+            @Override
+            public void focusGained(FocusEvent e) {
+                tf.repaint();
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                tf.repaint();
+            }
         });
         return tf;
     }
 
     private JPanel taoPasswordPanel(boolean laMk1) {
         JPasswordField pf = new JPasswordField() {
-            @Override protected void paintBorder(Graphics g) {
+            @Override
+            protected void paintBorder(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(isFocusOwner() ? CLR_FOCUS : CLR_BORDER);
@@ -249,8 +282,15 @@ public class DlgQuenMatKhau extends JDialog {
         pf.setBorder(new EmptyBorder(9, 12, 9, 8));
         pf.setEchoChar('●');
         pf.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) { pf.repaint(); }
-            @Override public void focusLost(FocusEvent e)   { pf.repaint(); }
+            @Override
+            public void focusGained(FocusEvent e) {
+                pf.repaint();
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                pf.repaint();
+            }
         });
 
         if (laMk1) {
@@ -261,7 +301,8 @@ public class DlgQuenMatKhau extends JDialog {
 
         // Eye icon toggle
         JButton btnToggle = new JButton() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 boolean hien = laMk1 ? hien1 : hien2;
@@ -283,32 +324,29 @@ public class DlgQuenMatKhau extends JDialog {
         btnToggle.setFocusPainted(false);
         btnToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnToggle.setPreferredSize(new Dimension(36, 36));
-        btnToggle.addActionListener(e -> {
-            if (laMk1) {
-                hien1 = !hien1;
-                pf.setEchoChar(hien1 ? (char) 0 : '●');
-            } else {
-                hien2 = !hien2;
-                pf.setEchoChar(hien2 ? (char) 0 : '●');
-            }
-            btnToggle.repaint();
-        });
 
-        if (laMk1) btnToggle1 = btnToggle;
-        else       btnToggle2 = btnToggle;
+        if (laMk1) {
+            btnToggle1 = btnToggle; 
+        }else {
+            btnToggle2 = btnToggle;
+        }
 
         JPanel wrapper = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(Color.WHITE);
                 g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
                 g2.dispose();
             }
-            @Override protected void paintBorder(Graphics g) {}
+
+            @Override
+            protected void paintBorder(Graphics g) {
+            }
         };
         wrapper.setOpaque(false);
-        wrapper.add(pf,        BorderLayout.CENTER);
+        wrapper.add(pf, BorderLayout.CENTER);
         wrapper.add(btnToggle, BorderLayout.EAST);
         wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -318,15 +356,37 @@ public class DlgQuenMatKhau extends JDialog {
     private JButton taoBtnChinh(String text) {
         JButton btn = new JButton(text) {
             private Color bg = CLR_TEAL;
+
             {
                 addMouseListener(new MouseAdapter() {
-                    @Override public void mouseEntered(MouseEvent e)  { bg = CLR_TEAL_HOVER; repaint(); }
-                    @Override public void mouseExited(MouseEvent e)   { bg = CLR_TEAL;       repaint(); }
-                    @Override public void mousePressed(MouseEvent e)  { bg = CLR_TEAL_PRESS; repaint(); }
-                    @Override public void mouseReleased(MouseEvent e) { bg = CLR_TEAL_HOVER; repaint(); }
+                    @Override
+                    public void mouseEntered(MouseEvent e) {
+                        bg = CLR_TEAL_HOVER;
+                        repaint();
+                    }
+
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        bg = CLR_TEAL;
+                        repaint();
+                    }
+
+                    @Override
+                    public void mousePressed(MouseEvent e) {
+                        bg = CLR_TEAL_PRESS;
+                        repaint();
+                    }
+
+                    @Override
+                    public void mouseReleased(MouseEvent e) {
+                        bg = CLR_TEAL_HOVER;
+                        repaint();
+                    }
                 });
             }
-            @Override protected void paintComponent(Graphics g) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(isEnabled() ? bg : new Color(0xAAAAAA));
@@ -338,7 +398,10 @@ public class DlgQuenMatKhau extends JDialog {
                         (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
                 g2.dispose();
             }
-            @Override protected void paintBorder(Graphics g) {}
+
+            @Override
+            protected void paintBorder(Graphics g) {
+            }
         };
         btn.setFont(FONT_BTN);
         btn.setBorderPainted(false);
@@ -352,7 +415,8 @@ public class DlgQuenMatKhau extends JDialog {
 
     private JButton taoBtnPhu(String text) {
         JButton btn = new JButton(text) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0xF0F0F0));
@@ -364,7 +428,10 @@ public class DlgQuenMatKhau extends JDialog {
                         (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
                 g2.dispose();
             }
-            @Override protected void paintBorder(Graphics g) {}
+
+            @Override
+            protected void paintBorder(Graphics g) {
+            }
         };
         btn.setFont(FONT_BTN);
         btn.setBorderPainted(false);

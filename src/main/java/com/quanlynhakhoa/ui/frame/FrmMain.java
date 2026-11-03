@@ -2,51 +2,43 @@ package com.quanlynhakhoa.ui.frame;
 
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
-import com.quanlynhakhoa.util.SessionManager;
 import com.quanlynhakhoa.ui.panel.PnlQuanLy;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
+import com.quanlynhakhoa.util.SessionManager;
 import java.awt.*;
-import java.awt.geom.RoundRectangle2D;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
-/**
- * Màn hình chính B-Clinic.
- * Vai trò quản lý mở dashboard; các vai trò khác giữ màn hình hiện có.
- */
 public class FrmMain extends JFrame {
 
-    private static final Color CLR_BG        = new Color(0xEDF3F4);
-    private static final Color CLR_CARD      = Color.WHITE;
-    private static final Color CLR_TEAL      = new Color(0x1A7A7A);
+    private static final Color CLR_BG = new Color(0xEDF3F4);
+    private static final Color CLR_CARD = Color.WHITE;
+    private static final Color CLR_TEAL = new Color(0x1A7A7A);
     private static final Color CLR_TEAL_DARK = new Color(0x1A3C40);
-    private static final Color CLR_SUCCESS   = new Color(0x22AA55);
-    private static final Color CLR_LABEL     = new Color(0x333333);
-    private static final Color CLR_SUBLABEL  = new Color(0x666666);
-    private static final Color CLR_BADGE_BG  = new Color(0xE8F5F5);
+    private static final Color CLR_SUCCESS = new Color(0x22AA55);
+    private static final Color CLR_LABEL = new Color(0x333333);
+    private static final Color CLR_SUBLABEL = new Color(0x666666);
+    private static final Color CLR_BADGE_BG = new Color(0xE8F5F5);
 
-    private static final Font FONT_TITLE  = new Font("Segoe UI", Font.BOLD,  22);
-    private static final Font FONT_SUB    = new Font("Segoe UI", Font.PLAIN, 14);
-    private static final Font FONT_INFO   = new Font("Segoe UI", Font.PLAIN, 13);
-    private static final Font FONT_BOLD   = new Font("Segoe UI", Font.BOLD,  13);
-    private static final Font FONT_BADGE  = new Font("Segoe UI", Font.BOLD,  12);
-    private static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN, 11);
-    private static final Font FONT_BTN    = new Font("Segoe UI", Font.BOLD,  13);
+    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 22);
+    private static final Font FONT_SUB = new Font("Segoe UI", Font.PLAIN, 14);
+    private static final Font FONT_INFO = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font FONT_BOLD = new Font("Segoe UI", Font.BOLD, 13);
+    private static final Font FONT_BADGE = new Font("Segoe UI", Font.BOLD, 12);
+    private static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 11);
+    private static final Font FONT_BTN = new Font("Segoe UI", Font.BOLD, 13);
 
     private final TaiKhoan taiKhoan;
-
-    // ─────────────────────────────────────────────────────────────────────────
 
     public FrmMain(TaiKhoan taiKhoan) {
         this.taiKhoan = taiKhoan;
         khoiTaoFrame();
-        if(taiKhoan.getVaiTro()==VaiTro.QUANLY) {
-            setContentPane(new PnlQuanLy(taiKhoan,this::dangXuatQuanLy));
-            setMinimumSize(new Dimension(1100,680));
-            Rectangle available=GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
-            setSize(Math.min(1440,available.width-32),Math.min(900,available.height-24));
+        if (taiKhoan.getVaiTro() == VaiTro.QUANLY) {
+            setContentPane(new PnlQuanLy(taiKhoan, this::dangXuatQuanLy));
+            setMinimumSize(new Dimension(1100, 680));
+            Rectangle available = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            setSize(Math.min(1440, available.width - 32), Math.min(900, available.height - 24));
             setLocationRelativeTo(null);
         } else {
             khoiTaoUI();
@@ -54,14 +46,13 @@ public class FrmMain extends JFrame {
     }
 
     private void dangXuatQuanLy() {
-        if(JOptionPane.showConfirmDialog(this,"Bạn có chắc chắn muốn đăng xuất?","Đăng xuất",
-                JOptionPane.YES_NO_OPTION,JOptionPane.QUESTION_MESSAGE)==JOptionPane.YES_OPTION) {
-            SessionManager.getInstance().logout(); dispose();
+        if (JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn muốn đăng xuất?", "Đăng xuất",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION) {
+            SessionManager.getInstance().logout();
+            dispose();
             SwingUtilities.invokeLater(() -> new FrmDangNhap().setVisible(true));
         }
     }
-
-    // ── Frame ────────────────────────────────────────────────────────────────
 
     private void khoiTaoFrame() {
         setTitle("B-Clinic \u2014 Qu\u1ea3n l\u00fd ph\u00f2ng kh\u00e1m nha khoa");
@@ -72,8 +63,7 @@ public class FrmMain extends JFrame {
         getContentPane().setBackground(CLR_BG);
     }
 
-    // ── UI ───────────────────────────────────────────────────────────────────
-
+    // UI
     private void khoiTaoUI() {
         JPanel outer = new JPanel(new GridBagLayout());
         outer.setBackground(CLR_BG);
@@ -82,13 +72,15 @@ public class FrmMain extends JFrame {
         JPanel card = taoCard();
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
         outer.add(card, gbc);
     }
 
     private JPanel taoCard() {
         JPanel card = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 // Đổ bóng nhẹ
@@ -106,16 +98,16 @@ public class FrmMain extends JFrame {
         card.setBorder(new EmptyBorder(0, 0, 4, 4)); // offset cho bóng
 
         card.add(taoHeader(), BorderLayout.NORTH);
-        card.add(taoBody(),   BorderLayout.CENTER);
+        card.add(taoBody(), BorderLayout.CENTER);
         card.add(taoFooter(), BorderLayout.SOUTH);
         return card;
     }
 
     // ── Header — dải màu teal ─────────────────────────────────────────────────
-
     private JPanel taoHeader() {
         JPanel header = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 // Dải teal bo góc trên
@@ -129,15 +121,13 @@ public class FrmMain extends JFrame {
         header.setLayout(new BorderLayout());
         header.setBorder(new EmptyBorder(20, 32, 20, 32));
 
-        // Icon check thành công
         JLabel lblIcon = new JLabel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // Vòng tròn xanh lá
                 g2.setColor(CLR_SUCCESS);
                 g2.fillOval(0, 0, 40, 40);
-                // Dấu tick trắng
                 g2.setColor(Color.WHITE);
                 g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.drawLine(9, 20, 16, 28);
@@ -163,7 +153,7 @@ public class FrmMain extends JFrame {
         txtPanel.add(Box.createVerticalStrut(4));
         txtPanel.add(lblSub);
 
-        header.add(lblIcon,   BorderLayout.WEST);
+        header.add(lblIcon, BorderLayout.WEST);
         header.add(Box.createHorizontalStrut(16), BorderLayout.CENTER);
 
         JPanel right = new JPanel(new BorderLayout());
@@ -174,8 +164,7 @@ public class FrmMain extends JFrame {
         return header;
     }
 
-    // ── Body — thông tin tài khoản ────────────────────────────────────────────
-
+    // thông tin tài khoản
     private JPanel taoBody() {
         JPanel body = new JPanel();
         body.setOpaque(false);
@@ -184,10 +173,11 @@ public class FrmMain extends JFrame {
 
         // Badge vai trò
         String tenVaiTro = tenVaiTro(taiKhoan.getVaiTro());
-        Color  mauVaiTro = mauVaiTro(taiKhoan.getVaiTro());
+        Color mauVaiTro = mauVaiTro(taiKhoan.getVaiTro());
 
         JLabel badge = new JLabel("  " + tenVaiTro + "  ") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(mauVaiTro.brighter().brighter());
@@ -216,9 +206,9 @@ public class FrmMain extends JFrame {
         String tenNV = taiKhoan.getNhanVien() != null
                 ? taiKhoan.getNhanVien().getHoTenNV() : "(kh\u00f4ng r\u00f5)";
 
-        themInfoRow(pnlInfo, 0, "\ud83d\udc64  H\u1ecd t\u00ean",      tenNV);
+        themInfoRow(pnlInfo, 0, "\ud83d\udc64  H\u1ecd t\u00ean", tenNV);
         themInfoRow(pnlInfo, 1, "\ud83d\udd11  T\u00ean \u0111\u0103ng nh\u1eadp", taiKhoan.getTenTK());
-        themInfoRow(pnlInfo, 2, "\u23f0  \u0110\u0103ng nh\u1eadp l\u00fac",  thoiGian);
+        themInfoRow(pnlInfo, 2, "\u23f0  \u0110\u0103ng nh\u1eadp l\u00fac", thoiGian);
 
         // Separator
         JSeparator sep = new JSeparator();
@@ -236,12 +226,14 @@ public class FrmMain extends JFrame {
 
     private void themInfoRow(JPanel parent, int row, String label, String value) {
         GridBagConstraints gbcL = new GridBagConstraints();
-        gbcL.gridx = 0; gbcL.gridy = row;
+        gbcL.gridx = 0;
+        gbcL.gridy = row;
         gbcL.anchor = GridBagConstraints.WEST;
         gbcL.insets = new Insets(5, 0, 5, 24);
 
         GridBagConstraints gbcV = new GridBagConstraints();
-        gbcV.gridx = 1; gbcV.gridy = row;
+        gbcV.gridx = 1;
+        gbcV.gridy = row;
         gbcV.anchor = GridBagConstraints.WEST;
         gbcV.weightx = 1.0;
         gbcV.insets = new Insets(5, 0, 5, 0);
@@ -257,8 +249,6 @@ public class FrmMain extends JFrame {
         parent.add(lblKey, gbcL);
         parent.add(lblVal, gbcV);
     }
-
-    // ── Footer — nút đăng xuất ────────────────────────────────────────────────
 
     private JPanel taoFooter() {
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 32, 12));
@@ -286,15 +276,37 @@ public class FrmMain extends JFrame {
     private JButton taoBtnDangXuat() {
         JButton btn = new JButton("\u21aa  \u0110\u0103ng xu\u1ea5t") {
             private Color bg = new Color(0xF0F0F0);
+
             {
                 addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override public void mouseEntered(java.awt.event.MouseEvent e)  { bg = new Color(0xFFEEEE); repaint(); }
-                    @Override public void mouseExited(java.awt.event.MouseEvent e)   { bg = new Color(0xF0F0F0); repaint(); }
-                    @Override public void mousePressed(java.awt.event.MouseEvent e)  { bg = new Color(0xFFCCCC); repaint(); }
-                    @Override public void mouseReleased(java.awt.event.MouseEvent e) { bg = new Color(0xFFEEEE); repaint(); }
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
+                        bg = new Color(0xFFEEEE);
+                        repaint();
+                    }
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
+                        bg = new Color(0xF0F0F0);
+                        repaint();
+                    }
+
+                    @Override
+                    public void mousePressed(java.awt.event.MouseEvent e) {
+                        bg = new Color(0xFFCCCC);
+                        repaint();
+                    }
+
+                    @Override
+                    public void mouseReleased(java.awt.event.MouseEvent e) {
+                        bg = new Color(0xFFEEEE);
+                        repaint();
+                    }
                 });
             }
-            @Override protected void paintComponent(Graphics g) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(bg);
@@ -307,7 +319,9 @@ public class FrmMain extends JFrame {
                         (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
                 g2.dispose();
             }
-            @Override protected void paintBorder(Graphics g) {
+
+            @Override
+            protected void paintBorder(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(0xFFCCCC));
@@ -336,21 +350,25 @@ public class FrmMain extends JFrame {
         return btn;
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
-
     private String tenVaiTro(VaiTro vaiTro) {
         return switch (vaiTro) {
-            case QUANLY -> "Qu\u1ea3n l\u00fd";
-            case NHASI  -> "Nha s\u0129";
-            case LETAN  -> "L\u1ec5 t\u00e2n";
+            case QUANLY ->
+                "Qu\u1ea3n l\u00fd";
+            case NHASI ->
+                "Nha s\u0129";
+            case LETAN ->
+                "L\u1ec5 t\u00e2n";
         };
     }
 
     private Color mauVaiTro(VaiTro vaiTro) {
         return switch (vaiTro) {
-            case QUANLY -> new Color(0x1A7A7A); // teal
-            case NHASI  -> new Color(0x2266CC); // xanh dương
-            case LETAN  -> new Color(0x8833AA); // tím
+            case QUANLY ->
+                new Color(0x1A7A7A); // teal
+            case NHASI ->
+                new Color(0x2266CC); // xanh dương
+            case LETAN ->
+                new Color(0x8833AA); // tím
         };
     }
 }
