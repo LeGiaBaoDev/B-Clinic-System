@@ -21,6 +21,84 @@ import static org.junit.jupiter.api.Assertions.*;
 class DlgThemNhanVienTest {
     private DlgThemNhanVien.NoiDung form;
 
+    private TaiKhoan taiKhoanCu() {
+        return new TaiKhoan("TK010", "anh1.nhasi", "[Ẩn]", VaiTro.NHASI, true,
+                new NhanVien("NV010", "Nguyễn Văn Anh", true, "0912345678", "anh@example.com", "Nội nha"));
+    }
+
+    @Test
+    void capNhat_giuMaVaTenTaiKhoan_luuBanSao_khongDoiDuLieuKhiNhap() throws Exception {
+        TaiKhoan cu = taiKhoanCu();
+        AtomicReference<TaiKhoan> saved = new AtomicReference<>();
+        AtomicBoolean success = new AtomicBoolean();
+        SwingUtilities.invokeAndWait(() -> {
+            form = new DlgThemNhanVien.NoiDung((nv, tk) -> {
+                saved.set(tk);
+                assertEquals("NV010", nv.getMaNV());
+                assertEquals("TK010", tk.getMaTK());
+                assertEquals("anh1.nhasi", tk.getTenTK());
+                assertEquals("Đỗ Văn Đạt", nv.getHoTenNV());
+                assertEquals(VaiTro.LETAN, tk.getVaiTro());
+                assertTrue(tk.isTrangThai());
+                return true;
+            }, nv -> success.set(true), () -> {}, cu, () -> true);
+            text("hoTen", "đỗ văn đạt");
+            ((JComboBox<?>) tim("chuyenMon")).setSelectedItem("Lễ tân");
+            assertEquals("Nguyễn Văn Anh", cu.getNhanVien().getHoTenNV());
+            assertEquals("anh1.nhasi", ((JTextField) tim("tenTaiKhoan")).getText());
+            nut("luuNhanVien").doClick();
+        });
+        choXong();
+        assertNotNull(saved.get());
+        assertTrue(success.get());
+        assertEquals(VaiTro.NHASI, cu.getVaiTro());
+    }
+
+    @Test
+    void capNhat_huyXacNhanKhoa_khongLuu() throws Exception {
+        AtomicBoolean save = new AtomicBoolean();
+        AtomicBoolean confirm = new AtomicBoolean();
+        SwingUtilities.invokeAndWait(() -> {
+            form = new DlgThemNhanVien.NoiDung((nv, tk) -> { save.set(true); return true; },
+                    nv -> {}, () -> {}, taiKhoanCu(), () -> { confirm.set(true); return false; });
+            ((JComboBox<?>) tim("trangThai")).setSelectedItem("Đã khóa");
+            nut("luuNhanVien").doClick();
+        });
+        assertTrue(confirm.get());
+        assertFalse(save.get());
+    }
+
+    @Test
+    void capNhat_xacNhanKhoa_guiTrangThaiKhoa() throws Exception {
+        AtomicBoolean saved = new AtomicBoolean();
+        SwingUtilities.invokeAndWait(() -> {
+            form = new DlgThemNhanVien.NoiDung((nv, tk) -> {
+                assertFalse(tk.isTrangThai()); saved.set(true); return true;
+            }, nv -> {}, () -> {}, taiKhoanCu(), () -> true);
+            ((JComboBox<?>) tim("trangThai")).setSelectedItem("Đã khóa");
+            nut("luuNhanVien").doClick();
+        });
+        choXong();
+        assertTrue(saved.get());
+    }
+
+    @Test
+    void capNhat_daoTuChoi_giuFormVaDuLieuGoc() throws Exception {
+        TaiKhoan cu = taiKhoanCu();
+        AtomicBoolean callback = new AtomicBoolean();
+        SwingUtilities.invokeAndWait(() -> {
+            form = new DlgThemNhanVien.NoiDung((nv, tk) -> {
+                throw new BusinessException("Nhân viên còn lịch khám chưa xử lý.");
+            }, nv -> callback.set(true), () -> {}, cu, () -> true);
+            ((JComboBox<?>) tim("trangThai")).setSelectedItem("Đã khóa");
+            nut("luuNhanVien").doClick();
+        });
+        choXong();
+        SwingUtilities.invokeAndWait(() -> assertTrue(thongBao().contains("lịch khám")));
+        assertFalse(callback.get());
+        assertTrue(cu.isTrangThai());
+    }
+
     @BeforeEach
     void dangNhap() {
         TaiKhoan actor = new TaiKhoan();

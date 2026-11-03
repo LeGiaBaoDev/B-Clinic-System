@@ -7,11 +7,14 @@ import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.ui.dialog.DlgThemNhanVien;
+import com.quanlynhakhoa.ui.dialog.DlgCapNhatNhanVien;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
 import static com.quanlynhakhoa.ui.component.UiConstants.*;
 import com.quanlynhakhoa.util.SessionManager;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -36,6 +39,8 @@ public class PnlNhanVien extends JPanel {
     private final JButton btnTimKiem = new JButton("Tìm kiếm");
     private final JButton btnLamMoi = new JButton("Làm mới");
     private final JButton btnThem = new JButton("Thêm nhân viên");
+    private final JButton btnCapNhat = new JButton("Cập nhật / Khóa");
+    private boolean dangTai;
     private final JLabel lblKetQua = new JLabel("Chưa tải danh sách nhân viên.");
     private final JLabel lblChiTiet = new JLabel("Chọn một nhân viên để xem thông tin chi tiết.");
     private final DefaultTableModel modelNhanVien = new DefaultTableModel(new String[]{
@@ -72,15 +77,33 @@ public class PnlNhanVien extends JPanel {
         lblChiTiet.setFont(font(13));
         lblChiTiet.setForeground(TEXT);
         chiTiet.add(lblChiTiet);
+        btnCapNhat.setName("capNhatNhanVien");
+        btnCapNhat.setFont(bold(12));
+        btnCapNhat.setEnabled(false);
+        chiTiet.add(btnCapNhat, BorderLayout.EAST);
         add(chiTiet, BorderLayout.SOUTH);
 
         btnTimKiem.addActionListener(e -> lamMoiDuLieu());
         btnThem.addActionListener(e -> moThemNhanVien());
+        btnCapNhat.addActionListener(e -> moCapNhatNhanVien());
         btnLamMoi.addActionListener(e -> lamMoiDuLieu());
         txtTimKiem.addActionListener(e -> lamMoiDuLieu());
         tblNhanVien.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) { hienChiTiet(); }
+            if (!e.getValueIsAdjusting()) { hienChiTiet(); capNhatNutSua(); }
         });
+        tblNhanVien.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2) {
+                    int row = tblNhanVien.rowAtPoint(e.getPoint());
+                    if (row >= 0) {
+                        tblNhanVien.setRowSelectionInterval(row, row);
+                        moCapNhatNhanVien();
+                    }
+                }
+            }
+        });
+        tblNhanVien.setToolTipText("Nhấn đúp một dòng để cập nhật nhân viên và tài khoản.");
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "lamMoi");
         getActionMap().put("lamMoi", new AbstractAction() {
@@ -252,10 +275,39 @@ public class PnlNhanVien extends JPanel {
     }
 
     private void datDangTai(boolean dangTai) {
+        this.dangTai = dangTai;
         btnTimKiem.setEnabled(!dangTai);
         btnLamMoi.setEnabled(!dangTai);
         TaiKhoan actor = SessionManager.getInstance().getCurrentUser();
         btnThem.setEnabled(!dangTai && actor != null && actor.getVaiTro() == VaiTro.QUANLY);
+        capNhatNutSua();
+    }
+
+    private void capNhatNutSua() {
+        TaiKhoan actor = SessionManager.getInstance().getCurrentUser();
+        int row = tblNhanVien.getSelectedRow();
+        btnCapNhat.setEnabled(!dangTai && actor != null && actor.getVaiTro() == VaiTro.QUANLY
+                && row >= 0 && taiKhoanTheoNhanVien.containsKey(
+                        nhanVien.get(tblNhanVien.convertRowIndexToModel(row)).getMaNV()));
+    }
+
+    private void moCapNhatNhanVien() {
+        TaiKhoan actor = SessionManager.getInstance().getCurrentUser();
+        if (actor == null || actor.getVaiTro() != VaiTro.QUANLY) {
+            lblKetQua.setText("Chỉ Quản lý được cập nhật nhân viên và tài khoản.");
+            return;
+        }
+        int row = tblNhanVien.getSelectedRow();
+        if (dangTai || row < 0) { return; }
+        NhanVien nv = nhanVien.get(tblNhanVien.convertRowIndexToModel(row));
+        TaiKhoan tk = taiKhoanTheoNhanVien.get(nv.getMaNV());
+        if (tk == null) { return; }
+        new DlgCapNhatNhanVien(SwingUtilities.getWindowAncestor(this), tk, () -> {
+            txtTimKiem.setText(nv.getMaNV());
+            lamMoiDuLieu();
+            JOptionPane.showMessageDialog(this, "Cập nhật tài khoản thành công.",
+                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        }).setVisible(true);
     }
 
     private void moThemNhanVien() {

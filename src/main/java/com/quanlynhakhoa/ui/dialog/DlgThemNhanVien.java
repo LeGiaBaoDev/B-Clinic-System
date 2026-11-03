@@ -72,6 +72,9 @@ public class DlgThemNhanVien extends JDialog {
         private final BiPredicate<NhanVien, TaiKhoan> luu;
         private final Consumer<NhanVien> daTao;
         private final Runnable dong;
+        private final TaiKhoan banDau;
+        private final java.util.function.BooleanSupplier xacNhanKhoa;
+        private final JComboBox<String> cboTrangThai = new JComboBox<>(new String[]{"Hoạt động", "Đã khóa"});
         private boolean dangLuu;
         private String hoTenDaNhap = "";
         private java.util.List<String> tenDaDung = java.util.List.of();
@@ -81,14 +84,23 @@ public class DlgThemNhanVien extends JDialog {
             if (!dangLuu) { dongBoVaiTro(); }
         }
 
+        JButton nutLuu() { return btnLuu; }
+
         NoiDung(BiPredicate<NhanVien, TaiKhoan> luu, Consumer<NhanVien> daTao, Runnable dong) {
+            this(luu, daTao, dong, null, () -> true);
+        }
+
+        NoiDung(BiPredicate<NhanVien, TaiKhoan> luu, Consumer<NhanVien> daTao, Runnable dong,
+                TaiKhoan banDau, java.util.function.BooleanSupplier xacNhanKhoa) {
             super(new BorderLayout(0, 16));
+            this.banDau = banDau == null ? null : new TaiKhoan(banDau);
+            this.xacNhanKhoa = java.util.Objects.requireNonNull(xacNhanKhoa);
             this.luu = java.util.Objects.requireNonNull(luu);
             this.daTao = java.util.Objects.requireNonNull(daTao);
             this.dong = java.util.Objects.requireNonNull(dong);
             setBorder(new EmptyBorder(22, 24, 22, 24));
             setBackground(SURFACE);
-            JLabel title = new JLabel("Thêm nhân viên và tài khoản");
+            JLabel title = new JLabel(banDau == null ? "Thêm nhân viên và tài khoản" : "Cập nhật nhân viên và tài khoản");
             title.setFont(bold(22));
             title.setForeground(TEXT);
             add(title, BorderLayout.NORTH);
@@ -102,9 +114,13 @@ public class DlgThemNhanVien extends JDialog {
             themTruong(fields, 2, 1, "Email *", txtEmail, "email");
             themTruong(fields, 3, 0, "Chuyên môn *", cboChuyenMon, "chuyenMon");
             themMuc(fields, 4, "TÀI KHOẢN ĐĂNG NHẬP");
-            themTruong(fields, 5, 0, "Tên đăng nhập tự động", txtTenTaiKhoan, "tenTaiKhoan");
+            themTruong(fields, 5, 0, banDau == null ? "Tên đăng nhập tự động" : "Tên đăng nhập", txtTenTaiKhoan, "tenTaiKhoan");
             themTruong(fields, 5, 1, "Vai trò *", cboVaiTro, "vaiTro");
-            themTruong(fields, 6, 0, "Mật khẩu mặc định", txtMatKhau, "matKhau");
+            if (banDau == null) {
+                themTruong(fields, 6, 0, "Mật khẩu mặc định", txtMatKhau, "matKhau");
+            } else {
+                themTruong(fields, 6, 0, "Trạng thái", cboTrangThai, "trangThai");
+            }
             txtTenTaiKhoan.setEditable(false);
             txtMatKhau.setEditable(false);
             txtHoTen.addFocusListener(new FocusAdapter() {
@@ -135,7 +151,9 @@ public class DlgThemNhanVien extends JDialog {
             body.add(fields, BorderLayout.NORTH);
             JPanel notes = new JPanel(new GridLayout(0, 1, 0, 6));
             notes.setOpaque(false);
-            JLabel note = new JLabel("<html>Tên đăng nhập và mật khẩu được cấp tự động.<br>Tài khoản mới ở trạng thái Hoạt động.</html>");
+            JLabel note = new JLabel(banDau == null
+                    ? "<html>Tên đăng nhập và mật khẩu được cấp tự động.<br>Tài khoản mới ở trạng thái Hoạt động.</html>"
+                    : "<html>Tên đăng nhập và mật khẩu hiện có được giữ nguyên.<br>Chuyên môn tự đồng bộ vai trò.</html>");
             note.setFont(font(12));
             note.setForeground(MUTED);
             notes.add(note);
@@ -176,6 +194,19 @@ public class DlgThemNhanVien extends JDialog {
             }
             setFocusable(true);
             choPhepRoiOTrenNen(this);
+            if (banDau != null) {
+                NhanVien nv = banDau.getNhanVien();
+                txtHoTen.setText(nv.getHoTenNV());
+                txtSdt.setText(nv.getSdt());
+                txtEmail.setText(nv.getEmail());
+                cboGioiTinh.setSelectedIndex(nv.isGioiTinh() ? 0 : 1);
+                cboChuyenMon.setSelectedIndex(switch (banDau.getVaiTro()) {
+                    case NHASI -> 0; case LETAN -> 1; case QUANLY -> 2;
+                });
+                cboTrangThai.setSelectedIndex(banDau.isTrangThai() ? 0 : 1);
+                chotHoTen();
+                btnLuu.setText("Lưu thay đổi");
+            }
         }
 
         /** Nền và nhãn nhận click để kết thúc nhập; giữ thao tác riêng của các ô/nút. */
@@ -214,6 +245,10 @@ public class DlgThemNhanVien extends JDialog {
             cboVaiTro.setSelectedItem(vaiTroTheoChuyenMon());
             cboVaiTro.setEnabled(false);
             txtMatKhau.setText(QuyTacTaiKhoan.MAT_KHAU_MAC_DINH);
+            if (banDau != null) {
+                txtTenTaiKhoan.setText(banDau.getTenTK());
+                return;
+            }
             try {
                 txtTenTaiKhoan.setText(QuyTacTaiKhoan.tenDangNhap(hoTenDaNhap, vaiTroTheoChuyenMon(), tenDaDung));
             } catch (IllegalArgumentException ex) {
@@ -307,7 +342,7 @@ public class DlgThemNhanVien extends JDialog {
             if (dangLuu) { return; }
             TaiKhoan actor = SessionManager.getInstance().getCurrentUser();
             if (actor == null || actor.getVaiTro() != VaiTro.QUANLY) {
-                lblThongBao.setText("Chỉ Quản lý được tạo nhân viên và tài khoản.");
+                lblThongBao.setText("Chỉ Quản lý được quản lý nhân viên và tài khoản.");
                 return;
             }
             chotHoTen();
@@ -319,19 +354,24 @@ public class DlgThemNhanVien extends JDialog {
                     return;
                 }
             }
-            NhanVien nv = new NhanVien(null, txtHoTen.getText(), cboGioiTinh.getSelectedIndex() == 0,
+            NhanVien nv = new NhanVien(banDau == null ? null : banDau.getNhanVien().getMaNV(), txtHoTen.getText(), cboGioiTinh.getSelectedIndex() == 0,
                     txtSdt.getText(), txtEmail.getText(), (String) cboChuyenMon.getSelectedItem());
             dongBoVaiTro();
             TaiKhoan tk;
             try {
-                tk = new TaiKhoan(null, QuyTacTaiKhoan.tenDangNhap(nv.getHoTenNV(), vaiTroTheoChuyenMon()),
-                        QuyTacTaiKhoan.MAT_KHAU_MAC_DINH, vaiTroTheoChuyenMon(), true, nv);
+                tk = new TaiKhoan(banDau == null ? null : banDau.getMaTK(),
+                        banDau == null ? QuyTacTaiKhoan.tenDangNhap(nv.getHoTenNV(), vaiTroTheoChuyenMon()) : banDau.getTenTK(),
+                        banDau == null ? QuyTacTaiKhoan.MAT_KHAU_MAC_DINH : "[Ẩn]", vaiTroTheoChuyenMon(), true, nv);
+                if (banDau != null) { tk.setTrangThai(cboTrangThai.getSelectedIndex() == 0); }
             } catch (IllegalArgumentException ex) {
                 lblThongBao.setText(ex.getMessage());
                 return;
             }
+            if (banDau != null && banDau.isTrangThai() && !tk.isTrangThai() && !xacNhanKhoa.getAsBoolean()) {
+                return;
+            }
             datDangLuu(true);
-            lblThongBao.setText("Đang tạo nhân viên và tài khoản...");
+            lblThongBao.setText("Đang lưu nhân viên và tài khoản...");
             new SwingWorker<Boolean, Void>() {
                 @Override
                 protected Boolean doInBackground() { return luu.test(nv, tk); }
@@ -341,13 +381,13 @@ public class DlgThemNhanVien extends JDialog {
                     boolean success = false;
                     try {
                         success = get();
-                        if (!success) { lblThongBao.setText("Chưa tạo được nhân viên. Vui lòng thử lại."); }
+                        if (!success) { lblThongBao.setText("Chưa lưu được nhân viên. Vui lòng thử lại."); }
                     } catch (ExecutionException ex) {
                         Throwable cause = ex.getCause();
                         lblThongBao.setText(cause instanceof BusinessException || cause instanceof IllegalArgumentException
                                 ? cause.getMessage() : "Không thể lưu dữ liệu. Vui lòng thử lại.");
                         // Không ghi exception vì có thể chứa tham số nhạy cảm của thao tác tạo tài khoản.
-                        LOG.log(Level.WARNING, "Tạo nhân viên thất bại: {0}", cause.getClass().getSimpleName());
+                        LOG.log(Level.WARNING, "Lưu nhân viên thất bại: {0}", cause.getClass().getSimpleName());
                     } catch (InterruptedException ex) {
                         Thread.currentThread().interrupt();
                         lblThongBao.setText("Đã gián đoạn thao tác tạo nhân viên.");
@@ -365,11 +405,12 @@ public class DlgThemNhanVien extends JDialog {
             for (JTextField field : cacTruong()) { field.setEnabled(!value); }
             cboGioiTinh.setEnabled(!value);
             cboChuyenMon.setEnabled(!value);
+            cboTrangThai.setEnabled(!value);
             cboVaiTro.setEnabled(false);
             txtTenTaiKhoan.setEnabled(!value);
             txtMatKhau.setEnabled(!value);
             btnLuu.setEnabled(!value);
-            btnLuu.setText(value ? "Đang lưu..." : "Tạo nhân viên");
+            btnLuu.setText(value ? "Đang lưu..." : banDau == null ? "Tạo nhân viên" : "Lưu thay đổi");
             btnHuy.setEnabled(!value);
         }
 
