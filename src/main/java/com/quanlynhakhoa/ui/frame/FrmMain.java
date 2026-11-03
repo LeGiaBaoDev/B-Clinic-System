@@ -1,5 +1,6 @@
 package com.quanlynhakhoa.ui.frame;
 
+import com.quanlynhakhoa.dao.NhatKyHeThongDAO;
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.ui.panel.PnlQuanLy;
@@ -30,12 +31,13 @@ public class FrmMain extends JFrame {
     private static final Font FONT_BTN = new Font("Segoe UI", Font.BOLD, 13);
 
     private final TaiKhoan taiKhoan;
+    private boolean dangDangXuat;
 
     public FrmMain(TaiKhoan taiKhoan) {
         this.taiKhoan = taiKhoan;
         khoiTaoFrame();
         if (taiKhoan.getVaiTro() == VaiTro.QUANLY) {
-            setContentPane(new PnlQuanLy(taiKhoan, this::dangXuatQuanLy));
+            setContentPane(new PnlQuanLy(taiKhoan, this::yeuCauDangXuat));
             setMinimumSize(new Dimension(1100, 680));
             Rectangle available = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
             setSize(Math.min(1440, available.width - 32), Math.min(900, available.height - 24));
@@ -45,13 +47,52 @@ public class FrmMain extends JFrame {
         }
     }
 
-    private void dangXuatQuanLy() {
-        if (JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn muốn đăng xuất?", "Đăng xuất",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION) {
-            SessionManager.getInstance().logout();
-            dispose();
-            SwingUtilities.invokeLater(() -> new FrmDangNhap().setVisible(true));
+    private void yeuCauDangXuat() {
+        if (dangDangXuat) {
+            return;
         }
+        dangDangXuat = true;
+        int luaChon = JOptionPane.showConfirmDialog(this,
+                "Bạn có chắc chắn muốn đăng xuất?", "Đăng xuất",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (luaChon != JOptionPane.YES_OPTION) {
+            dangDangXuat = false;
+            return;
+        }
+
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                new NhatKyHeThongDAO().ghi("DANG_XUAT", "Người dùng đăng xuất.");
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                boolean ghiThanhCong = true;
+                try {
+                    get();
+                } catch (java.util.concurrent.ExecutionException ex) {
+                    ghiThanhCong = false;
+                    java.util.logging.Logger.getLogger(FrmMain.class.getName())
+                            .log(java.util.logging.Level.WARNING,
+                                    "Không thể ghi nhật ký đăng xuất", ex.getCause());
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    ghiThanhCong = false;
+                }
+
+                SessionManager.getInstance().logout();
+                dispose();
+                FrmDangNhap frm = new FrmDangNhap();
+                frm.setVisible(true);
+                if (!ghiThanhCong) {
+                    JOptionPane.showMessageDialog(frm,
+                            "Đã đăng xuất nhưng không thể ghi nhật ký.",
+                            "Thông báo", JOptionPane.WARNING_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     private void khoiTaoFrame() {
@@ -336,17 +377,7 @@ public class FrmMain extends JFrame {
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setPreferredSize(new Dimension(130, 38));
 
-        btn.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    "B\u1ea1n c\u00f3 ch\u1eafc ch\u1eafn mu\u1ed1n \u0111\u0103ng xu\u1ea5t?",
-                    "\u0110\u0103ng xu\u1ea5t",
-                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-            if (confirm == JOptionPane.YES_OPTION) {
-                SessionManager.getInstance().logout();
-                dispose();
-                SwingUtilities.invokeLater(() -> new FrmDangNhap().setVisible(true));
-            }
-        });
+        btn.addActionListener(e -> yeuCauDangXuat());
         return btn;
     }
 
