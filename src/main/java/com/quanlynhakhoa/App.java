@@ -3,17 +3,14 @@ package com.quanlynhakhoa;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.quanlynhakhoa.config.FlywayMigration;
 import com.quanlynhakhoa.ui.frame.FrmDangNhap;
-
-import javax.swing.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.*;
 
 /**
- * Entry point của ứng dụng B-Clinic.
- * Thứ tự khởi động:
- * 1. Bật FlatLaf (Look & Feel)
- * 2. Chạy Flyway migration (tạo/cập nhật schema DB)
- * 3. Mở FrmDangNhap trên EDT
+ * Entry point của ứng dụng B-Clinic. Thứ tự khởi động: 1. Bật FlatLaf (Look &
+ * Feel) 2. Chạy Flyway migration (tạo/cập nhật schema DB) 3. Mở FrmDangNhap
+ * trên EDT
  */
 public class App {
 
