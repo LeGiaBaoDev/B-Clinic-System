@@ -1,173 +1,99 @@
 package com.quanlynhakhoa.dao;
 
-import com.quanlynhakhoa.config.DatabaseConnection;
-import com.quanlynhakhoa.entity.NhanVien;
-import com.quanlynhakhoa.entity.TaiKhoan;
+import com.quanlynhakhoa.entity.*;
 import com.quanlynhakhoa.entity.enums.VaiTro;
-import com.quanlynhakhoa.exception.BusinessException;
-import com.quanlynhakhoa.exception.DataAccessException;
+import com.quanlynhakhoa.util.PasswordHasher;
+import java.sql.*;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.time.LocalDateTime;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+/** UC001–003: giữ API đăng nhập/quên mật khẩu; mật khẩu mới lưu PBKDF2 có salt. */
+public class TaiKhoanDAO extends DaoSupport {
+    private static final ConcurrentHashMap<String,LocalDateTime> XAC_MINH = new ConcurrentHashMap<>();
+    public TaiKhoanDAO() { }
+    public TaiKhoanDAO(DaoContext context) { super(context); }
 
-public class TaiKhoanDAO {
-
-    private static final Logger LOG = Logger.getLogger(TaiKhoanDAO.class.getName());
-
-    // Đăng nhập
-    private static final String SQL_DANG_NHAP =
-            "SELECT tk.maTK, tk.tenTK, tk.matKhau, tk.vaiTro, tk.trangThai, " +
-            "       nv.maNV, nv.hoTenNV, nv.gioiTinh, nv.sdt, nv.email, nv.chuyenMon " +
-            "FROM TaiKhoan tk " +
-            "JOIN NhanVien nv ON nv.maNV = tk.maNV " +
-            "WHERE tk.tenTK = ?";
-
-    // Quên mật khẩu
-    private static final String SQL_XAC_MINH_MA_NV =
-            "SELECT tk.maTK FROM TaiKhoan tk " +
-            "WHERE tk.maNV = ? AND tk.trangThai = 1";
-
-    // Quên mật khẩu
-    private static final String SQL_DOI_MAT_KHAU =
-            "UPDATE TaiKhoan SET matKhau = ? WHERE maTK = ?";
-
-    // Đăng nhập
-
-    /**
-     * Xác thực đăng nhập bằng tên đăng nhập + mật khẩu gốc.
-     * Mật khẩu trong DB lưu SHA-256 hex (hoặc plain-text cho tài khoản cũ chưa đổi).
-     *
-     * @throws BusinessException   tài khoản không tồn tại, sai mật khẩu, hoặc bị khóa
-     * @throws DataAccessException lỗi DB
-     */
-    public TaiKhoan dangNhap(String tenDangNhap, String matKhauNhap) {
-        if (tenDangNhap == null || tenDangNhap.isBlank())
-            throw new BusinessException("T\u00ean \u0111\u0103ng nh\u1eadp kh\u00f4ng \u0111\u01b0\u1ee3c \u0111\u1ec3 tr\u1ed1ng.");
-        if (matKhauNhap == null || matKhauNhap.isBlank())
-            throw new BusinessException("M\u1eadt kh\u1ea9u kh\u00f4ng \u0111\u01b0\u1ee3c \u0111\u1ec3 tr\u1ed1ng.");
-
-        try (Connection conn = DatabaseConnection.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_DANG_NHAP)) {
-
-            ps.setString(1, tenDangNhap.trim());
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next())
-                    throw new BusinessException("T\u00ean \u0111\u0103ng nh\u1eadp ho\u1eb7c m\u1eadt kh\u1ea9u ch\u01b0a ch\u00ednh x\u00e1c. Vui l\u00f2ng th\u1eed l\u1ea1i.");
-
-                String matKhauDB = rs.getString("matKhau");
-                if (!kiemTraMatKhau(matKhauNhap, matKhauDB))
-                    throw new BusinessException("T\u00ean \u0111\u0103ng nh\u1eadp ho\u1eb7c m\u1eadt kh\u1ea9u ch\u01b0a ch\u00ednh x\u00e1c. Vui l\u00f2ng th\u1eed l\u1ea1i.");
-
-                boolean trangThai = rs.getBoolean("trangThai");
-                if (!trangThai)
-                    throw new BusinessException("T\u00e0i kho\u1ea3n \u0111\u00e3 b\u1ecb kh\u00f3a. Vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean.");
-
-                NhanVien nv = new NhanVien();
-                mapNhanVien(nv, rs);
-
-                TaiKhoan tk = new TaiKhoan();
-                mapTaiKhoan(tk, rs, nv, matKhauDB, trangThai);
-                return tk;
-            }
-        } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "L\u1ed7i \u0111\u0103ng nh\u1eadp SQL", e);
-            throw new DataAccessException("Kh\u00f4ng th\u1ec3 k\u1ebft n\u1ed1i c\u01a1 s\u1edf d\u1eef li\u1ec7u. Vui l\u00f2ng th\u1eed l\u1ea1i sau.", e);
-        }
+    public TaiKhoan dangNhap(String tenDangNhap,String matKhauNhap) {
+        can(tenDangNhap!=null && !tenDangNhap.isBlank() && matKhauNhap!=null && !matKhauNhap.isBlank(),"Vui lòng nhập tên đăng nhập và mật khẩu.");
+        return context.transaction(c -> {
+            String stored=one(c,"SELECT matKhau FROM TaiKhoan WITH(UPDLOCK,HOLDLOCK) WHERE tenTK=?",r -> r.getString(1),tenDangNhap.trim());
+            can(PasswordHasher.xacMinh(matKhauNhap,stored),"Tên đăng nhập hoặc mật khẩu chưa chính xác.");
+            TaiKhoan tk=one(c,DaoViews.TAI_KHOAN+" WHERE a.tenTK=?",this::mapRow,tenDangNhap.trim());
+            can(tk!=null && tk.isTrangThai(),"Tài khoản đã bị khóa. Vui lòng liên hệ quản lý.");
+            if(!stored.startsWith("PBKDF2$")) { update(c,"UPDATE TaiKhoan SET matKhau=? WHERE maTK=?",PasswordHasher.bam(matKhauNhap),tk.getMaTK()); }
+            update(c,"INSERT INTO NhatKyHeThong(maNhatKy,maTK,thoiDiem,hanhDong,noiDungThayDoi) VALUES(?,?,?,?,?)",
+                    maMoi(c,Bang.NHAT_KY,null),tk.getMaTK(),context.bayGio(),"DANG_NHAP","Đăng nhập thành công.");
+            return tk;
+        });
     }
-
-    // Quên mật khẩu
-
-    /**
-     * Tra cứu maTK theo maNV — dùng cho luồng quên mật khẩu
-     *
-     * @return maTK nếu tìm thấy và tài khoản đang hoạt động
-     * @throws BusinessException   mã nhân viên không hợp lệ
-     * @throws DataAccessException lỗi DB
-     */
+    /** Tương thích UI hiện tại; mã NV đơn lẻ chưa phải yếu tố xác minh danh tính mạnh. */
     public String xacMinhMaNV(String maNV) {
-        if (maNV == null || maNV.isBlank())
-            throw new BusinessException("Vui l\u00f2ng nh\u1eadp m\u00e3 nh\u00e2n vi\u00ean.");
-
-        try (Connection conn = DatabaseConnection.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_XAC_MINH_MA_NV)) {
-
-            ps.setString(1, maNV.trim());
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next())
-                    throw new BusinessException("M\u00e3 nh\u00e2n vi\u00ean kh\u00f4ng h\u1ee3p l\u1ec7.");
-                return rs.getString("maTK");
-            }
-        } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "L\u1ed7i tra c\u1ee9u m\u00e3 nh\u00e2n vi\u00ean", e);
-            throw new DataAccessException("Kh\u00f4ng th\u1ec3 k\u1ebft n\u1ed1i c\u01a1 s\u1edf d\u1eef li\u1ec7u. Vui l\u00f2ng th\u1eed l\u1ea1i sau.", e);
-        }
+        can(maNV!=null && !maNV.isBlank(),"Vui lòng nhập mã nhân viên.");
+        String ma=context.doc(c -> one(c,"SELECT maTK FROM TaiKhoan WHERE maNV=? AND trangThai=1",r -> r.getString(1),maNV.trim()));
+        can(ma!=null,"Mã nhân viên không hợp lệ.");
+        XAC_MINH.entrySet().removeIf(e -> e.getValue().isBefore(context.bayGio()));
+        XAC_MINH.put(ma,context.bayGio().plusMinutes(5)); return ma;
     }
-
-    /**
-     * Cập nhật mật khẩu mới cho tài khoản.
-     *
-     * @throws BusinessException   mật khẩu không hợp lệ
-     * @throws DataAccessException lỗi DB
-     */
-    public void doiMatKhau(String maTK, String matKhauMoi) {
+    public void doiMatKhau(String maTK,String matKhauMoi) {
         TaiKhoan.kiemTraMatKhauGoc(matKhauMoi);
-
-        try (Connection conn = DatabaseConnection.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_DOI_MAT_KHAU)) {
-
-            ps.setString(1, shaHex(matKhauMoi));
-            ps.setString(2, maTK);
-            ps.executeUpdate();
-
-        } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "L\u1ed7i \u0111\u1ed5i m\u1eadt kh\u1ea9u", e);
-            throw new DataAccessException("Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt m\u1eadt kh\u1ea9u. Vui l\u00f2ng th\u1eed l\u1ea1i sau.", e);
-        }
+        context.transaction(c -> {
+            LocalDateTime han=XAC_MINH.get(maTK);
+            if(han==null || !han.isAfter(context.bayGio())) {
+                TaiKhoan actor=quyen(c);
+                can(actor.getMaTK().equals(maTK) || actor.getVaiTro()==VaiTro.QUANLY,"Không được đổi mật khẩu tài khoản khác.");
+            }
+            can(update(c,"UPDATE TaiKhoan SET matKhau=? WHERE maTK=? AND trangThai=1",PasswordHasher.bam(matKhauMoi),maTK)==1,"Tài khoản không tồn tại hoặc đã bị khóa.");
+            update(c,"INSERT INTO NhatKyHeThong(maNhatKy,maTK,thoiDiem,hanhDong,noiDungThayDoi) VALUES(?,?,?,?,?)",
+                    maMoi(c,Bang.NHAT_KY,null),maTK,context.bayGio(),"DOI_MAT_KHAU","Đã đổi mật khẩu; không ghi nội dung mật khẩu.");
+            return null;
+        }); XAC_MINH.remove(maTK);
     }
-
-    // Nội bộ
-
-    private void mapNhanVien(NhanVien nv, java.sql.ResultSet rs) throws java.sql.SQLException {
-        nv.setMaNV(rs.getString("maNV"));
-        nv.setHoTenNV(rs.getString("hoTenNV"));
-        nv.setGioiTinh(rs.getBoolean("gioiTinh"));
-        nv.setSdt(rs.getString("sdt"));
-        nv.setEmail(rs.getString("email"));
-        nv.setChuyenMon(rs.getString("chuyenMon"));
+    public List<TaiKhoan> layTatCa() {
+        return context.doc(c -> { quyen(c,VaiTro.QUANLY); return query(c,DaoViews.TAI_KHOAN+" ORDER BY a.maTK",this::mapRow); });
     }
-
-    private void mapTaiKhoan(TaiKhoan tk, java.sql.ResultSet rs,
-                              NhanVien nv, String matKhauDB, boolean trangThai)
-            throws java.sql.SQLException {
-        tk.setMaTK(rs.getString("maTK"));
-        tk.setTenTK(rs.getString("tenTK"));
-        tk.setMatKhau(matKhauDB);
-        tk.setVaiTro(VaiTro.valueOf(rs.getString("vaiTro")));
-        tk.setTrangThai(trangThai);
-        tk.setNhanVien(nv);
+    public TaiKhoan layTheoMa(String ma) {
+        return context.doc(c -> { TaiKhoan actor=quyen(c); can(actor.getVaiTro()==VaiTro.QUANLY || actor.getMaTK().equals(ma),"Không được xem tài khoản khác.");
+            return one(c,DaoViews.TAI_KHOAN+" WHERE a.maTK=?",this::mapRow,ma); });
     }
-
-    private boolean kiemTraMatKhau(String matKhauNhap, String matKhauDB) {
-        if (matKhauDB == null) return false;
-        if (matKhauNhap.equals(matKhauDB)) return true;
-        return matKhauDB.equals(shaHex(matKhauNhap));
+    public List<TaiKhoan> timKiem(String ten) {
+        return context.doc(c -> { quyen(c,VaiTro.QUANLY); return query(c,DaoViews.TAI_KHOAN
+                +" WHERE a.tenTK LIKE ? OR a_nv.hoTenNV LIKE ? ORDER BY a.maTK",this::mapRow,tuKhoa(ten),tuKhoa(ten)); });
     }
-
-    private String shaHex(String input) {
+    public boolean them(TaiKhoan tk) {
+        return context.transaction(c -> { quyen(c,VaiTro.QUANLY); them(c,tk); nhatKy(c,"TAO_TAI_KHOAN",tk.getMaTK()); return true; });
+    }
+    void them(Connection c,TaiKhoan tk) throws SQLException {
+        new TaiKhoan(null,tk.getTenTK(),tk.getMatKhau(),tk.getVaiTro(),tk.isTrangThai(),tk.getNhanVien());
+        TaiKhoan.kiemTraMatKhauGoc(tk.getMatKhau());
+        String ma=maMoi(c,Bang.TAI_KHOAN,null);
+        update(c,"INSERT INTO TaiKhoan(maTK,tenTK,matKhau,vaiTro,trangThai,maNV) VALUES(?,?,?,?,?,?)",
+                ma,tk.getTenTK(),PasswordHasher.bam(tk.getMatKhau()),tk.getVaiTro(),tk.isTrangThai(),tk.getNhanVien().getMaNV());
+        tk.setMaTK(ma);
+    }
+    /** Tạo nhân viên và tài khoản nguyên tử; lỗi trùng tên rollback cả nhân viên. */
+    public boolean taoNhanVienVaTaiKhoan(NhanVien nv,TaiKhoan tk) {
+        String maCu=nv.getMaNV(),maTkCu=tk.getMaTK();
         try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] bytes = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : bytes) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (java.security.NoSuchAlgorithmException e) {
-            throw new DataAccessException("L\u1ed7i m\u00e3 ho\u00e1 m\u1eadt kh\u1ea9u.", e);
-        }
+            return context.transaction(c -> { quyen(c,VaiTro.QUANLY);
+                new NhanVienDAO(context).them(c,nv); tk.setNhanVien(nv); them(c,tk);
+                nhatKy(c,"TAO_NHAN_VIEN_TAI_KHOAN",nv.getMaNV()+" / "+tk.getMaTK()); return true; });
+        } catch(RuntimeException e) { nv.setMaNV(maCu); tk.setMaTK(maTkCu); throw e; }
     }
+    public boolean capNhat(TaiKhoan tk) {
+        return context.transaction(c -> {
+            TaiKhoan actor=quyen(c,VaiTro.QUANLY); khoa(c,"BClinic:lich"); khoa(c,"BClinic:tai-khoan");
+            can(!(actor.getMaTK().equals(tk.getMaTK()) && (!tk.isTrangThai() || tk.getVaiTro()!=VaiTro.QUANLY)),"Không được tự khóa hoặc hạ quyền tài khoản đang đăng nhập.");
+            if(!tk.isTrangThai() || tk.getVaiTro()!=VaiTro.NHASI) {
+                can(!exists(c,"SELECT 1 FROM LichHen WHERE maNV=(SELECT maNV FROM TaiKhoan WHERE maTK=?) AND trangThai IN('DA_DAT','DA_DEN')",tk.getMaTK()),"Nhân viên còn lịch khám chưa xử lý.");
+            }
+            boolean ok=update(c,"UPDATE TaiKhoan SET tenTK=?,vaiTro=?,trangThai=? WHERE maTK=?",tk.getTenTK(),tk.getVaiTro(),tk.isTrangThai(),tk.getMaTK())==1;
+            if(ok) { nhatKy(c,"CAP_NHAT_TAI_KHOAN",tk.getMaTK()); } return ok;
+        });
+    }
+    public boolean khoaTaiKhoan(String ma) {
+        TaiKhoan tk=layTheoMa(ma); can(tk!=null,"Tài khoản không tồn tại."); tk.setTrangThai(false); return capNhat(tk);
+    }
+    public boolean xoa(String ma) { return khoaTaiKhoan(ma); }
+    private TaiKhoan mapRow(ResultSet r) throws SQLException { return DaoViews.taiKhoan(r); }
 }

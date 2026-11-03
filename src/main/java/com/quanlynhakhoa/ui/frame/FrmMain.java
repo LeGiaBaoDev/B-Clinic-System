@@ -3,6 +3,7 @@ package com.quanlynhakhoa.ui.frame;
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.util.SessionManager;
+import com.quanlynhakhoa.ui.panel.PnlQuanLy;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -13,8 +14,7 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Màn hình chính B-Clinic.
- * Hiện tại chỉ hiển thị panel xác nhận đăng nhập thành công.
- * Sẽ được mở rộng thêm các module theo lộ trình phát triển.
+ * Vai trò quản lý mở dashboard; các vai trò khác giữ màn hình hiện có.
  */
 public class FrmMain extends JFrame {
 
@@ -42,7 +42,23 @@ public class FrmMain extends JFrame {
     public FrmMain(TaiKhoan taiKhoan) {
         this.taiKhoan = taiKhoan;
         khoiTaoFrame();
-        khoiTaoUI();
+        if(taiKhoan.getVaiTro()==VaiTro.QUANLY) {
+            setContentPane(new PnlQuanLy(taiKhoan,this::dangXuatQuanLy));
+            setMinimumSize(new Dimension(1100,680));
+            Rectangle available=GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            setSize(Math.min(1440,available.width-32),Math.min(900,available.height-24));
+            setLocationRelativeTo(null);
+        } else {
+            khoiTaoUI();
+        }
+    }
+
+    private void dangXuatQuanLy() {
+        if(JOptionPane.showConfirmDialog(this,"Bạn có chắc chắn muốn đăng xuất?","Đăng xuất",
+                JOptionPane.YES_NO_OPTION,JOptionPane.QUESTION_MESSAGE)==JOptionPane.YES_OPTION) {
+            SessionManager.getInstance().logout(); dispose();
+            SwingUtilities.invokeLater(() -> new FrmDangNhap().setVisible(true));
+        }
     }
 
     // ── Frame ────────────────────────────────────────────────────────────────
