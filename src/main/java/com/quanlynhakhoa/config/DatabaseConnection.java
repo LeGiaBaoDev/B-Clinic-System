@@ -12,10 +12,16 @@ import java.util.Properties;
 public class DatabaseConnection {
     private static final String PROPS_FILE = "database.properties";
 
-    private final HikariDataSource dataSource;
+    private HikariDataSource dataSource;
+    private boolean dangKhoiPhuc;
+    private final Properties thuocTinh = loadProperties();
 
     private DatabaseConnection() {
-        Properties props = loadProperties();
+        dataSource = taoPool();
+    }
+
+    private HikariDataSource taoPool() {
+        Properties props = thuocTinh;
 
         String host     = props.getProperty("db.host",     "localhost");
         String port     = props.getProperty("db.port",     "1433");
@@ -45,7 +51,7 @@ public class DatabaseConnection {
             config.setPassword(props.getProperty("db.password"));
         }
 
-        this.dataSource = new HikariDataSource(config);
+        return new HikariDataSource(config);
     }
 
     private static class Holder {
@@ -56,12 +62,52 @@ public class DatabaseConnection {
         return Holder.INSTANCE;
     }
 
-    public HikariDataSource getDataSource() {
+    public synchronized HikariDataSource getDataSource() {
         return dataSource;
     }
 
-    public Connection getConnection() throws SQLException {
+    public synchronized Connection getConnection() throws SQLException {
+        if (dangKhoiPhuc) { throw new SQLException("Database đang khôi phục; vui lòng thử lại sau."); }
+        if (dataSource.isClosed()) { dataSource = taoPool(); }
         return dataSource.getConnection();
+    }
+
+    /** Kết nối quản trị tới master, không đưa vào pool của database ứng dụng. */
+    public synchronized Connection getMasterConnection() throws SQLException {
+        String url = dataSource.getJdbcUrl().replaceFirst("(?i)databaseName=[^;]+", "databaseName=master");
+        if (Boolean.parseBoolean(thuocTinh.getProperty("db.integratedSecurity", "false"))) {
+            return java.sql.DriverManager.getConnection(url);
+        }
+        return java.sql.DriverManager.getConnection(url,thuocTinh.getProperty("db.username"),thuocTinh.getProperty("db.password"));
+    }
+
+    /** Chặn restore nếu còn giao dịch, đóng pool và mở lại khi kết thúc bảo trì. */
+    public synchronized AutoCloseable tamDungDeKhoiPhuc() throws SQLException {
+        if (dangKhoiPhuc || dataSource.getHikariPoolMXBean().getActiveConnections() > 0) {
+            throw new SQLException("Còn thao tác đang dùng database. Vui lòng đợi trước khi khôi phục.");
+        }
+        dangKhoiPhuc = true;
+        dataSource.close();
+        return () -> {
+            synchronized (DatabaseConnection.this) {
+                try { dataSource = taoPool(); } finally { dangKhoiPhuc = false; }
+            }
+        };
+    }
+
+    /** DataSource ổn định cho DAO: instance DAO cũ vẫn lấy pool mới sau restore. */
+    public javax.sql.DataSource getDaoDataSource() {
+        return new javax.sql.DataSource() {
+            public Connection getConnection() throws SQLException { return DatabaseConnection.this.getConnection(); }
+            public Connection getConnection(String u,String p) throws SQLException { throw new java.sql.SQLFeatureNotSupportedException(); }
+            public java.io.PrintWriter getLogWriter() { return null; }
+            public void setLogWriter(java.io.PrintWriter writer) { }
+            public void setLoginTimeout(int seconds) { }
+            public int getLoginTimeout() { return 30; }
+            public java.util.logging.Logger getParentLogger() { return java.util.logging.Logger.getLogger(DatabaseConnection.class.getName()); }
+            public <T> T unwrap(Class<T> type) throws SQLException { throw new java.sql.SQLFeatureNotSupportedException(); }
+            public boolean isWrapperFor(Class<?> type) { return false; }
+        };
     }
 
     public boolean testConnection() {
