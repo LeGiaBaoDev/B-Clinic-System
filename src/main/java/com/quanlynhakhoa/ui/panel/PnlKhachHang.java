@@ -16,6 +16,7 @@ import com.quanlynhakhoa.exception.DataAccessException;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
 import com.quanlynhakhoa.ui.dialog.DlgKhachHang;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -40,6 +41,7 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
@@ -56,6 +58,8 @@ import javax.swing.table.TableRowSorter;
 public class PnlKhachHang extends JPanel {
 
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final String THE_BANG = "bang";
+    private static final String THE_TRONG = "trong";
     private static final String[] COT = {"Mã KH", "Họ tên", "Ngày sinh", "Giới tính", "SĐT", "Địa chỉ"};
 
     private final KhachHangDAO khachHangDAO = new KhachHangDAO();
@@ -75,6 +79,9 @@ public class PnlKhachHang extends JPanel {
     private final JButton btnThem = new JButton("+ Thêm khách hàng");
     private final JButton btnCapNhat = new JButton("Cập nhật thông tin");
     private final JLabel lblTrangThai = new JLabel(" ");
+    private final CardLayout theNoiDung = new CardLayout();
+    private final JPanel pnlNoiDung = new JPanel(theNoiDung);
+    private final JLabel lblKhongCoKetQua = new JLabel(" ", SwingConstants.CENTER);
 
     private final JLabel lblMa = giaTri();
     private final JLabel lblTen = giaTri();
@@ -151,9 +158,29 @@ public class PnlKhachHang extends JPanel {
 
         lblTrangThai.setFont(font(12));
         lblTrangThai.setForeground(MUTED);
+        lblKhongCoKetQua.setFont(bold(18));
+        lblKhongCoKetQua.setForeground(TEXT);
+        lblKhongCoKetQua.setHorizontalAlignment(SwingConstants.CENTER);
+        JLabel lblGoiY = new JLabel("Hãy kiểm tra lại mã, họ tên hoặc số điện thoại.", SwingConstants.CENTER);
+        lblGoiY.setFont(font(13));
+        lblGoiY.setForeground(MUTED);
+        JPanel pnlTrong = new JPanel(new GridBagLayout());
+        pnlTrong.setBackground(Color.WHITE);
+        pnlTrong.setBorder(BorderFactory.createLineBorder(new Color(0xDCE4EE)));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 0, 6, 0);
+        pnlTrong.add(lblKhongCoKetQua, gbc);
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        pnlTrong.add(lblGoiY, gbc);
+        pnlNoiDung.add(scr, THE_BANG);
+        pnlNoiDung.add(pnlTrong, THE_TRONG);
+
         JPanel pnlBang = new JPanel(new BorderLayout(0, 6));
         pnlBang.setOpaque(false);
-        pnlBang.add(scr, BorderLayout.CENTER);
+        pnlBang.add(pnlNoiDung, BorderLayout.CENTER);
         pnlBang.add(lblTrangThai, BorderLayout.SOUTH);
 
         add(pnlBang, BorderLayout.CENTER);
@@ -313,10 +340,13 @@ public class PnlKhachHang extends JPanel {
         }
         boolean coTuKhoa = tuKhoa != null && !tuKhoa.isBlank();
         if (ds.isEmpty()) {
-            lblTrangThai.setText(coTuKhoa ? "Không tìm thấy bệnh nhân." : "Chưa có khách hàng nào.");
+            lblKhongCoKetQua.setText(coTuKhoa ? "Không tìm thấy bệnh nhân" : "Chưa có khách hàng nào");
+            lblTrangThai.setText(" ");
+            theNoiDung.show(pnlNoiDung, THE_TRONG);
             hienChiTiet(null);
             return;
         }
+        theNoiDung.show(pnlNoiDung, THE_BANG);
         lblTrangThai.setText(ds.size() + " khách hàng");
         int chon = 0;
         if (maCanChon != null) {
