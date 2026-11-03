@@ -50,10 +50,14 @@ public class NhanVien {
     }
 
     public void setHoTenNV(String hoTenNV) {
-        if (hoTenNV == null || hoTenNV.isBlank() || hoTenNV.trim().length() < 2 || hoTenNV.trim().length() > 100) {
-            throw new IllegalArgumentException("Họ tên không được rỗng");
+        if (hoTenNV == null) {
+            throw new IllegalArgumentException("Họ tên cần ít nhất 2 từ, tối đa 100 ký tự.");
         }
-        this.hoTenNV = hoTenNV.trim();
+        String ten = hoTenNV.replaceAll("(?U)\\s+", " ").trim();
+        if (ten.length() > 100 || ten.split(" ").length < 2) {
+            throw new IllegalArgumentException("Họ tên cần ít nhất 2 từ, tối đa 100 ký tự.");
+        }
+        this.hoTenNV = ten;
     }
 
     public boolean isGioiTinh() {
