@@ -1,6 +1,6 @@
 # Dữ liệu mẫu nghiệp vụ
 
-Đã có bộ bổ sung nhiều tình huống `SeedScenarios.java` + `seed_scenarios.sql` dành cho database đã nạp dữ liệu nền. Xem [DU_LIEU_TINH_HUONG.md](../docs/DU_LIEU_TINH_HUONG.md) về tài khoản, phạm vi, cách chạy thử và kiểm tra chống nạp trùng.
+Đã có bộ bổ sung nhiều tình huống `SeedScenarios.java` + `seed_scenarios.sql` dành cho database đã nạp dữ liệu nền.
 
 `seed_demo.sql` là script chạy thủ công trên **BClinic_Dev**, sau khi ứng dụng chạy Flyway V1/V2. Mở file bằng SSMS, chọn đúng database, chạy toàn bộ một lần. Sau đó chạy `verify_demo.sql` để kiểm tra. Không đưa các file này vào thư mục migration.
 

@@ -1,30 +1,80 @@
 package com.quanlynhakhoa.dao;
-import com.quanlynhakhoa.entity.*;
+
+import com.quanlynhakhoa.dao.support.JdbcHelper;
+import com.quanlynhakhoa.dao.support.MaSinh;
+import com.quanlynhakhoa.dao.support.NhatKy;
+import com.quanlynhakhoa.dao.support.PhanQuyen;
+import com.quanlynhakhoa.dao.support.PhanQuyen.Actor;
+import com.quanlynhakhoa.entity.HoSoBenhAn;
 import com.quanlynhakhoa.entity.enums.VaiTro;
+import com.quanlynhakhoa.exception.BusinessException;
 import java.sql.*;
 import java.util.List;
 
-/** UC024: hồ sơ chỉ thêm; đính chính điều trị qua chi tiết khám mới, không UPDATE/DELETE. */
-public class HoSoBenhAnDAO extends DaoSupport {
-    public HoSoBenhAnDAO() { }
-    public HoSoBenhAnDAO(DaoContext context) { super(context); }
+public class HoSoBenhAnDAO {
+
+    private static final String SQL_SELECT = """
+            SELECT maHSBA, tienSuBenh, maKH
+            FROM HoSoBenhAn
+            """;
+
     public List<HoSoBenhAn> layTatCa() {
-        return context.doc(c -> { TaiKhoan actor=quyen(c,VaiTro.QUANLY,VaiTro.NHASI);
-            return query(c,DaoViews.HO_SO+" WHERE (?=1 OR EXISTS(SELECT 1 FROM LichHen lh WHERE lh.maKH=a.maKH AND lh.maNV=?)) ORDER BY a.maHSBA",
-                    this::mapRow,actor.getVaiTro()==VaiTro.QUANLY,actor.getNhanVien().getMaNV()); });
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.NHASI);
+            return JdbcHelper.query(c, SQL_SELECT
+                    + " WHERE (?=1 OR EXISTS(SELECT 1 FROM LichHen lh"
+                    + " WHERE lh.maKH=HoSoBenhAn.maKH AND lh.maNV=?)) ORDER BY maHSBA",
+                    r -> mapRow(c, r), actor.vaiTro() == VaiTro.QUANLY, actor.maNV());
+        });
     }
+
     public HoSoBenhAn layTheoMa(String ma) {
-        return context.doc(c -> { TaiKhoan actor=quyen(c,VaiTro.QUANLY,VaiTro.NHASI); HoSoBenhAn hs=layTheoMa(c,ma);
-            if(hs!=null && actor.getVaiTro()==VaiTro.NHASI) { can(exists(c,"SELECT 1 FROM LichHen WHERE maKH=? AND maNV=?",hs.getKhachHang().getMaKH(),actor.getNhanVien().getMaNV()),"Bạn không được xem bệnh án này."); }
-            return hs; });
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.NHASI);
+            HoSoBenhAn hs = layTheoMa(c, ma);
+            if (hs != null && actor.vaiTro() == VaiTro.NHASI) {
+                yeuCau(JdbcHelper.exists(c, "SELECT 1 FROM LichHen WHERE maKH=? AND maNV=?",
+                        hs.getKhachHang().getMaKH(), actor.maNV()),
+                        "Bạn không được xem bệnh án này.");
+            }
+            return hs;
+        });
     }
-    HoSoBenhAn layTheoMa(Connection c,String ma) throws SQLException { return one(c,DaoViews.HO_SO+" WHERE a.maHSBA=?",this::mapRow,ma); }
+
+    HoSoBenhAn layTheoMa(Connection c, String ma) throws SQLException {
+        return JdbcHelper.one(c, SQL_SELECT + " WHERE maHSBA=?", r -> mapRow(c, r), ma);
+    }
+
+    HoSoBenhAn layTheoMaKhachHang(Connection c, String maKH) throws SQLException {
+        return JdbcHelper.one(c, SQL_SELECT + " WHERE maKH=?", r -> mapRow(c, r), maKH);
+    }
+
     public boolean them(HoSoBenhAn hs) {
-        return context.transaction(c -> { quyen(c,VaiTro.QUANLY,VaiTro.LETAN); them(c,hs); nhatKy(c,"TAO_HO_SO",hs.getMaHSBA()); return true; });
+        return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.LETAN);
+            them(c, hs);
+            NhatKy.ghi(c, "TAO_HO_SO", hs.getMaHSBA());
+            return true;
+        });
     }
-    void them(Connection c,HoSoBenhAn hs) throws SQLException {
-        String ma=maMoi(c,Bang.HO_SO,null);
-        update(c,"INSERT INTO HoSoBenhAn(maHSBA,maKH,tienSuBenh) VALUES(?,?,?)",ma,hs.getKhachHang().getMaKH(),hs.getTienSuBenh()); hs.setMaHSBA(ma);
+
+    void them(Connection c, HoSoBenhAn hs) throws SQLException {
+        String ma = MaSinh.maMoi(c, MaSinh.Bang.HO_SO, null);
+        JdbcHelper.update(c, "INSERT INTO HoSoBenhAn(maHSBA,maKH,tienSuBenh) VALUES(?,?,?)",
+                ma, hs.getKhachHang().getMaKH(), hs.getTienSuBenh());
+        hs.setMaHSBA(ma);
     }
-    private HoSoBenhAn mapRow(ResultSet r) throws SQLException { return DaoViews.hoSoBenhAn(r); }
+
+    private HoSoBenhAn mapRow(Connection c, ResultSet r) throws SQLException {
+        return new HoSoBenhAn(
+                r.getString("maHSBA"),
+                r.getString("tienSuBenh"),
+                new KhachHangDAO().layTheoMa(c, r.getString("maKH")));
+    }
+
+    private static void yeuCau(boolean dieuKien, String message) {
+        if (!dieuKien) {
+            throw new BusinessException(message);
+        }
+    }
 }
