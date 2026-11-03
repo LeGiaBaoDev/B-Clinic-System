@@ -142,7 +142,38 @@ public class TaiKhoanDAO {
     }
 
     public boolean capNhat(TaiKhoan tk) {
+        return JdbcHelper.transaction(c -> capNhat(c, tk));
+    }
+
+    /** UC003 theo kế hoạch H1: cập nhật nhân viên và quyền/trạng thái nguyên tử. */
+    public boolean capNhatNhanVienVaTaiKhoan(NhanVien nv, TaiKhoan tk) {
         return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY);
+            new NhanVien(nv.getMaNV(), nv.getHoTenNV(), nv.isGioiTinh(), nv.getSdt(), nv.getEmail(), nv.getChuyenMon());
+            VaiTro role = switch (nv.getChuyenMon()) {
+                case "Nha sĩ" -> VaiTro.NHASI;
+                case "Lễ tân" -> VaiTro.LETAN;
+                case "Quản lý" -> VaiTro.QUANLY;
+                default -> throw new BusinessException("Vui lòng chọn chuyên môn hợp lệ.");
+            };
+            yeuCau(tk.getVaiTro() == role, "Vai trò không khớp chuyên môn.");
+            TaiKhoan cu = layTheoMa(c, tk.getMaTK());
+            yeuCau(cu != null && cu.getNhanVien().getMaNV().equals(nv.getMaNV()),
+                    "Không tìm thấy tài khoản nhân viên.");
+            // UC003 không thay tên đăng nhập hay mật khẩu đã cấp.
+            TaiKhoan moi = new TaiKhoan(tk);
+            moi.setTenTK(cu.getTenTK());
+            yeuCau(capNhat(c, moi), "Không tìm thấy tài khoản nhân viên.");
+            yeuCau(JdbcHelper.update(c,
+                    "UPDATE NhanVien SET hoTenNV=?,gioiTinh=?,sdt=?,email=?,chuyenMon=? WHERE maNV=?",
+                    nv.getHoTenNV(), nv.isGioiTinh(), nv.getSdt(), nv.getEmail(), nv.getChuyenMon(), nv.getMaNV()) == 1,
+                    "Không tìm thấy nhân viên.");
+            NhatKy.ghi(c, "CAP_NHAT_NHAN_VIEN_TAI_KHOAN", nv.getMaNV() + " / " + tk.getMaTK());
+            return true;
+        });
+    }
+
+    private boolean capNhat(Connection c, TaiKhoan tk) throws SQLException {
             Actor actor = PhanQuyen.quyen(c, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:lich");
             MaSinh.khoa(c, "BClinic:tai-khoan");
@@ -160,7 +191,6 @@ public class TaiKhoanDAO {
                     tk.getTenTK(), tk.getVaiTro(), tk.isTrangThai(), tk.getMaTK()) == 1;
             if (ok) { NhatKy.ghi(c, "CAP_NHAT_TAI_KHOAN", tk.getMaTK()); }
             return ok;
-        });
     }
 
     public boolean khoaTaiKhoan(String ma) {

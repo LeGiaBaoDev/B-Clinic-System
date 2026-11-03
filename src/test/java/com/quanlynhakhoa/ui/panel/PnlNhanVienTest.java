@@ -55,6 +55,14 @@ class PnlNhanVienTest {
             assertEquals("Quản lý", table.getValueAt(0, 5));
             assertEquals("Chưa có tài khoản", table.getValueAt(1, 6));
             assertFalse(table.isCellEditable(0, 0));
+            JButton edit = (JButton) tim("capNhatNhanVien");
+            assertFalse(edit.isEnabled());
+            table.setRowSelectionInterval(0, 0);
+            assertTrue(edit.isEnabled());
+            table.setRowSelectionInterval(1, 1);
+            assertFalse(edit.isEnabled());
+            table.clearSelection();
+            assertFalse(edit.isEnabled());
         });
     }
 
