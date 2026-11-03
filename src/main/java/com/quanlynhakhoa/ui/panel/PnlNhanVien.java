@@ -6,6 +6,7 @@ import com.quanlynhakhoa.entity.NhanVien;
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.exception.BusinessException;
+import com.quanlynhakhoa.ui.dialog.DlgThemNhanVien;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
 import static com.quanlynhakhoa.ui.component.UiConstants.*;
 import com.quanlynhakhoa.util.SessionManager;
@@ -34,6 +35,7 @@ public class PnlNhanVien extends JPanel {
     private final JTextField txtTimKiem = new JTextField();
     private final JButton btnTimKiem = new JButton("Tìm kiếm");
     private final JButton btnLamMoi = new JButton("Làm mới");
+    private final JButton btnThem = new JButton("Thêm nhân viên");
     private final JLabel lblKetQua = new JLabel("Chưa tải danh sách nhân viên.");
     private final JLabel lblChiTiet = new JLabel("Chọn một nhân viên để xem thông tin chi tiết.");
     private final DefaultTableModel modelNhanVien = new DefaultTableModel(new String[]{
@@ -73,6 +75,7 @@ public class PnlNhanVien extends JPanel {
         add(chiTiet, BorderLayout.SOUTH);
 
         btnTimKiem.addActionListener(e -> lamMoiDuLieu());
+        btnThem.addActionListener(e -> moThemNhanVien());
         btnLamMoi.addActionListener(e -> lamMoiDuLieu());
         txtTimKiem.addActionListener(e -> lamMoiDuLieu());
         tblNhanVien.getSelectionModel().addListSelectionListener(e -> {
@@ -103,7 +106,7 @@ public class PnlNhanVien extends JPanel {
         search.add(txtTimKiem, BorderLayout.CENTER);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttons.setOpaque(false);
-        for (JButton button : new JButton[]{btnTimKiem, btnLamMoi}) {
+        for (JButton button : new JButton[]{btnTimKiem, btnLamMoi, btnThem}) {
             button.setFont(bold(12));
             button.setPreferredSize(new Dimension(110, 40));
             buttons.add(button);
@@ -111,6 +114,10 @@ public class PnlNhanVien extends JPanel {
         btnTimKiem.setBackground(TEAL);
         btnTimKiem.setForeground(Color.WHITE);
         btnLamMoi.setName("lamMoiNhanVien");
+        btnThem.setName("themNhanVien");
+        btnThem.setPreferredSize(new Dimension(145, 40));
+        btnThem.setBackground(TEAL);
+        btnThem.setForeground(Color.WHITE);
         btnLamMoi.setToolTipText("Tải lại kết quả theo từ khóa hiện tại (F5).");
         search.add(buttons, BorderLayout.EAST);
         header.add(search, BorderLayout.CENTER);
@@ -247,6 +254,22 @@ public class PnlNhanVien extends JPanel {
     private void datDangTai(boolean dangTai) {
         btnTimKiem.setEnabled(!dangTai);
         btnLamMoi.setEnabled(!dangTai);
+        TaiKhoan actor = SessionManager.getInstance().getCurrentUser();
+        btnThem.setEnabled(!dangTai && actor != null && actor.getVaiTro() == VaiTro.QUANLY);
+    }
+
+    private void moThemNhanVien() {
+        TaiKhoan actor = SessionManager.getInstance().getCurrentUser();
+        if (actor == null || actor.getVaiTro() != VaiTro.QUANLY) {
+            lblKetQua.setText("Chỉ Quản lý được tạo nhân viên và tài khoản.");
+            return;
+        }
+        new DlgThemNhanVien(SwingUtilities.getWindowAncestor(this), nv -> {
+            txtTimKiem.setText(nv.getMaNV());
+            lamMoiDuLieu();
+            JOptionPane.showMessageDialog(this, "Đã tạo nhân viên " + nv.getMaNV() + " và tài khoản.",
+                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        }).setVisible(true);
     }
 
     private void xoaKetQua() {

@@ -6,6 +6,7 @@ import com.quanlynhakhoa.entity.*;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.util.PasswordHasher;
+import com.quanlynhakhoa.util.QuyTacTaiKhoan;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -172,15 +173,21 @@ public class TaiKhoanDAO {
     public boolean xoa(String ma) { return khoaTaiKhoan(ma); }
 
     private void them(Connection c, TaiKhoan tk) throws SQLException {
-        new TaiKhoan(null, tk.getTenTK(), tk.getMatKhau(), tk.getVaiTro(),
-                tk.isTrangThai(), tk.getNhanVien());
-        TaiKhoan.kiemTraMatKhauGoc(tk.getMatKhau());
+        yeuCau(tk.getNhanVien() != null, "Thiếu nhân viên để tạo tài khoản.");
+        NhanVien nv = new NhanVienDAO().layTheoMa(c, tk.getNhanVien().getMaNV());
+        yeuCau(nv != null, "Nhân viên không tồn tại.");
+        // Giữ khóa tới khi commit để hai lần tạo đồng thời không chọn cùng tên trống.
+        List<String> daDung = JdbcHelper.query(c,
+                "SELECT tenTK FROM TaiKhoan WITH(TABLOCKX,HOLDLOCK)", r -> r.getString(1));
+        String ten = QuyTacTaiKhoan.tenDangNhap(nv.getHoTenNV(), tk.getVaiTro(), daDung);
+        new TaiKhoan(null, ten, QuyTacTaiKhoan.MAT_KHAU_MAC_DINH, tk.getVaiTro(), tk.isTrangThai(), nv);
 
         String ma = MaSinh.maMoi(c, MaSinh.Bang.TAI_KHOAN, null);
         JdbcHelper.update(c, "INSERT INTO TaiKhoan(maTK,tenTK,matKhau,vaiTro,trangThai,maNV)"
                         + " VALUES(?,?,?,?,?,?)",
-                ma, tk.getTenTK(), PasswordHasher.bam(tk.getMatKhau()), tk.getVaiTro(),
+                ma, ten, PasswordHasher.bam(QuyTacTaiKhoan.MAT_KHAU_MAC_DINH), tk.getVaiTro(),
                 tk.isTrangThai(), tk.getNhanVien().getMaNV());
+        tk.setTenTK(ten);
         tk.setMaTK(ma);
     }
 
