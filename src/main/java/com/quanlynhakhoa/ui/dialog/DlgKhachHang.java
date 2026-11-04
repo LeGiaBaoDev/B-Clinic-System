@@ -1,5 +1,10 @@
 package com.quanlynhakhoa.ui.dialog;
 
+import com.quanlynhakhoa.dao.KhachHangDAO;
+import com.quanlynhakhoa.entity.KhachHang;
+import com.quanlynhakhoa.exception.BusinessException;
+import com.quanlynhakhoa.exception.DataAccessException;
+import com.quanlynhakhoa.ui.component.SurfacePanel;
 import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
 import static com.quanlynhakhoa.ui.component.UiConstants.MUTED;
@@ -7,11 +12,6 @@ import static com.quanlynhakhoa.ui.component.UiConstants.TEAL;
 import static com.quanlynhakhoa.ui.component.UiConstants.TEXT;
 import static com.quanlynhakhoa.ui.component.UiConstants.bold;
 import static com.quanlynhakhoa.ui.component.UiConstants.font;
-
-import com.quanlynhakhoa.dao.KhachHangDAO;
-import com.quanlynhakhoa.entity.KhachHang;
-import com.quanlynhakhoa.exception.BusinessException;
-import com.quanlynhakhoa.exception.DataAccessException;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -29,7 +29,6 @@ import java.time.format.ResolverStyle;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
-import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -47,19 +46,14 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
-/**
- * UC009 thêm khách hàng mới và UC011 cập nhật hồ sơ khách hàng.
- *
- * <p>Chỉ gọi {@link KhachHangDAO}; không viết SQL. Mọi truy vấn chạy trong {@link SwingWorker}.
- * Ở chế độ cập nhật, họ tên, ngày sinh, giới tính bị khóa; chỉ sửa được SĐT, địa chỉ, email.
- * Tiền sử bệnh chỉ nhập khi thêm mới (hồ sơ bệnh án đã lưu không UPDATE).</p>
- */
 public class DlgKhachHang extends JDialog {
 
-    public enum CheDo { THEM_MOI, CAP_NHAT }
+    public enum CheDo {
+        THEM_MOI, CAP_NHAT
+    }
 
-    private static final DateTimeFormatter NGAY =
-            DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
+    private static final DateTimeFormatter NGAY
+            = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
 
     private final CheDo cheDo;
     private final KhachHang goc;
@@ -80,7 +74,7 @@ public class DlgKhachHang extends JDialog {
     private KhachHang ketQua;
 
     private DlgKhachHang(Window owner, CheDo cheDo, KhachHang goc) {
-        super(owner, cheDo == CheDo.THEM_MOI ? "Thêm khách hàng mới" : "Cập nhật hồ sơ khách hàng",
+        super(owner, cheDo == CheDo.THEM_MOI ? "Thêm bệnh nhân" : "Cập nhật hồ sơ bệnh nhân",
                 ModalityType.APPLICATION_MODAL);
         this.cheDo = cheDo;
         this.goc = goc;
@@ -88,49 +82,65 @@ public class DlgKhachHang extends JDialog {
         napDuLieu();
         addEvents();
         pack();
-        setMinimumSize(new Dimension(520, getHeight()));
+        setMinimumSize(new Dimension(560, Math.max(560, getHeight())));
         setLocationRelativeTo(owner);
     }
 
-    /** UC009: mở form thêm khách hàng. */
     public static KhachHang themMoi(Window owner) {
         DlgKhachHang dlg = new DlgKhachHang(owner, CheDo.THEM_MOI, null);
+        SwingUtilities.invokeLater(dlg::toFront);
         dlg.setVisible(true);
         return dlg.ketQua;
     }
 
-    /** UC011: mở form cập nhật; trả về khách hàng sau khi lưu, hoặc null nếu không lưu. */
     public static KhachHang capNhat(Window owner, KhachHang khachHang) {
         DlgKhachHang dlg = new DlgKhachHang(owner, CheDo.CAP_NHAT, Objects.requireNonNull(khachHang));
+        SwingUtilities.invokeLater(dlg::toFront);
         dlg.setVisible(true);
         return dlg.ketQua;
     }
 
-    /** Khách hàng vừa tạo/cập nhật, hoặc hồ sơ đã có khi lễ tân chọn dùng lại; null nếu hủy. */
     public KhachHang getKetQua() {
         return ketQua;
     }
 
-    // ---------------------------------------------------------------- giao diện
-
     private void khoiTao() {
-        JPanel root = new JPanel(new BorderLayout(0, 12));
+        JPanel root = new JPanel(new BorderLayout(0, 16));
         root.setBackground(BACKGROUND);
-        root.setBorder(new EmptyBorder(20, 24, 16, 24));
+        root.setBorder(new EmptyBorder(22, 26, 18, 26));
 
-        JLabel lblTieuDe = new JLabel(getTitle());
-        lblTieuDe.setFont(bold(18));
+        JPanel header = new JPanel();
+        header.setOpaque(false);
+        header.setLayout(new javax.swing.BoxLayout(header, javax.swing.BoxLayout.Y_AXIS));
+        JLabel lblTieuDe = new JLabel(cheDo == CheDo.THEM_MOI ? "Thêm bệnh nhân" : "Cập nhật hồ sơ bệnh nhân");
+        lblTieuDe.setFont(bold(20));
         lblTieuDe.setForeground(TEXT);
-        root.add(lblTieuDe, BorderLayout.NORTH);
+        JLabel phuDe = new JLabel("Thông tin bắt buộc có dấu *; ngày sinh không sửa sau khi lưu.");
+        phuDe.setFont(font(11));
+        phuDe.setForeground(MUTED);
+        header.add(lblTieuDe);
+        header.add(javax.swing.Box.createVerticalStrut(4));
+        header.add(phuDe);
+        root.add(header, BorderLayout.NORTH);
 
+        SurfacePanel card = new SurfacePanel(new BorderLayout());
+        card.setBorder(new EmptyBorder(8, 14, 8, 14));
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
         int dong = 0;
         if (cheDo == CheDo.CAP_NHAT) {
-            themDong(form, dong++, "Mã khách hàng", txtMaKH);
+            themDong(form, dong++, "Mã bệnh nhân", txtMaKH);
+        } else {
+            try {
+                txtMaKH.setText(khachHangDAO.maKeTiep());
+            } catch (RuntimeException e) {
+                txtMaKH.setText("Sẽ cấp khi lưu");
+            }
+            txtMaKH.setEnabled(false);
+            themDong(form, dong++, "Mã bệnh nhân", txtMaKH);
         }
-        themDong(form, dong++, "Họ tên *", txtHoTen);
-        themDong(form, dong++, "Ngày sinh (dd/MM/yyyy)", txtNgaySinh);
+        themDong(form, dong++, "Họ và tên *", txtHoTen);
+        themDong(form, dong++, "Ngày sinh (dd/MM/yyyy) *", txtNgaySinh);
         ButtonGroup nhom = new ButtonGroup();
         nhom.add(radNam);
         nhom.add(radNu);
@@ -140,29 +150,44 @@ public class DlgKhachHang extends JDialog {
         radNu.setOpaque(false);
         pnlGioiTinh.add(radNam);
         pnlGioiTinh.add(radNu);
-        themDong(form, dong++, "Giới tính", pnlGioiTinh);
+        themDong(form, dong++, "Giới tính *", pnlGioiTinh);
         themDong(form, dong++, "Số điện thoại *", txtSdt);
         themDong(form, dong++, "Địa chỉ", txtDiaChi);
         themDong(form, dong++, "Email", txtEmail);
         if (cheDo == CheDo.THEM_MOI) {
             txaTienSu.setLineWrap(true);
             txaTienSu.setWrapStyleWord(true);
+            txaTienSu.setFont(font(13));
             JScrollPane scr = new JScrollPane(txaTienSu);
             scr.setBorder(BorderFactory.createLineBorder(BORDER));
+            scr.setPreferredSize(new Dimension(320, 70));
             themDong(form, dong++, "Tiền sử bệnh / dị ứng", scr);
         }
-        root.add(form, BorderLayout.CENTER);
+        card.add(form, BorderLayout.CENTER);
+        root.add(card, BorderLayout.CENTER);
 
-        JPanel pnlNut = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel pnlNut = new JPanel(new BorderLayout(8, 0));
         pnlNut.setOpaque(false);
+        JLabel batBuoc = new JLabel("* Thông tin bắt buộc");
+        batBuoc.setFont(font(10));
+        batBuoc.setForeground(MUTED);
+        btnLuu.setText("Lưu");
         btnLuu.setFont(bold(13));
         btnLuu.setBackground(TEAL);
         btnLuu.setForeground(Color.WHITE);
         btnLuu.setPreferredSize(new Dimension(96, 36));
+        btnHuy.setText("Đóng");
         btnHuy.setFont(font(13));
         btnHuy.setPreferredSize(new Dimension(86, 36));
-        pnlNut.add(btnHuy);
-        pnlNut.add(btnLuu);
+        JPanel trai = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 8));
+        trai.setOpaque(false);
+        trai.add(batBuoc);
+        JPanel phai = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        phai.setOpaque(false);
+        phai.add(btnHuy);
+        phai.add(btnLuu);
+        pnlNut.add(trai, BorderLayout.WEST);
+        pnlNut.add(phai, BorderLayout.EAST);
         root.add(pnlNut, BorderLayout.SOUTH);
 
         setContentPane(root);
@@ -175,7 +200,7 @@ public class DlgKhachHang extends JDialog {
         c.insets = new Insets(5, 0, 5, 12);
         c.anchor = GridBagConstraints.NORTHWEST;
         JLabel lbl = new JLabel(nhan);
-        lbl.setFont(font(12));
+        lbl.setFont(font(11));
         lbl.setForeground(MUTED);
         c.gridx = 0;
         form.add(lbl, c);
@@ -185,7 +210,7 @@ public class DlgKhachHang extends JDialog {
         c.insets = new Insets(5, 0, 5, 0);
         if (truong instanceof JTextField tf) {
             tf.setFont(font(13));
-            tf.setPreferredSize(new Dimension(280, 32));
+            tf.setPreferredSize(new Dimension(320, 34));
         }
         form.add(truong, c);
     }
@@ -202,7 +227,7 @@ public class DlgKhachHang extends JDialog {
         txtSdt.setText(goc.getSdt());
         txtDiaChi.setText(goc.getDiaChi() == null ? "" : goc.getDiaChi());
         txtEmail.setText(goc.getEmail() == null ? "" : goc.getEmail());
-        for (JComponent khoa : new JComponent[] {txtMaKH, txtHoTen, txtNgaySinh, radNam, radNu}) {
+        for (JComponent khoa : new JComponent[]{txtMaKH, txtHoTen, txtNgaySinh, radNam, radNu}) {
             khoa.setEnabled(false);
         }
     }
@@ -219,8 +244,6 @@ public class DlgKhachHang extends JDialog {
         getRootPane().registerKeyboardAction(e -> dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
     }
-
-    // ---------------------------------------------------------------- UC009
 
     private void luuThemMoi() {
         KhachHang kh;
@@ -255,8 +278,8 @@ public class DlgKhachHang extends JDialog {
             Object[] lua = {"Dùng hồ sơ đã có", "Sửa lại số điện thoại"};
             int chon = JOptionPane.showOptionDialog(this,
                     "Số điện thoại đã được đăng ký.\nHồ sơ trùng: " + cungSdt.getMaKH() + " - "
-                            + cungSdt.getTenKH() + (cungSdt.getNgaySinh() == null ? ""
-                            : " (" + cungSdt.getNgaySinh().format(NGAY) + ")"),
+                    + cungSdt.getTenKH() + (cungSdt.getNgaySinh() == null ? ""
+                    : " (" + cungSdt.getNgaySinh().format(NGAY) + ")"),
                     "Trùng số điện thoại", JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
                     null, lua, lua[1]);
             if (chon == 0) {
@@ -337,8 +360,6 @@ public class DlgKhachHang extends JDialog {
         }
     }
 
-    // ---------------------------------------------------------------- UC011
-
     private void luuCapNhat() {
         KhachHang moi = new KhachHang(goc);
         try {
@@ -389,8 +410,6 @@ public class DlgKhachHang extends JDialog {
             }
         }.execute();
     }
-
-    // ---------------------------------------------------------------- dùng chung
 
     private void datDangXuLy(boolean dangXuLy) {
         btnLuu.setEnabled(!dangXuLy);
