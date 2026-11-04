@@ -50,6 +50,17 @@ public class LichHenDAO {
         });
     }
 
+    /** UC024: lịch sử hẹn của một bệnh nhân (mới nhất trước). */
+    public List<LichHen> timTheoKhachHang(String maKH) {
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c);
+            return JdbcHelper.query(c, SQL_SELECT
+                    + " WHERE maKH=? AND (?=1 OR maNV=?) ORDER BY ngayGioHen DESC",
+                    r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    maKH, actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+        });
+    }
+
     public LichHen layTheoMa(String ma) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);

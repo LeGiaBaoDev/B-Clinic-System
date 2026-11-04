@@ -156,6 +156,7 @@ public class PnlLichNhaSi extends JPanel {
     private final Map<String, JButton> menu = new LinkedHashMap<>();
     private final JLabel lblTrang = new JLabel("Lịch trực");
     private PnlKham pnlKham;
+    private PnlTraCuuHoSo pnlTraCuu;
     private final CardLayout theNoiDung = new CardLayout();
     private final JPanel pnlNoiDung = new JPanel(theNoiDung);
     private final DefaultTableModel modelLich = new DefaultTableModel(COT, 0) {
@@ -191,9 +192,11 @@ public class PnlLichNhaSi extends JPanel {
 
     private void initComponents() {
         pnlKham = new PnlKham(taiKhoan, dangXuat);
+        pnlTraCuu = new PnlTraCuuHoSo(taiKhoan, this::moKhamTuTraCuu);
         pnlTrang.setOpaque(false);
         pnlTrang.add(taoNoiDung(), "Lịch trực");
-        pnlTrang.add(pnlKham, "Bệnh án");
+        pnlTrang.add(pnlTraCuu, "Bệnh án");
+        pnlTrang.add(pnlKham, "Khám");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
@@ -319,7 +322,7 @@ public class PnlLichNhaSi extends JPanel {
         lblTrang.setText(trang);
         txtTimKiemHeader.setEnabled("Lịch trực".equals(trang));
         if ("Bệnh án".equals(trang)) {
-            pnlKham.lamMoi();
+            pnlTraCuu.lamMoi();
         }
         menu.forEach((ten, nut) -> {
             boolean chon = ten.equals(trang);
@@ -331,12 +334,24 @@ public class PnlLichNhaSi extends JPanel {
         });
     }
 
+    /** Từ màn tra cứu hồ sơ (UC024) mở thẳng phiếu khám của bệnh nhân; vẫn thuộc mục "Bệnh án". */
+    private void moKhamTuTraCuu(String maKH) {
+        pnlKham.moKhamTheoKhachHang(maKH, () -> {
+            theTrang.show(pnlTrang, "Khám");
+            lblTrang.setText("Bệnh án");
+        }, () -> moTrang("Bệnh án"));
+    }
+
     private static LineIcon.Type iconCua(String ten) {
         return switch (ten) {
-            case "Tổng quan" -> LineIcon.Type.GRID;
-            case "Lịch trực" -> LineIcon.Type.CALENDAR;
-            case "Bệnh án" -> LineIcon.Type.CLIPBOARD;
-            default -> LineIcon.Type.SETTINGS;
+            case "Tổng quan" ->
+                LineIcon.Type.GRID;
+            case "Lịch trực" ->
+                LineIcon.Type.CALENDAR;
+            case "Bệnh án" ->
+                LineIcon.Type.CLIPBOARD;
+            default ->
+                LineIcon.Type.SETTINGS;
         };
     }
 
@@ -451,7 +466,7 @@ public class PnlLichNhaSi extends JPanel {
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel title = label("Lịch trực và lịch hẹn trong ngày", bold(22), TEXT);
+        JLabel title = label("Lịch hẹn trong ngày", bold(22), TEXT);
         JLabel sub = label("Lịch làm việc của " + tenNhaSi() + " · Phòng khám B-Clinic", font(12), MUTED);
         text.add(title);
         text.add(Box.createVerticalStrut(4));

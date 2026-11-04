@@ -1,5 +1,13 @@
 package com.quanlynhakhoa.ui.panel;
 
+import com.quanlynhakhoa.dao.KhachHangDAO;
+import com.quanlynhakhoa.dao.KhachHangDAO.TomTat;
+import com.quanlynhakhoa.entity.KhachHang;
+import com.quanlynhakhoa.entity.enums.VaiTro;
+import com.quanlynhakhoa.exception.BusinessException;
+import com.quanlynhakhoa.exception.DataAccessException;
+import com.quanlynhakhoa.ui.component.LineIcon;
+import com.quanlynhakhoa.ui.component.SurfacePanel;
 import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
 import static com.quanlynhakhoa.ui.component.UiConstants.GREEN;
@@ -9,18 +17,8 @@ import static com.quanlynhakhoa.ui.component.UiConstants.TEAL_LIGHT;
 import static com.quanlynhakhoa.ui.component.UiConstants.TEXT;
 import static com.quanlynhakhoa.ui.component.UiConstants.bold;
 import static com.quanlynhakhoa.ui.component.UiConstants.font;
-
-import com.quanlynhakhoa.dao.KhachHangDAO;
-import com.quanlynhakhoa.dao.KhachHangDAO.TomTat;
-import com.quanlynhakhoa.entity.KhachHang;
-import com.quanlynhakhoa.entity.enums.VaiTro;
-import com.quanlynhakhoa.exception.BusinessException;
-import com.quanlynhakhoa.exception.DataAccessException;
-import com.quanlynhakhoa.ui.component.LineIcon;
-import com.quanlynhakhoa.ui.component.SurfacePanel;
 import com.quanlynhakhoa.ui.dialog.DlgHoSoKhachHang;
 import com.quanlynhakhoa.ui.dialog.DlgKhachHang;
-import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -31,7 +29,6 @@ import java.awt.FlowLayout;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -83,12 +80,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-/**
- * UC010 tra cứu bệnh nhân; mở hồ sơ, form thêm (UC009) và cập nhật (UC011).
- *
- * <p>Bảng hiển thị toàn chiều rộng theo figma; hồ sơ chi tiết mở trong dialog.
- * Nha sĩ chỉ tra cứu bệnh nhân được phân công (DAO tự lọc).</p>
- */
 public class PnlKhachHang extends JPanel {
 
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -143,7 +134,6 @@ public class PnlKhachHang extends JPanel {
     }
 
     // ---------------------------------------------------------------- giao diện
-
     private void initComponents() {
         setBackground(BACKGROUND);
         setBorder(new EmptyBorder(24, 24, 20, 24));
@@ -323,7 +313,6 @@ public class PnlKhachHang extends JPanel {
     }
 
     // ---------------------------------------------------------------- dữ liệu
-
     private void taiDuLieu(String tuKhoa) {
         if (worker != null) {
             worker.cancel(true);
@@ -445,7 +434,6 @@ public class PnlKhachHang extends JPanel {
     }
 
     // ---------------------------------------------------------------- sự kiện
-
     private void addEvents() {
         txtTimKiem.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             @Override
@@ -644,7 +632,6 @@ public class PnlKhachHang extends JPanel {
     }
 
     // ---------------------------------------------------------------- renderer
-
     private static final class PadRenderer extends DefaultTableCellRenderer {
 
         PadRenderer(boolean boldName) {
@@ -680,9 +667,12 @@ public class PnlKhachHang extends JPanel {
             setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
             String trangThai = String.valueOf(value);
             switch (trangThai) {
-                case "Mới" -> pill.set(trangThai, GREEN, new Color(0xE7F7EF));
-                case "Đang điều trị" -> pill.set(trangThai, TEAL, TEAL_LIGHT);
-                default -> pill.set(trangThai, MUTED, new Color(0xF0F2F5));
+                case "Mới" ->
+                    pill.set(trangThai, GREEN, new Color(0xE7F7EF));
+                case "Đang điều trị" ->
+                    pill.set(trangThai, TEAL, TEAL_LIGHT);
+                default ->
+                    pill.set(trangThai, MUTED, new Color(0xF0F2F5));
             }
             return this;
         }
