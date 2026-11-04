@@ -59,7 +59,7 @@ public class PnlLeTan extends JPanel {
     private PnlLichCaNhan pnlLichCaNhan;
     private final PnlTraCuuPhieu pnlPhieuKham;
     private final PnlLichHen pnlLichHen;
-    private final PnlThanhToan pnlThanhToan;
+    private final PnlHoaDon pnlHoaDon;
     private final CardLayout cards = new CardLayout();
     private final JPanel pnlCards = new JPanel(cards);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
@@ -80,13 +80,13 @@ public class PnlLeTan extends JPanel {
         pnlTiepNhan = new PnlTiepNhan();
         pnlPhieuKham = new PnlTraCuuPhieu(taiKhoan);
         pnlLichHen = new PnlLichHen();
-        pnlThanhToan = new PnlThanhToan();
+        pnlHoaDon = new PnlHoaDon(); // trang Hóa đơn: tra cứu + thu tiền (thu tiền vẫn dùng DlgThanhToan)
         pnlCards.setOpaque(false);
         pnlCards.add(pnlKhachHang, "Bệnh nhân");
         pnlCards.add(pnlTiepNhan, "Tiếp nhận");
         pnlCards.add(pnlPhieuKham, "Phiếu khám");
         pnlCards.add(pnlLichHen, "Lịch hẹn");
-        pnlCards.add(pnlThanhToan, "Hóa đơn");
+        pnlCards.add(pnlHoaDon, "Hóa đơn");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
@@ -234,7 +234,7 @@ public class PnlLeTan extends JPanel {
         } else if ("Phiếu khám".equals(trang)) {
             pnlPhieuKham.lamMoi();
         } else if ("Hóa đơn".equals(trang)) {
-            pnlThanhToan.lamMoi();
+            pnlHoaDon.lamMoi();
         }
         if ("Lịch hẹn".equals(trang)) {
             txtTimKiemNhanh.setText("");
