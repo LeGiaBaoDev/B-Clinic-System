@@ -124,6 +124,7 @@ public class PnlTiepNhan extends JPanel {
     private SwingWorker<DuLieu, Void> worker;
     private boolean dangXuLy;
     private boolean vuaTiepNhan;
+    private String maLHCanChon;
 
     public PnlTiepNhan() {
         super(new BorderLayout(0, 14));
@@ -529,10 +530,7 @@ public class PnlTiepNhan extends JPanel {
         chkXacNhan.addActionListener(e -> capNhatNutXacNhan());
         btnInPhieu.addActionListener(e -> inPhieuTiepNhan());
         btnXacNhan.addActionListener(e -> xacNhanTiepNhan());
-        btnLuotMoi.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "Tiếp nhận khách đến trực tiếp chưa có nghiệp vụ trong UC021. "
-                + "Vui lòng dùng lịch hẹn đã đặt (L2).",
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE));
+        btnLuotMoi.addActionListener(e -> taoLichLuotMoi());
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "lamMoi");
         getActionMap().put("lamMoi", new javax.swing.AbstractAction() {
@@ -603,6 +601,15 @@ public class PnlTiepNhan extends JPanel {
                 .toList();
         boolean boQuaChon = vuaTiepNhan;
         vuaTiepNhan = false;
+        if (maLHCanChon != null) {
+            for (LichHen lh : dsLoc) {
+                if (maLHCanChon.equals(lh.getMaLH())) {
+                    chonLich(lh);
+                    maLHCanChon = null;
+                    return;
+                }
+            }
+        }
         if (!boQuaChon && (dangChon == null || !dsLoc.contains(dangChon))) {
             chonLich(dsLoc.isEmpty() ? null : dsLoc.getFirst());
         }
@@ -634,7 +641,8 @@ public class PnlTiepNhan extends JPanel {
         maPKMoi = null;
         gioDen = LocalDateTime.now(ZONE);
         chkXacNhan.setSelected(false);
-        chkXacNhan.setEnabled(lh != null && lh.getTrangThai() == TrangThaiLichHen.DA_DAT);
+        chkXacNhan.setEnabled(lh != null && lh.getTrangThai() == TrangThaiLichHen.DA_DAT
+                && lh.getNgayGioHen().toLocalDate().equals(LocalDate.now(ZONE)));
         btnInPhieu.setEnabled(false);
         if (lh == null) {
             lblTen.setText("Chưa chọn lịch hẹn");
@@ -705,7 +713,15 @@ public class PnlTiepNhan extends JPanel {
     private void capNhatNutXacNhan() {
         btnXacNhan.setEnabled(!dangXuLy && maPKMoi == null
                 && dangChon != null && dangChon.getTrangThai() == TrangThaiLichHen.DA_DAT
+                && dangChon.getNgayGioHen().toLocalDate().equals(LocalDate.now(ZONE))
                 && chkXacNhan.isSelected());
+    }
+
+    
+    private void taoLichLuotMoi() {
+        JOptionPane.showMessageDialog(this,
+                "Khách chưa có lịch hẹn. Vui lòng tạo lịch ở màn hình Lịch hẹn trước khi tiếp nhận.",
+                "Chưa có lịch hẹn", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void xacNhanTiepNhan() {

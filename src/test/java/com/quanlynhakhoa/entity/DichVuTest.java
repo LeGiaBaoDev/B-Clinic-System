@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.quanlynhakhoa.entity.enums.MucThue;
 import org.junit.jupiter.api.Test;
 
-/** Bảng 4.6 – ràng buộc thực thể DichVu dùng ở UC005/UC007. */
 class DichVuTest {
 
     private final LoaiDichVu dieuTri = new LoaiDichVu(null, LoaiDichVu.DIEU_TRI, MucThue.THUE_0);

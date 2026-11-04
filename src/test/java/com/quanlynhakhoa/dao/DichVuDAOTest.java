@@ -24,40 +24,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/*
- * T201 – DichVuDAO (cần database test, xem DaoTestSupport)
- * UC006 xem danh mục dịch vụ:
- * [x] tìm theo một phần tên hoặc mã
- * [x] lọc trạng thái: đang cung cấp / ngừng cung cấp / tất cả
- * [x] lọc phân loại thuế (KCT, 5%, 10%)
- * [x] không có kết quả -> danh sách rỗng
- * [x] ký tự %, _ trong từ khóa được coi là chữ thường
- * [x] hàm cũ timKiem(ten, true) vẫn chỉ trả dịch vụ đang cung cấp (Long, Bảo đang dùng)
- * [x] Lễ tân, Nha sĩ được xem; chưa đăng nhập bị chặn
- * [x] layTheoMa trả đúng loại và mức thuế
- * UC005 thêm dịch vụ mới:
- * [x] sinh mã DV###, trạng thái đang cung cấp, loại gán theo tên, ghi nhật ký
- * [x] tên trùng dịch vụ đang hoạt động (không phân biệt hoa thường) -> chặn, không lưu
- * [x] tên trùng dịch vụ đã ngừng -> được thêm
- * [x] luôn lưu "Đang cung cấp" dù đối tượng truyền vào trangThai=false
- * [x] Lễ tân, Nha sĩ bị chặn; mã loại không tồn tại bị chặn
- * [x] gợi ý lộ trình: không trùng, bỏ lộ trình rỗng, lộ trình gắn với dịch vụ mới nhất đứng trước
- * UC007 cập nhật thông tin dịch vụ:
- * [x] đổi tên, giá, thời lượng, loại (thuế đi theo loại), lộ trình; nhật ký ghi giá cũ -> giá mới
- * [x] 4.1 không thay đổi -> "Không có thay đổi để lưu."
- * [x] 5.2 tên trùng dịch vụ khác đang hoạt động -> chặn; giữ tên của chính nó thì được
- * [x] dịch vụ đã ngừng / không tồn tại -> chặn (tiền điều kiện)
- * [x] không đổi trạng thái qua capNhat
- * [x] đổi thời lượng khi còn lịch hẹn DA_DAT -> chặn; đổi giá vẫn được (quyết định Q2)
- * [x] Lễ tân bị chặn
- * UC008 ngừng / mở lại cung cấp:
- * [x] ngừng: chuyển "Ngừng cung cấp", không xóa cứng, mất khỏi danh sách chọn timKiem("", true), ghi nhật ký
- * [x] ngừng dịch vụ đã ngừng / không tồn tại -> chặn
- * [x] ngừng khi còn lịch hẹn DA_DAT -> chặn (Q2), dịch vụ vẫn đang cung cấp
- * [x] mở lại: về "Đang cung cấp", ghi nhật ký; mở lại dịch vụ đang cung cấp -> chặn
- * [x] mở lại khi đã có dịch vụ khác đang cung cấp cùng tên -> chặn
- * [x] Lễ tân bị chặn cả ngừng lẫn mở lại
- */
 class DichVuDAOTest {
 
     private final DichVuDAO dao = new DichVuDAO();
@@ -120,8 +86,6 @@ class DichVuDAOTest {
     private static List<String> maCua(List<DichVu> ds) {
         return ds.stream().map(DichVu::getMaDV).toList();
     }
-
-    // ---- UC006 xem danh mục dịch vụ ----
 
     @Test
     void timKiem_theoMotPhanTenHoacMa_traDungDichVu() {
@@ -202,8 +166,6 @@ class DichVuDAOTest {
         assertEquals("Vui lòng đăng nhập.", loi.getMessage());
     }
 
-    // ---- UC005 thêm dịch vụ mới ----
-
     @Test
     void them_hopLe_sinhMaDV_dangCungCap_vaGanLoaiTheoTen() {
         // Form chỉ biết tên loại (mã null): DAO tự tìm hoặc tạo loại tương ứng.
@@ -278,8 +240,6 @@ class DichVuDAOTest {
         assertEquals("Loại dịch vụ không tồn tại.", loi.getMessage());
     }
 
-    // ---- UC008 ngừng / mở lại cung cấp ----
-
     @Test
     void ngungCungCap_chuyenTrangThai_khongXoaCung_matKhoiDanhSachChon_ghiNhatKy() {
         DichVu dv = themDichVu(ma + " Gói chỉnh nha", MucThue.THUE_10);
@@ -339,7 +299,7 @@ class DichVuDAOTest {
     void moLaiCungCap_daCoDichVuKhacCungTenDangCungCap_biChan() {
         DichVu cu = themDichVu(ma + " Răng giả tháo lắp", MucThue.THUE_5);
         assertTrue(dao.ngungCungCap(cu.getMaDV()));
-        themDichVu(ma + " Răng giả tháo lắp", MucThue.THUE_5); // UC005 cho thêm trùng tên với dịch vụ đã ngừng
+        themDichVu(ma + " Răng giả tháo lắp", MucThue.THUE_5);
 
         assertTrue(assertThrows(BusinessException.class, () -> dao.moLaiCungCap(cu.getMaDV()))
                 .getMessage().startsWith("Đã có dịch vụ khác đang cung cấp tên"));
@@ -359,8 +319,6 @@ class DichVuDAOTest {
         assertTrue(dao.layTheoMa(dang.getMaDV()).isTrangThai());
         assertFalse(dao.layTheoMa(ngung.getMaDV()).isTrangThai());
     }
-
-    // ---- Gợi ý lộ trình (UC005) ----
 
     @Test
     void layLoTrinhDaLuu_khongTrung_boRong_moiNhatTruoc() {
@@ -383,8 +341,6 @@ class DichVuDAOTest {
         assertTrue(dao.them(dv));
         daTao.add(dv.getMaDV());
     }
-
-    // ---- UC007 cập nhật thông tin dịch vụ ----
 
     /** Bản sao của dịch vụ đã lưu để sửa từng trường, giống cách form gửi xuống DAO. */
     private DichVu banSua(DichVu goc) {
@@ -460,7 +416,7 @@ class DichVuDAOTest {
     void capNhat_truyenTrangThaiNgung_khongLamNgungDichVu() {
         DichVu dv = themDichVu(ma + " Chụp phim", MucThue.THUE_0);
         DichVu sua = banSua(dv);
-        sua.setTrangThai(false); // UC007 không đổi trạng thái; ngừng là việc của UC008
+        sua.setTrangThai(false);
         sua.setDonGia(310_000);
 
         assertTrue(dao.capNhat(sua));

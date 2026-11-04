@@ -27,10 +27,7 @@ public class DichVuDAO {
         return timKiem("", false);
     }
 
-    /**
-     * Danh sách chọn dịch vụ cho bên khác (đặt lịch, chỉ định):
-     * {@code timKiem("", true)} chỉ trả dịch vụ đang cung cấp (UC008).
-     */
+    
     public List<DichVu> timKiem(String ten, boolean chiDangHoatDong) {
         return timKiem(ten, chiDangHoatDong ? Boolean.TRUE : null, null);
     }

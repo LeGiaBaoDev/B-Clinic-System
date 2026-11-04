@@ -39,7 +39,7 @@ public class PhieuKhamDAO {
         });
     }
 
-    /** UC027: tra cứu phiếu theo mã phiếu, tên hoặc SĐT khách hàng. */
+    
     public List<PhieuKham> timKiem(String tuKhoa) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
@@ -59,7 +59,7 @@ public class PhieuKhamDAO {
         });
     }
 
-    /** UC024: lịch sử phiếu khám của một bệnh nhân (mới nhất trước). */
+    
     public List<PhieuKham> timTheoKhachHang(String maKH) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);

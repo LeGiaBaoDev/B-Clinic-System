@@ -26,14 +26,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-/**
- * UC005: form thêm dịch vụ mới (Quản lý). Lưu qua DichVuDAO trong SwingWorker.
- *
- * <p>Ô "Lộ trình dịch vụ" có gợi ý: khi mở form, nạp một lần các lộ trình đã lưu trong DB (mới nhất
- * trước, xem {@link DichVuDAO#layLoTrinhDaLuu()}); mỗi lần gõ thì lọc trên máy và hiện tối đa
- * {@value NoiDung#SO_GOI_Y} khung xám bo góc ngay dưới ô nhập, bấm vào khung để điền. Người dùng vẫn
- * gõ lộ trình mới hoặc để trống (lưu NULL). Lộ trình mới sau khi lưu có trong DB nên lần sau sẽ được gợi ý.</p>
- */
 public class DlgDichVu extends JDialog {
 
     /** Hành động lưu; tách ra để test form không cần DB. */
@@ -73,7 +65,7 @@ public class DlgDichVu extends JDialog {
 
         private static final Logger LOG = Logger.getLogger(DlgDichVu.class.getName());
         private static final Color DO = new Color(0xC94C48);
-        /** Mục đầu là "chưa chọn" để bắt luồng 5.2 của UC005. */
+        
         private static final String[] TEN_PHAN_LOAI = {"-- Chọn phân loại thuế --",
             LoaiDichVu.DIEU_TRI + " (KCT)", LoaiDichVu.VAT_TU + " (5%)", LoaiDichVu.THAM_MY + " (10%)"};
         private static final String[] TEN_LOAI = {null, LoaiDichVu.DIEU_TRI, LoaiDichVu.VAT_TU, LoaiDichVu.THAM_MY};
@@ -270,7 +262,7 @@ public class DlgDichVu extends JDialog {
             parent.add(field, gbc);
         }
 
-        /** UC005 bước 6: mức thuế tự gán theo phân loại đã chọn. */
+        
         private void hienMucThue() {
             int i = cboPhanLoaiThue.getSelectedIndex();
             lblMucThue.setText(i <= 0 ? "Mức thuế GTGT sẽ được gán theo phân loại."
@@ -281,7 +273,7 @@ public class DlgDichVu extends JDialog {
                     });
         }
 
-        /** UC005 bước 4–8. */
+        
         void luuDichVu() {
             if (dangLuu) {
                 return;
@@ -311,7 +303,6 @@ public class DlgDichVu extends JDialog {
                     } catch (ExecutionException ex) {
                         Throwable cause = ex.getCause();
                         if (cause instanceof BusinessException || cause instanceof IllegalArgumentException) {
-                            // UC005 5.1: tên trùng -> đề nghị đổi tên, quay lại bước 3.
                             baoLoi(cause.getMessage(), txtTenDV);
                         } else {
                             LOG.log(Level.WARNING, "Không thể thêm dịch vụ", cause);
@@ -324,7 +315,7 @@ public class DlgDichVu extends JDialog {
             }.execute();
         }
 
-        /** UC005 bước 5 / luồng 5.2: kiểm tra trên form trước khi gọi DAO; sai trả null. */
+        
         DichVu docForm() {
             String ten = txtTenDV.getText().trim();
             if (ten.isEmpty()) {
@@ -383,7 +374,7 @@ public class DlgDichVu extends JDialog {
             }
         }
 
-        /** UC005 luồng 3.1: "Đóng" để hủy; không đóng khi đang lưu. */
+        
         void yeuCauDong() {
             if (!dangLuu) {
                 dong.run();
