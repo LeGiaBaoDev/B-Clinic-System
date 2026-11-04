@@ -32,6 +32,8 @@ import org.junit.jupiter.api.Test;
  * [x] lỗi nghiệp vụ hiện thông báo DAO; lỗi DB hiện thông báo chung
  * [x] "Xóa lọc" đưa về mặc định và chỉ tải 1 lần
  * UC005: nút "Thêm dịch vụ" (góc phải tiêu đề) chỉ hiện với Quản lý
+ * UC007: nhấn đúp dịch vụ đang cung cấp (Quản lý) -> mở trang Chỉnh sửa; dịch vụ đã ngừng -> báo,
+ *        không mở; Lễ tân nhấn đúp không mở; Hủy trên trang -> về danh sách
  */
 class PnlDichVuTest {
 
@@ -252,6 +254,52 @@ class PnlDichVuTest {
         } finally {
             SessionManager.getInstance().logout();
         }
+    }
+
+    @Test
+    void nhanDup_quanLyMoTrangChinhSua_dichVuNgungThiBao_huyThiVeDanhSach() throws Exception {
+        NhanVien nv = new NhanVien("NV001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
+        try {
+            SessionManager.getInstance().login(new TaiKhoan("TK001", "tk.kiemthu", "x", VaiTro.QUANLY, true, nv));
+            taoPanel((k, t, m) -> List.of(caoVoi, niengRang));
+            taiVaCho("1 dịch vụ");
+            SwingUtilities.invokeAndWait(() -> {
+                ((JButton) tim("tabTatCa")).doClick();
+                nhanDup(1); // DV002 đã ngừng
+                assertNull(panel.trangCapNhat(), "Dịch vụ đã ngừng không mở trang chỉnh sửa (UC007 tiền điều kiện)");
+                assertTrue(((JLabel) tim("ketQuaDichVu")).getText().contains("đã ngừng cung cấp"));
+
+                nhanDup(0); // DV001 đang cung cấp
+                PnlCapNhatDichVu trangSua = panel.trangCapNhat();
+                assertNotNull(trangSua);
+                assertTrue(trangSua.isVisible(), "Đang hiện thẻ chỉnh sửa");
+                assertEquals("DV001", trangSua.txtMaDV.getText());
+                assertFalse(tim("theDanhSachDichVu").isVisible());
+
+                trangSua.btnHuy.doClick(); // chưa sửa gì -> về danh sách ngay
+                assertNull(panel.trangCapNhat());
+                assertTrue(tim("theDanhSachDichVu").isVisible());
+            });
+
+            SessionManager.getInstance().login(new TaiKhoan("TK003", "tk.kiemthu", "x", VaiTro.LETAN, true, nv));
+            taoPanel((k, t, m) -> List.of(caoVoi));
+            taiVaCho("1 dịch vụ");
+            SwingUtilities.invokeAndWait(() -> {
+                nhanDup(0);
+                assertNull(panel.trangCapNhat(), "Lễ tân chỉ xem, nhấn đúp không mở trang sửa");
+            });
+        } finally {
+            SessionManager.getInstance().logout();
+        }
+    }
+
+    /** Giả lập nhấn đúp chuột trái vào giữa dòng {@code row} của bảng. */
+    private void nhanDup(int row) {
+        JTable table = bang();
+        java.awt.Rectangle o = table.getCellRect(row, PnlDichVu.COT_TEN, true);
+        table.dispatchEvent(new java.awt.event.MouseEvent(table, java.awt.event.MouseEvent.MOUSE_CLICKED,
+                System.currentTimeMillis(), 0, o.x + o.width / 2, o.y + o.height / 2, 2, false,
+                java.awt.event.MouseEvent.BUTTON1));
     }
 
     @Test

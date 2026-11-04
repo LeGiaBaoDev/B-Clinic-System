@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
@@ -46,6 +47,9 @@ import javax.swing.table.TableCellRenderer;
  * chỉ cần một truy vấn. Danh mục dịch vụ của phòng khám nhỏ (vài chục dòng) nên cách này đủ nhanh.</p>
  *
  * <p>UC005: Quản lý bấm "Thêm dịch vụ" ở góc phải tiêu đề để mở DlgDichVu.</p>
+ *
+ * <p>UC007: Quản lý nhấn đúp một dịch vụ đang cung cấp để mở trang "Chỉnh sửa dịch vụ"
+ * ({@link PnlCapNhatDichVu}) ngay trong màn này.</p>
  *
  * <p>Panel không viết SQL; dữ liệu chỉ đi qua DichVuDAO, DAO kiểm tra quyền lại từ DB.</p>
  */
@@ -143,19 +147,45 @@ public class PnlDichVu extends JPanel {
     /** Đặt true khi panel tự đổi bộ lọc bằng code, để không kích hoạt tải lại nhiều lần. */
     private boolean dangDatLaiBoLoc;
 
+    /*
+     * Màn Dịch vụ có 2 "thẻ" xếp chồng (CardLayout): danh sách và trang Chỉnh sửa (UC007).
+     * Nhấn đúp một dịch vụ thì chuyển sang thẻ chỉnh sửa; lưu xong hoặc Hủy thì quay lại danh sách.
+     */
+    private static final String THE_DANH_SACH = "danhSach";
+    private static final String THE_CAP_NHAT = "capNhat";
+    private final CardLayout the = new CardLayout();
+    private final JPanel pnlDanhSach = new JPanel(new BorderLayout(0, 16));
+    /** Trang chỉnh sửa đang mở (null nếu đang ở danh sách). */
+    private PnlCapNhatDichVu trangCapNhat;
+    /** Nguồn lưu / gợi ý cho trang chỉnh sửa; tách ra để test không cần DB. */
+    private final PnlCapNhatDichVu.LuuDichVu capNhatDichVu;
+    private final Supplier<List<String>> layLoTrinh;
+
     public PnlDichVu() {
-        this(new DichVuDAO()::timKiem);
+        this(new DichVuDAO()::timKiem, new DichVuDAO()::capNhat, new DichVuDAO()::layLoTrinhDaLuu);
     }
 
+    /** Dùng trong test chỉ cần xem danh sách. */
     PnlDichVu(TimDichVu timDichVu) {
-        super(new BorderLayout(0, 16));
+        this(timDichVu, dv -> {
+            throw new IllegalStateException("Test không cấu hình lưu");
+        }, List::of);
+    }
+
+    PnlDichVu(TimDichVu timDichVu, PnlCapNhatDichVu.LuuDichVu capNhatDichVu, Supplier<List<String>> layLoTrinh) {
         this.timDichVu = Objects.requireNonNull(timDichVu);
+        this.capNhatDichVu = Objects.requireNonNull(capNhatDichVu);
+        this.layLoTrinh = Objects.requireNonNull(layLoTrinh);
+        setLayout(the);
         setName("Dịch vụ");
         setBackground(BACKGROUND);
-        setBorder(new EmptyBorder(24, 24, 24, 24));
-        add(taoTieuDe(), BorderLayout.NORTH);
-        add(taoTheDanhSach(), BorderLayout.CENTER);
-        add(taoChiTiet(), BorderLayout.SOUTH);
+        pnlDanhSach.setName("theDanhSachDichVu");
+        pnlDanhSach.setBackground(BACKGROUND);
+        pnlDanhSach.setBorder(new EmptyBorder(24, 24, 24, 24));
+        pnlDanhSach.add(taoTieuDe(), BorderLayout.NORTH);
+        pnlDanhSach.add(taoTheDanhSach(), BorderLayout.CENTER);
+        pnlDanhSach.add(taoChiTiet(), BorderLayout.SOUTH);
+        add(pnlDanhSach, THE_DANH_SACH);
         ganSuKien();
     }
 
@@ -385,6 +415,17 @@ public class PnlDichVu extends JPanel {
                 hienChiTiet();
             }
         });
+        // UC007 bước 1: nhấn đúp một dòng để mở trang chỉnh sửa dịch vụ đó.
+        tblDichVu.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = tblDichVu.rowAtPoint(e.getPoint());
+                if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2 && row >= 0) {
+                    tblDichVu.setRowSelectionInterval(row, row);
+                    moCapNhatDichVu(dichVuDangChon());
+                }
+            }
+        });
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "lamMoi");
         getActionMap().put("lamMoi", new AbstractAction() {
@@ -599,6 +640,7 @@ public class PnlDichVu extends JPanel {
         btnXoaLoc.setEnabled(!dangTai);
         // Ẩn/hiện theo vai trò mỗi lần tải, phòng trường hợp đổi tài khoản mà panel vẫn giữ.
         btnThem.setVisible(laQuanLy());
+        tblDichVu.setToolTipText(laQuanLy() ? "Nhấn đúp một dịch vụ đang cung cấp để chỉnh sửa." : null);
     }
 
     private static boolean laQuanLy() {
@@ -635,6 +677,51 @@ public class PnlDichVu extends JPanel {
             dangDatLaiBoLoc = false;
         }
         lamMoiDuLieu();
+    }
+
+    // ===================== UC007 cập nhật dịch vụ =====================
+
+    /**
+     * UC007 bước 1–2: mở trang chỉnh sửa cho dịch vụ vừa nhấn đúp.
+     * Chỉ Quản lý; dịch vụ đã ngừng thì báo (UC007 tiền điều kiện: chỉ sửa dịch vụ đang cung cấp).
+     */
+    void moCapNhatDichVu(DichVu dv) {
+        if (dv == null || !laQuanLy()) {
+            return; // Lễ tân, Nha sĩ chỉ xem (UC006); nhấn đúp không làm gì
+        }
+        if (!dv.isTrangThai()) {
+            lblKetQua.setForeground(DO);
+            lblKetQua.setText("Dịch vụ " + dv.getMaDV() + " đã ngừng cung cấp, không chỉnh sửa được."
+                    + " Mở lại cung cấp trước nếu cần sửa.");
+            return;
+        }
+        trangCapNhat = new PnlCapNhatDichVu(dv, capNhatDichVu, layLoTrinh, this::daCapNhatDichVu, this::dongTrangCapNhat);
+        add(trangCapNhat, THE_CAP_NHAT);
+        the.show(this, THE_CAP_NHAT);
+    }
+
+    /** Hủy / Quay lại: bỏ trang chỉnh sửa, về danh sách (giữ nguyên bộ lọc, trang đang xem). */
+    void dongTrangCapNhat() {
+        if (trangCapNhat != null) {
+            remove(trangCapNhat);
+            trangCapNhat = null;
+        }
+        the.show(this, THE_DANH_SACH);
+        revalidate();
+        repaint();
+    }
+
+    /** UC007 bước 7: lưu xong -> về danh sách, hiện dịch vụ vừa sửa và báo thành công. */
+    void daCapNhatDichVu(DichVu dv) {
+        dongTrangCapNhat();
+        hienDichVuVuaLuu(dv);
+        JOptionPane.showMessageDialog(this, "Cập nhật dịch vụ thành công: " + dv.getMaDV() + " – " + dv.getTenDV(),
+                "Thành công", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /** Trang chỉnh sửa đang mở (để test), null nếu đang ở danh sách. */
+    PnlCapNhatDichVu trangCapNhat() {
+        return trangCapNhat;
     }
 
     // ===================== Chi tiết dòng chọn =====================
