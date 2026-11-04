@@ -5,6 +5,8 @@ import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 import com.quanlynhakhoa.util.SessionManager;
+import com.quanlynhakhoa.util.QuyTacTaiKhoan;
+import com.quanlynhakhoa.ui.dialog.DlgDoiMatKhauLanDau;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
@@ -727,6 +729,17 @@ public class FrmDangNhap extends JFrame {
                 try {
                     TaiKhoan tk = get();
                     anLoi();
+                    txtMatKhau.setText("");
+                    if (QuyTacTaiKhoan.MAT_KHAU_MAC_DINH.equals(mk)) {
+                        DlgDoiMatKhauLanDau dialog = new DlgDoiMatKhauLanDau(FrmDangNhap.this, tk);
+                        dialog.setVisible(true);
+                        tk = dialog.getKetQua();
+                        if (tk == null) {
+                            hienErrorBanner("Chưa hoàn tất đăng nhập", "Bạn cần đổi mật khẩu mặc định để vào hệ thống.");
+                            txtMatKhau.requestFocusInWindow();
+                            return;
+                        }
+                    }
                     SessionManager.getInstance().login(tk);
                     dangNhapThanhCong(tk);
                 } catch (java.util.concurrent.ExecutionException ex) {
