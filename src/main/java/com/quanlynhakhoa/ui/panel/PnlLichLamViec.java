@@ -29,11 +29,13 @@ public class PnlLichLamViec extends JPanel {
     private final Supplier<List<TaiKhoan>> layTaiKhoan;
     private final Supplier<List<LichLamViec>> layLich;
     private final Predicate<LichLamViec> luu;
+    private final boolean chiXemCaNhan;
+    private final String maTKCaNhan,maNVCaNhan;
     private final JComboBox<String> cboVaiTro = new JComboBox<>(new String[]{"Tất cả vị trí", "Nha sĩ", "Lễ tân", "Quản lý"});
     private final JComboBox<TaiKhoan> cboNhanVien = new JComboBox<>();
     private final JComboBox<String> cboCa = new JComboBox<>(new String[]{"Ca sáng", "Ca chiều", "Cả ngày"});
     private final JComboBox<String> cboCheDo = new JComboBox<>(new String[]{"Theo tuần", "Theo tháng"});
-    private final JSpinner spnMoc = ngay("mocLich");
+    private final com.toedter.calendar.JDateChooser dpMoc = new com.toedter.calendar.JDateChooser();
     private final com.toedter.calendar.JDateChooser dpNgay = new com.toedter.calendar.JDateChooser();
     private final JLabel lblGio = new JLabel("Chọn ca để xem giờ làm");
     private final JLabel lblThongBao = new JLabel(" ");
@@ -66,16 +68,23 @@ public class PnlLichLamViec extends JPanel {
     }
 
     PnlLichLamViec(Supplier<List<TaiKhoan>> layTaiKhoan, Supplier<List<LichLamViec>> layLich, Predicate<LichLamViec> luu) {
+        this(layTaiKhoan,layLich,luu,false);
+    }
+    PnlLichLamViec(Supplier<List<TaiKhoan>> layTaiKhoan, Supplier<List<LichLamViec>> layLich, Predicate<LichLamViec> luu,boolean chiXemCaNhan) {
         super(new BorderLayout(16, 16));
+        this.chiXemCaNhan=chiXemCaNhan;
+        TaiKhoan current=SessionManager.getInstance().getCurrentUser();
+        maTKCaNhan=chiXemCaNhan&&current!=null?current.getMaTK():null;
+        maNVCaNhan=chiXemCaNhan&&current!=null&&current.getNhanVien()!=null?current.getNhanVien().getMaNV():null;
         this.layTaiKhoan = java.util.Objects.requireNonNull(layTaiKhoan);
         this.layLich = java.util.Objects.requireNonNull(layLich);
         this.luu = java.util.Objects.requireNonNull(luu);
-        setName("Lịch làm việc"); setBackground(BACKGROUND);
+        setName(chiXemCaNhan?"Lịch của tôi":"Lịch làm việc"); setBackground(BACKGROUND);
         setBorder(new EmptyBorder(18, 18, 18, 18));
         JPanel header = new JPanel(new BorderLayout(16, 0)); header.setOpaque(false);
         JPanel titles = new JPanel(); titles.setLayout(new BoxLayout(titles,BoxLayout.Y_AXIS)); titles.setOpaque(false);
-        JLabel title = new JLabel("Lịch làm việc"); title.setFont(bold(23)); title.setForeground(TEXT);
-        JLabel subtitle = new JLabel("Phân công và theo dõi ca làm việc của nhân viên"); subtitle.setFont(font(12)); subtitle.setForeground(MUTED);
+        JLabel title = new JLabel(chiXemCaNhan?"Lịch của tôi":"Lịch làm việc"); title.setFont(bold(23)); title.setForeground(TEXT);
+        JLabel subtitle = new JLabel(chiXemCaNhan?"Lịch làm việc và nghỉ phép cá nhân · Chỉ xem":"Phân công và theo dõi ca làm việc của nhân viên"); subtitle.setFont(font(12)); subtitle.setForeground(MUTED);
         titles.add(title); titles.add(Box.createVerticalStrut(5)); titles.add(subtitle); header.add(titles,BorderLayout.CENTER);
         btnPhanCa.setName("moPhanCa"); btnPhanCa.setBackground(TEAL); btnPhanCa.setForeground(Color.WHITE); btnPhanCa.setFont(bold(13));
         btnPhanCa.addActionListener(e -> {
@@ -91,11 +100,20 @@ public class PnlLichLamViec extends JPanel {
         JPanel navigation = new JPanel(new BorderLayout()); navigation.setOpaque(false);
         JPanel dates = new JPanel(new FlowLayout(FlowLayout.LEFT,7,0)); dates.setOpaque(false);
         JButton prev = new JButton("‹"), next = new JButton("›"), today = new JButton("Hôm nay");
+        prev.setName("lichTruoc"); next.setName("lichSau"); today.setName("lichHomNay");
+        lblKhoang.setName("khoangNgayLich");
         lblKhoang.setFont(bold(14)); lblKhoang.setForeground(TEXT);
-        dates.add(prev); dates.add(lblKhoang); dates.add(next); dates.add(today);
+        dpMoc.setName("mocLich"); dpMoc.setLocale(java.util.Locale.forLanguageTag("vi-VN"));
+        dpMoc.setDateFormatString("dd/MM/yyyy"); dpMoc.setPreferredSize(new Dimension(140,30));
+        dpMoc.setDate(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        ((JTextField)dpMoc.getDateEditor().getUiComponent()).setEditable(false);
+        dpMoc.setToolTipText("Chọn ngày để mở tuần hoặc tháng chứa ngày đó.");
+        dpMoc.getJCalendar().setPreferredSize(new Dimension(330,280));
+        dates.add(prev); dates.add(dpMoc); dates.add(next); dates.add(today);
         navigation.add(dates,BorderLayout.WEST);
         JPanel modes = new JPanel(new FlowLayout(FlowLayout.RIGHT,7,0)); modes.setOpaque(false);
         JToggleButton week=new JToggleButton("Tuần",true), month=new JToggleButton("Tháng");
+        week.setName("xemTuan"); month.setName("xemThang");
         ButtonGroup modeGroup=new ButtonGroup(); modeGroup.add(week); modeGroup.add(month);
         week.addActionListener(e -> cboCheDo.setSelectedIndex(0)); month.addActionListener(e -> cboCheDo.setSelectedIndex(1));
         modes.add(week); modes.add(month); modes.add(btnLamMoi); navigation.add(modes,BorderLayout.EAST);
@@ -104,7 +122,7 @@ public class PnlLichLamViec extends JPanel {
         cboLocNhanVien.setName("locNhanVienLich"); cboLocVaiTro.setName("locChucVuLich"); cboLocTrangThai.setName("locTrangThaiLich");
         filters.add(cboLocNhanVien); filters.add(cboLocVaiTro); filters.add(cboLocTrangThai);
         JLabel hours = new JLabel("Sáng 08:00–12:00 · Chiều 13:30–17:30"); hours.setFont(font(11)); hours.setForeground(MUTED); filters.add(hours);
-        controls.add(filters,BorderLayout.CENTER); list.add(controls,BorderLayout.NORTH);
+        controls.add(filters,BorderLayout.CENTER); controls.add(lblKhoang,BorderLayout.SOUTH); list.add(controls,BorderLayout.NORTH);
         tblLich.setName("bangLichLamViec"); tblLich.setRowHeight(42); tblLich.setFont(font(12));
         tblLich.getTableHeader().setFont(bold(12)); tblLich.setAutoCreateRowSorter(true);
         ((javax.swing.table.TableRowSorter<?>)tblLich.getRowSorter()).setComparator(0,
@@ -117,14 +135,19 @@ public class PnlLichLamViec extends JPanel {
         pnlLich.add(new JScrollPane(tblLich),"thang"); list.add(pnlLich,BorderLayout.CENTER);
         JPanel footer = new JPanel(new BorderLayout()); footer.setOpaque(false);
         lblKetQua.setFont(font(11)); lblKetQua.setForeground(MUTED);
+        lblKetQua.setName("ketQuaLich"); btnLamMoi.setName("lamMoiLich");
         footer.add(lblKetQua,BorderLayout.EAST); list.add(footer,BorderLayout.SOUTH);
         add(list,BorderLayout.CENTER);
         pnlForm=taoForm(); pnlForm.setVisible(false); add(pnlForm,BorderLayout.EAST);
+        if(chiXemCaNhan) {
+            actions.remove(btnPhanCa); remove(pnlForm);
+            filters.remove(cboLocNhanVien); filters.remove(cboLocVaiTro);
+        }
         for(JComboBox<?> filter: new JComboBox<?>[]{cboLocNhanVien,cboLocVaiTro,cboLocTrangThai}) filter.addActionListener(e -> {
             if(!dangCapNhatBoLoc) hienLich();
         });
         prev.addActionListener(e -> doiKy(-1)); next.addActionListener(e -> doiKy(1));
-        today.addActionListener(e -> spnMoc.setValue(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant())));
+        today.addActionListener(e -> dpMoc.setDate(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant())));
         cboNhanVien.setRenderer(new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(JList<?> l, Object v, int i, boolean selected, boolean focus) {
                 super.getListCellRendererComponent(l,v,i,selected,focus);
@@ -139,7 +162,7 @@ public class PnlLichLamViec extends JPanel {
         });
         cboNhanVien.addActionListener(e -> kiemTraLuaChon());
         dpNgay.addPropertyChangeListener("date",e -> kiemTraLuaChon());
-        cboCheDo.addActionListener(e -> hienLich()); spnMoc.addChangeListener(e -> hienLich());
+        cboCheDo.addActionListener(e -> hienLich()); dpMoc.addPropertyChangeListener("date",e -> hienLich());
         btnLamMoi.addActionListener(e -> lamMoiDuLieu()); btnLuu.addActionListener(e -> luuPhanCong());
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5,0), "lamMoi");
         getActionMap().put("lamMoi", new AbstractAction() { public void actionPerformed(ActionEvent e) { lamMoiDuLieu(); }});
@@ -206,13 +229,10 @@ public class PnlLichLamViec extends JPanel {
         field.setPreferredSize(new Dimension(240,34)); p.add(field,g);
     }
 
-    private static JSpinner ngay(String name) {
-        JSpinner s = new JSpinner(new SpinnerDateModel());
-        JSpinner.DateEditor editor = new JSpinner.DateEditor(s,"dd/MM/yyyy");
-        editor.getFormat().setLenient(false); s.setEditor(editor); s.setName(name); return s;
-    }
-    private static LocalDate docNgay(JSpinner s) throws java.text.ParseException {
-        s.commitEdit(); return ((Date)s.getValue()).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    private static LocalDate docNgay(com.toedter.calendar.JDateChooser chooser) throws java.text.ParseException {
+        Date date=chooser.getDate();
+        if(date==null) throw new java.text.ParseException("Chưa chọn ngày xem lịch.",0);
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
     private void capNhatNgayToiThieu() {
         dpNgay.setMinSelectableDate(Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()));
@@ -225,9 +245,15 @@ public class PnlLichLamViec extends JPanel {
     private boolean laQuanLy() {
         TaiKhoan tk=SessionManager.getInstance().getCurrentUser(); return tk!=null && tk.getVaiTro()==VaiTro.QUANLY;
     }
+    private boolean duocXemLich() {
+        if(!chiXemCaNhan) return laQuanLy();
+        TaiKhoan current=SessionManager.getInstance().getCurrentUser();
+        return maTKCaNhan!=null&&maNVCaNhan!=null&&current!=null&&maTKCaNhan.equals(current.getMaTK())
+                &&current.getNhanVien()!=null&&maNVCaNhan.equals(current.getNhanVien().getMaNV());
+    }
     private void capNhatNut() {
-        boolean ready=laQuanLy()&&!dangLuu&&!dangTai;
-        btnPhanCa.setEnabled(ready); btnLuu.setEnabled(ready&&cboNhanVien.getItemCount()>0&&cboCa.getSelectedIndex()>=0&&dpNgay.getDate()!=null&&lyDoKhongThePhanCong()==null); btnLamMoi.setEnabled(laQuanLy()&&!dangLuu&&!dangTai);
+        boolean ready=duocXemLich()&&!dangLuu&&!dangTai&&!chiXemCaNhan;
+        btnPhanCa.setEnabled(ready); btnLuu.setEnabled(ready&&cboNhanVien.getItemCount()>0&&cboCa.getSelectedIndex()>=0&&dpNgay.getDate()!=null&&lyDoKhongThePhanCong()==null); btnLamMoi.setEnabled(duocXemLich()&&!dangLuu&&!dangTai);
         for (JComponent field : new JComponent[]{cboVaiTro,cboNhanVien,dpNgay,cboCa}) field.setEnabled(ready);
         dpNgay.setEnabled(ready&&cboNhanVien.getSelectedItem()!=null&&cboCa.getSelectedIndex()>=0);
         var calendar=dpNgay.getJCalendar();
@@ -235,18 +261,30 @@ public class PnlLichLamViec extends JPanel {
     }
     public void lamMoiDuLieu() {
         if(dangTai||dangLuu) return;
-        if(!laQuanLy()) { thongBao("Chỉ Quản lý được phân công lịch làm việc.",false); capNhatNut(); return; }
+        if(!duocXemLich()) {
+            if(chiXemCaNhan) { taiKhoan=List.of(); lich=List.of(); hienLich(); }
+            lblKetQua.setText("Vui lòng đăng nhập để xem lịch."); thongBao("Chỉ Quản lý được phân công lịch làm việc.",false); capNhatNut(); return;
+        }
         dangTai=true; capNhatNut(); lblKetQua.setText("Đang tải lịch làm việc...");
         new SwingWorker<DuLieu,Void>() {
             protected DuLieu doInBackground() { return new DuLieu(layTaiKhoan.get(),layLich.get()); }
             protected void done() {
                 boolean loaded=false;
-                try { DuLieu d=get(); taiKhoan=List.copyOf(d.taiKhoan()); lich=List.copyOf(d.lich()); locNhanVien(); capNhatBoLoc(); hienLich(); loaded=true; }
+                try {
+                    DuLieu d=get();
+                    if(!duocXemLich()) { taiKhoan=List.of(); lich=List.of(); hienLich(); lblKetQua.setText("Phiên đăng nhập đã thay đổi. Hãy mở lại Lịch của tôi."); return; }
+                    taiKhoan=List.copyOf(d.taiKhoan());
+                    lich=chiXemCaNhan?d.lich().stream().filter(x -> maNVCaNhan.equals(x.getNhanVien().getMaNV())).toList():List.copyOf(d.lich());
+                    locNhanVien(); capNhatBoLoc(); hienLich(); loaded=true;
+                }
                 catch(InterruptedException ex) { Thread.currentThread().interrupt(); lblKetQua.setText("Đã gián đoạn tải lịch."); }
-                catch(ExecutionException ex) { lblKetQua.setText("Không thể tải lịch. Nhấn Làm mới để thử lại."); baoLoi(ex.getCause()); }
+                catch(ExecutionException ex) {
+                    if(chiXemCaNhan) { taiKhoan=List.of(); lich=List.of(); hienLich(); }
+                    lblKetQua.setText("Không thể tải lịch. Nhấn Làm mới để thử lại."); lblKetQua.setToolTipText(ex.getCause() instanceof BusinessException?ex.getCause().getMessage():null); baoLoi(ex.getCause());
+                }
                 finally {
                     dangTai=false; capNhatNut();
-                    if(loaded&&!lblThongBao.getText().contains("thành công")) kiemTraLuaChon();
+                    if(loaded&&!chiXemCaNhan&&!lblThongBao.getText().contains("thành công")) kiemTraLuaChon();
                 }
             }
         }.execute();
@@ -292,7 +330,7 @@ public class PnlLichLamViec extends JPanel {
     }
     private void hienLich() {
         try {
-            LocalDate moc=docNgay(spnMoc);
+            LocalDate moc=docNgay(dpMoc);
             LocalDate tu=cboCheDo.getSelectedIndex()==0?moc.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)):moc.withDayOfMonth(1);
             LocalDate den=cboCheDo.getSelectedIndex()==0?tu.plusDays(6):tu.with(TemporalAdjusters.lastDayOfMonth());
             cheDoLich.show(pnlLich,cboCheDo.getSelectedIndex()==0?"tuan":"thang");
@@ -305,7 +343,7 @@ public class PnlLichLamViec extends JPanel {
                     switch(x.getCaTruc()) {case CA_SANG->"Ca sáng";case CA_CHIEU->"Ca chiều";case CA_NGAY->"Cả ngày";},
                     x.getGioBatDau()+" – "+x.getGioKetThuc(),trangThaiCa(x)}));
             lblKetQua.setText(model.getRowCount()==0?"Chưa có ca làm việc trong khoảng này.":model.getRowCount()+" ca làm việc");
-        } catch(java.text.ParseException ex) { lblKhoang.setText("Nhập ngày theo định dạng dd/MM/yyyy."); }
+        } catch(java.text.ParseException ex) { lblKhoang.setText("Chọn ngày để xem lịch."); }
     }
     private void capNhatBoLoc() {
         dangCapNhatBoLoc=true;
@@ -418,11 +456,12 @@ public class PnlLichLamViec extends JPanel {
         public boolean getScrollableTracksViewportHeight() { return getParent()!=null&&getParent().getHeight()>=getPreferredSize().height; }
     }
     private void doiKy(int direction) {
-        try { LocalDate d=docNgay(spnMoc); d=cboCheDo.getSelectedIndex()==0?d.plusWeeks(direction):d.plusMonths(direction);
-            spnMoc.setValue(Date.from(d.atStartOfDay(ZoneId.systemDefault()).toInstant()));
-        } catch(java.text.ParseException ex) { lblKhoang.setText("Nhập ngày theo định dạng dd/MM/yyyy."); }
+        try { LocalDate d=docNgay(dpMoc); d=cboCheDo.getSelectedIndex()==0?d.plusWeeks(direction):d.plusMonths(direction);
+            dpMoc.setDate(Date.from(d.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        } catch(java.text.ParseException ex) { lblKhoang.setText("Chọn ngày để xem lịch."); }
     }
     private void luuPhanCong() {
+        if(chiXemCaNhan) return;
         if(dangLuu||dangTai) return;
         if(!laQuanLy()) { thongBao("Chỉ Quản lý được phân công lịch làm việc.",false); return; }
         final LichLamViec ca;
@@ -449,7 +488,7 @@ public class PnlLichLamViec extends JPanel {
                 catch(BusinessException ex) { thongBao(ex.getMessage(),false); }
                 finally { dangLuu=false; capNhatNut(); }
                 if(saved) {
-                    spnMoc.setValue(Date.from(ca.getNgayTruc().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                    dpMoc.setDate(Date.from(ca.getNgayTruc().atStartOfDay(ZoneId.systemDefault()).toInstant()));
                     thongBao("Phân công lịch làm việc thành công.",true); lamMoiDuLieu();
                 }
             }
@@ -465,8 +504,3 @@ public class PnlLichLamViec extends JPanel {
     }
     private static String tenVaiTro(VaiTro role) { return switch(role) {case QUANLY->"Quản lý";case NHASI->"Nha sĩ";case LETAN->"Lễ tân";}; }
 }
-
-
-
-
-

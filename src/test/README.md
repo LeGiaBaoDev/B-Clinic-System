@@ -125,3 +125,26 @@ Form tạo ca: nhân viên → chọn ca làm việc → chọn ngày còn trố
 Lịch tuần chỉ hiển thị tên và chức vụ trên thẻ: nghỉ phép nền vàng, đang trực nền xanh, ca còn lại trung tính. Đã bỏ dòng trạng thái dưới ô và thanh chú thích. Có thể xem chi tiết trạng thái khi rê chuột hoặc dùng bộ lọc.
 
 Màu đang trực ở lịch tuần tính theo từng buổi, kể cả ca cả ngày: sáng kết thúc lúc 12:00, chiều bắt đầu 13:30 và kết thúc tối đa 17:30. Màu tự cập nhật mỗi phút khi màn hình đang hiển thị. Sau buổi sáng, thẻ sáng trở về trung tính; nghỉ phép luôn nhấn vàng.
+
+## UC012 — Lịch của tôi (Quản lý, Nha sĩ, Lễ tân)
+
+Đăng nhập một trong ba vai trò rồi chọn **Lịch của tôi** trên sidebar. Mặc định là tuần hiện tại; dùng Tuần/Tháng, trước/sau, Hôm nay, bộ lọc trạng thái và Làm mới/F5. Màn hình chỉ đọc, không có nút phân công hoặc chọn nhân viên khác. Quản lý vẫn có mục Lịch làm việc riêng cho toàn phòng khám; Lịch trực của Nha sĩ vẫn phục vụ lịch hẹn, tách với lịch ca cá nhân.
+
+`LichLamViecDAO.layLichCaNhan()` lấy mã nhân viên từ Actor xác thực trong DB, không nhận mã nhân viên từ UI. API vẫn giới hạn lịch bản thân đối với Quản lý. Test H2 tích hợp kiểm tra cả ba vai trò, giả mã nhân viên session, tài khoản bị khóa/chưa đăng nhập và panel chỉ đọc trên database UUID riêng.
+
+```powershell
+mvn '-Dtest=PnlLichCaNhanTest' test
+mvn '-Dbclinic.integration=true' '-Dtest=H2DaoIntegrationTest' test
+```
+
+Checklist kiểm thử chéo (chưa nghiệm thu thủ công):
+
+| Mã | Thao tác | Kết quả mong đợi |
+|---|---|---|
+| H2-M08 | Quản lý chọn Lịch của tôi, rồi Lịch làm việc | Cá nhân chỉ có ca của mình; màn quản lý vẫn xem/phân công toàn bộ |
+| H2-M09 | Nha sĩ chọn Lịch của tôi rồi quay lại Lịch trực | Cá nhân chỉ có ca của mình; Lịch trực giữ lịch hẹn/khám hiện có |
+| H2-M10 | Lễ tân chọn Lịch của tôi rồi Bệnh nhân/Tiếp nhận | Cá nhân chỉ có ca của mình; các chức năng cũ vẫn dùng được |
+| H2-M11 | Đổi tuần/tháng, Hôm nay, lọc Nghỉ phép, F5 | Đúng kỳ, đúng ca/nghỉ phép cá nhân; không sửa được dữ liệu |
+| H2-M12 | Tài khoản chưa có ca trong kỳ | Hiển thị chưa có ca, không nhầm lỗi tải dữ liệu |
+
+Calendar trên thanh điều hướng dùng để xem lịch: chọn ngày sẽ mở tuần/tháng chứa ngày đó, cho phép xem quá khứ. Nút trước/sau và Hôm nay đồng bộ với ngày đang chọn; calendar phân công vẫn khóa ngày không hợp lệ theo ca.
