@@ -39,6 +39,18 @@ public class PhieuKhamDAO {
         });
     }
 
+    /** UC024: lịch sử phiếu khám của một bệnh nhân (mới nhất trước). */
+    public List<PhieuKham> timTheoKhachHang(String maKH) {
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c);
+            return JdbcHelper.query(c, SQL_SELECT
+                    + " WHERE maLH IN (SELECT maLH FROM LichHen WHERE maKH=?"
+                    + " AND (?=1 OR maNV=?)) ORDER BY ngayLap DESC",
+                    r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    maKH, actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+        });
+    }
+
     public PhieuKham layTheoMa(String ma) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
