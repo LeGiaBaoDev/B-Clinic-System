@@ -32,11 +32,6 @@ public class LoaiDichVuDAO {
         });
     }
 
-    /**
-     * UC005/UC007: trả loại dịch vụ đã lưu, dùng trong transaction của DichVuDAO (không commit).
-     * Có mã thì loại phải tồn tại; chưa có mã thì tìm theo tên, chưa có trong DB thì tạo
-     * (chỉ 3 loại cố định, entity đã kiểm tra tên khớp mức thuế). Bên gọi đã kiểm tra quyền.
-     */
     LoaiDichVu layHoacTao(Connection c, LoaiDichVu loai) throws SQLException {
         new LoaiDichVu(loai.getMaLoaiDV(), loai.getTenLoaiDV(), loai.getMucThueGTGT());
         if (loai.getMaLoaiDV() != null) {
