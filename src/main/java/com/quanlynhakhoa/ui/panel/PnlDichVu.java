@@ -9,9 +9,9 @@ import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.ui.component.LineIcon;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import static com.quanlynhakhoa.ui.component.UiConstants.*;
 import com.quanlynhakhoa.ui.dialog.DlgDichVu;
 import com.quanlynhakhoa.util.SessionManager;
-import static com.quanlynhakhoa.ui.component.UiConstants.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.text.DecimalFormat;
@@ -34,28 +34,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 
-/**
- * UC006: xem và tra cứu danh mục dịch vụ kèm bảng giá, mức thuế GTGT. Mọi vai trò được xem.
- *
- * <p>Bố cục theo thiết kế Figma "Danh sách dịch vụ", riêng các chỗ lệch báo cáo thì theo báo cáo
- * (quyết định của Dương 04/11): mã DV001, "Danh mục" = 3 phân loại của báo cáo (mỗi loại một mức
- * thuế), thuế 0% hiện "KCT", chữ "Đang cung cấp / Ngừng cung cấp", mặc định "Đang cung cấp" (UC006 bước 2).
- * Thanh lọc: ô tìm kiếm -> Tất cả danh mục -> Tất cả trạng thái (đồng bộ với 3 tab) -> Xóa lọc.</p>
- *
- * <p>Cách lấy dữ liệu: mỗi lần tìm, panel hỏi DAO toàn bộ dịch vụ khớp từ khóa + phân loại (mọi
- * trạng thái), rồi tự chia theo tab và phân trang trên máy. Nhờ vậy số đếm trên 3 tab luôn đúng mà
- * chỉ cần một truy vấn. Danh mục dịch vụ của phòng khám nhỏ (vài chục dòng) nên cách này đủ nhanh.</p>
- *
- * <p>UC005: Quản lý bấm "Thêm dịch vụ" ở góc phải tiêu đề để mở DlgDichVu.</p>
- *
- * <p>UC007: Quản lý nhấn đúp một dịch vụ đang cung cấp để mở trang "Chỉnh sửa dịch vụ"
- * ({@link PnlCapNhatDichVu}) ngay trong màn này.</p>
- *
- * <p>Panel không viết SQL; dữ liệu chỉ đi qua DichVuDAO, DAO kiểm tra quyền lại từ DB.</p>
- */
 public class PnlDichVu extends JPanel {
 
-    /** Nguồn dữ liệu tra cứu; tách ra để test giao diện không cần DB. */
     @FunctionalInterface
     interface TimDichVu {
         List<DichVu> tim(String tuKhoa, Boolean trangThai, MucThue mucThue);
