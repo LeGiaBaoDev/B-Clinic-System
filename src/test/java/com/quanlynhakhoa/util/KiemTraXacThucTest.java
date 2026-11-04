@@ -8,6 +8,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * Quy tắc dữ liệu dùng chung cho đăng nhập và đặt lại mật khẩu.
  */
 class KiemTraXacThucTest {
+    @Test
+    void doiLanDau_matKhauPhaiMoiDuDoDaiVaXacNhanKhop() {
+        assertNotNull(KiemTraXacThuc.loiDoiMatKhauLanDau(null, null));
+        assertNotNull(KiemTraXacThuc.loiDoiMatKhauLanDau("      ", "      "));
+        assertNotNull(KiemTraXacThuc.loiDoiMatKhauLanDau("12345", "12345"));
+        assertNotNull(KiemTraXacThuc.loiDoiMatKhauLanDau("Clinic@123", "Clinic@123"));
+        assertNotNull(KiemTraXacThuc.loiDoiMatKhauLanDau("Moi@123", "Khac@123"));
+        assertNull(KiemTraXacThuc.loiDoiMatKhauLanDau("Moi@123", "Moi@123"));
+    }
 
     @Test
     void dangNhap_thieuTenHoacMatKhau_traVeLoi() {

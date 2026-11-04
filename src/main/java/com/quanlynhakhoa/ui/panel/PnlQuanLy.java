@@ -24,6 +24,7 @@ public class PnlQuanLy extends JPanel {
     private final JLabel lblTrang = label("Tổng quan", bold(18), TEXT);
     private final JTextField txtTimKiem = new JTextField();
     private final PnlTongQuanQuanLy pnlTongQuan;
+    private PnlNhanVien pnlNhanVien;
     private final JLabel lblCaHienTai = label("Đang tải ca làm việc...", font(11), MUTED);
     private final JLabel lblKetNoi = label("● Đang tải dữ liệu", font(10), MUTED);
     private final JLabel lblDongBo = label("Đang tải dữ liệu...", font(10), MUTED);
@@ -57,7 +58,7 @@ public class PnlQuanLy extends JPanel {
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "refresh");
         getActionMap().put("refresh", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
-                pnlTongQuan.lamMoiDuLieu();
+                lamMoiTrangHienTai();
             }
         });
     }
@@ -268,7 +269,7 @@ public class PnlQuanLy extends JPanel {
         btnLamMoi.setFont(font(10));
         btnLamMoi.setForeground(TEAL);
         btnLamMoi.setBorder(BorderFactory.createEmptyBorder());
-        btnLamMoi.addActionListener(e -> pnlTongQuan.lamMoiDuLieu());
+        btnLamMoi.addActionListener(e -> lamMoiTrangHienTai());
         status.add(btnLamMoi);
         footer.add(status, BorderLayout.WEST);
         footer.add(lblDongHo, BorderLayout.EAST);
@@ -326,9 +327,21 @@ public class PnlQuanLy extends JPanel {
         btnThongBao.repaint();
     }
 
+    private void lamMoiTrangHienTai() {
+        if ("Nhân viên".equals(lblTrang.getText()) && pnlNhanVien != null) {
+            pnlNhanVien.lamMoiDuLieu();
+        } else {
+            pnlTongQuan.lamMoiDuLieu();
+        }
+    }
+
     public void moTrang(String name) {
         if (!"Tổng quan".equals(name) && !menu.containsKey(name)) {
             return;
+        }
+        if ("Nhân viên".equals(name) && pnlNhanVien == null) {
+            pnlNhanVien = new PnlNhanVien();
+            pnlCards.add(pnlNhanVien, name);
         }
         if (!"Tổng quan".equals(name) && java.util.Arrays.stream(pnlCards.getComponents()).noneMatch(c -> name.equals(c.getName()))) {
             JPanel empty = new JPanel(new GridBagLayout());
