@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,14 @@ import org.junit.jupiter.api.Test;
  * [x] luôn lưu "Đang cung cấp" dù đối tượng truyền vào trangThai=false
  * [x] Lễ tân, Nha sĩ bị chặn; mã loại không tồn tại bị chặn
  * [x] gợi ý lộ trình: không trùng, bỏ lộ trình rỗng, lộ trình gắn với dịch vụ mới nhất đứng trước
+ * UC007 cập nhật thông tin dịch vụ:
+ * [x] đổi tên, giá, thời lượng, loại (thuế đi theo loại), lộ trình; nhật ký ghi giá cũ -> giá mới
+ * [x] 4.1 không thay đổi -> "Không có thay đổi để lưu."
+ * [x] 5.2 tên trùng dịch vụ khác đang hoạt động -> chặn; giữ tên của chính nó thì được
+ * [x] dịch vụ đã ngừng / không tồn tại -> chặn (tiền điều kiện)
+ * [x] không đổi trạng thái qua capNhat
+ * [x] đổi thời lượng khi còn lịch hẹn DA_DAT -> chặn; đổi giá vẫn được (quyết định Q2)
+ * [x] Lễ tân bị chặn
  */
 class DichVuDAOTest {
 
@@ -284,6 +293,165 @@ class DichVuDAOTest {
         DichVu dv = new DichVu(null, ten, 200_000, 30, loTrinh, true, loai(MucThue.THUE_0));
         assertTrue(dao.them(dv));
         daTao.add(dv.getMaDV());
+    }
+
+    // ---- UC007 cập nhật thông tin dịch vụ ----
+
+    /** Bản sao của dịch vụ đã lưu để sửa từng trường, giống cách form gửi xuống DAO. */
+    private DichVu banSua(DichVu goc) {
+        return new DichVu(dao.layTheoMa(goc.getMaDV()));
+    }
+
+    @Test
+    void capNhat_doiTenGiaThoiLuongLoaiLoTrinh_luuDung_vaGhiNhatKyChiTiet() {
+        DichVu dv = themDichVu(ma + " Trám răng", MucThue.THUE_0);
+        DichVu sua = banSua(dv);
+        sua.setTenDV(ma + " Trám răng thẩm mỹ");
+        sua.setDonGia(350_000);
+        sua.setThoiLuong(45);
+        sua.setLoaiDichVu(new LoaiDichVu(null, LoaiDichVu.THAM_MY, MucThue.THUE_10)); // form chỉ gửi tên loại
+        sua.setLoTrinhDichVu("Buổi 1: trám\nBuổi 2: đánh bóng");
+
+        assertTrue(dao.capNhat(sua));
+
+        DichVu doc = dao.layTheoMa(dv.getMaDV());
+        assertEquals(ma + " Trám răng thẩm mỹ", doc.getTenDV());
+        assertEquals(350_000, doc.getDonGia());
+        assertEquals(45, doc.getThoiLuong());
+        assertEquals(MucThue.THUE_10, doc.getLoaiDichVu().getMucThueGTGT(), "Mức thuế đi theo loại mới");
+        assertEquals("Buổi 1: trám\nBuổi 2: đánh bóng", doc.getLoTrinhDichVu());
+        assertTrue(doc.isTrangThai());
+        assertEquals(1, DaoTestSupport.dem("SELECT COUNT(*) FROM NhatKyHeThong WHERE hanhDong='CAP_NHAT_DICH_VU'"
+                + " AND noiDungThayDoi LIKE ?", dv.getMaDV() + ": %" + ma + " Trám răng thẩm mỹ%đơn giá 300000 -> 350000%"),
+                "Nhật ký ghi rõ giá cũ -> giá mới (lọc theo tên mới riêng của lần chạy vì mã DV được dùng lại)");
+    }
+
+    @Test
+    void capNhat_khongThayDoiGi_baoKhongCoThayDoi() {
+        DichVu dv = themDichVu(ma + " Khám định kỳ", MucThue.THUE_0);
+
+        BusinessException loi = assertThrows(BusinessException.class, () -> dao.capNhat(banSua(dv)));
+        assertEquals("Không có thay đổi để lưu.", loi.getMessage());
+    }
+
+    @Test
+    void capNhat_tenTrungDichVuKhacDangHoatDong_biChan_giuTenCuThiDuoc() {
+        themDichVu(ma + " Lấy cao răng", MucThue.THUE_0);
+        DichVu dv = themDichVu(ma + " Đánh bóng", MucThue.THUE_0);
+
+        DichVu trung = banSua(dv);
+        trung.setTenDV(ma + " LẤY CAO RĂNG");
+        assertEquals("Tên dịch vụ đã tồn tại.",
+                assertThrows(BusinessException.class, () -> dao.capNhat(trung)).getMessage());
+
+        // Giữ nguyên tên của chính nó, chỉ đổi giá: không bị coi là trùng với bản thân.
+        DichVu doiGia = banSua(dv);
+        doiGia.setDonGia(120_000);
+        assertTrue(dao.capNhat(doiGia));
+    }
+
+    @Test
+    void capNhat_dichVuDaNgungHoacKhongTonTai_biChan() {
+        DichVu dv = themDichVu(ma + " Gói cũ", MucThue.THUE_0);
+        DichVu sua = banSua(dv);
+        assertTrue(dao.ngungCungCap(dv.getMaDV()));
+        sua.setDonGia(999_000);
+
+        assertTrue(assertThrows(BusinessException.class, () -> dao.capNhat(sua)).getMessage()
+                .startsWith("Dịch vụ đã ngừng cung cấp"));
+        assertEquals(300_000, dao.layTheoMa(dv.getMaDV()).getDonGia(), "Giá không bị đổi");
+
+        DichVu khongCo = new DichVu("DV999", ma + " Không có", 100_000, 10, null, true, loai(MucThue.THUE_0));
+        Assumptions.assumeTrue(dao.layTheoMa("DV999") == null, "DB test đã có DV999");
+        assertEquals("Dịch vụ không tồn tại.",
+                assertThrows(BusinessException.class, () -> dao.capNhat(khongCo)).getMessage());
+    }
+
+    @Test
+    void capNhat_truyenTrangThaiNgung_khongLamNgungDichVu() {
+        DichVu dv = themDichVu(ma + " Chụp phim", MucThue.THUE_0);
+        DichVu sua = banSua(dv);
+        sua.setTrangThai(false); // UC007 không đổi trạng thái; ngừng là việc của UC008
+        sua.setDonGia(310_000);
+
+        assertTrue(dao.capNhat(sua));
+        assertTrue(dao.layTheoMa(dv.getMaDV()).isTrangThai());
+    }
+
+    @Test
+    void capNhat_doiThoiLuongKhiConLichHen_biChan_doiGiaThiVanDuoc() {
+        DichVu dv = themDichVu(ma + " Nhổ răng khôn", MucThue.THUE_0);
+        String maKH = taoLichHenDaDat(dv.getMaDV());
+        try {
+            DichVu doiThoiLuong = banSua(dv);
+            doiThoiLuong.setThoiLuong(60);
+            assertTrue(assertThrows(BusinessException.class, () -> dao.capNhat(doiThoiLuong)).getMessage()
+                    .contains("trước khi đổi thời lượng"));
+
+            // Đổi giá không ảnh hưởng khung giờ đã xếp nên vẫn cho phép.
+            DichVu doiGia = banSua(dv);
+            doiGia.setDonGia(450_000);
+            assertTrue(dao.capNhat(doiGia));
+        } finally {
+            xoaLichHenVaKhach(maKH);
+        }
+    }
+
+    @Test
+    void capNhat_leTan_biChan() {
+        DichVu dv = themDichVu(ma + " Tư vấn", MucThue.THUE_0);
+        DichVu sua = banSua(dv);
+        sua.setDonGia(1);
+        DaoTestSupport.dangNhap(VaiTro.LETAN);
+
+        assertThrows(BusinessException.class, () -> dao.capNhat(sua));
+        DaoTestSupport.dangNhap(VaiTro.QUANLY);
+        assertEquals(300_000, dao.layTheoMa(dv.getMaDV()).getDonGia());
+    }
+
+    /**
+     * Tạo trực tiếp 1 khách + 1 lịch hẹn DA_DAT dùng dịch vụ (không qua LichHenDAO của Long để test
+     * không phụ thuộc module khác). Năm 2099 + phút ngẫu nhiên để không trùng lịch dữ liệu test khác.
+     */
+    private String taoLichHenDaDat(String maDV) {
+        int so = ThreadLocalRandom.current().nextInt(90_000, 100_000);
+        String maKH = "KH" + so;
+        String maLH = "LH99" + String.format("%07d", ThreadLocalRandom.current().nextInt(10_000_000));
+        java.time.LocalDateTime gio = java.time.LocalDateTime.of(2099, 1, 1, 8, 0)
+                .plusMinutes(ThreadLocalRandom.current().nextInt(500_000) * 5L);
+        try (Connection c = DatabaseConnection.getInstance().getConnection()) {
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO KhachHang(maKH,tenKH,gioiTinh,sdt) VALUES(?,?,1,?)")) {
+                ps.setString(1, maKH);
+                ps.setString(2, "Khách kiểm thử dịch vụ");
+                ps.setString(3, "08" + so + "123");
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai) VALUES(?,?,?,?,?,'DA_DAT')")) {
+                ps.setString(1, maLH);
+                ps.setString(2, maKH);
+                ps.setString(3, DaoTestSupport.NV_NHA_SI);
+                ps.setString(4, maDV);
+                ps.setObject(5, gio);
+                ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Không tạo được lịch hẹn test", e);
+        }
+        return maKH;
+    }
+
+    /** Lịch hẹn phải xóa trước khách và trước dịch vụ vì khóa ngoại. */
+    private static void xoaLichHenVaKhach(String maKH) {
+        try (Connection c = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement ps = c.prepareStatement("DELETE FROM LichHen WHERE maKH=?")) {
+            ps.setString(1, maKH);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+        DaoTestSupport.xoaKhachHang(maKH);
     }
 
     @Test

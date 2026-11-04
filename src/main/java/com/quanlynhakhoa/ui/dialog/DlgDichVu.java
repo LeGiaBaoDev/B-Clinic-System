@@ -79,9 +79,7 @@ public class DlgDichVu extends JDialog {
         private static final String[] TEN_LOAI = {null, LoaiDichVu.DIEU_TRI, LoaiDichVu.VAT_TU, LoaiDichVu.THAM_MY};
         private static final MucThue[] MUC_THUE = {null, MucThue.THUE_0, MucThue.THUE_5, MucThue.THUE_10};
         /** Số khung gợi ý lộ trình tối đa hiện cùng lúc. */
-        static final int SO_GOI_Y = 5;
-        private static final Color NEN_GOI_Y = new Color(0xEEF1F4);
-        private static final Color NEN_GOI_Y_HOVER = new Color(0xE2E8EE);
+        static final int SO_GOI_Y = DlgDichVu.SO_GOI_Y;
 
         final JTextField txtTenDV = new JTextField();
         final JTextField txtDonGia = new JTextField();
@@ -224,89 +222,18 @@ public class DlgDichVu extends JDialog {
             }.execute();
         }
 
-        /**
-         * Lọc gợi ý theo nội dung đang gõ: chứa đoạn đã gõ (không phân biệt hoa thường), bỏ cái giống y hệt
-         * nội dung hiện tại (đã điền rồi thì không gợi ý lại), giữ thứ tự mới nhất trước, lấy tối đa
-         * {@value #SO_GOI_Y}. Ô trống thì gợi ý 5 lộ trình mới nhất.
-         */
+        /** Giữ tên cũ cho test; logic nằm ở {@link DlgDichVu#locGoiY} để trang Sửa dùng chung. */
         static List<String> locGoiY(List<String> daLuu, String dangGo) {
-            String tim = dangGo == null ? "" : dangGo.trim().toLowerCase(Locale.ROOT);
-            List<String> ketQua = new ArrayList<>();
-            for (String loTrinh : daLuu) {
-                if (ketQua.size() == SO_GOI_Y) {
-                    break;
-                }
-                String thuong = loTrinh.trim().toLowerCase(Locale.ROOT);
-                if (thuong.contains(tim) && !thuong.equals(tim)) {
-                    ketQua.add(loTrinh);
-                }
-            }
-            return ketQua;
+            return DlgDichVu.locGoiY(daLuu, dangGo);
         }
 
         /** Vẽ lại các khung gợi ý dưới ô lộ trình theo nội dung hiện tại. */
         private void veGoiY() {
-            pnlGoiY.removeAll();
-            List<String> goiY = locGoiY(loTrinhDaLuu, txaLoTrinh.getText());
-            if (!goiY.isEmpty()) {
-                JLabel nhan = new JLabel("Gợi ý:");
-                nhan.setFont(font(12));
-                nhan.setForeground(MUTED);
-                pnlGoiY.add(nhan);
-            }
-            for (int i = 0; i < goiY.size(); i++) {
-                pnlGoiY.add(khungGoiY(goiY.get(i), i));
-            }
-            pnlGoiY.revalidate();
-            pnlGoiY.repaint();
-        }
-
-        /**
-         * Một khung gợi ý: nền xám nhạt bo góc, nội dung rút về 1 dòng (các buổi nối bằng " · ", quá
-         * 60 ký tự thì cắt "…"); rê chuột xem đủ từng buổi; bấm để điền.
-         */
-        private JComponent khungGoiY(String loTrinh, int thuTu) {
-            String motDong = loTrinh.trim().replaceAll("\\s*\\R\\s*", " · ");
-            JLabel khung = new JLabel(motDong.length() > 60 ? motDong.substring(0, 57) + "…" : motDong) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(getBackground());
-                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            khung.setName("goiY" + thuTu);
-            khung.setFont(font(12));
-            khung.setForeground(TEXT);
-            khung.setBackground(NEN_GOI_Y);
-            khung.setBorder(new EmptyBorder(5, 10, 5, 10));
-            khung.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            khung.setToolTipText("<html>" + loTrinh.replace("&", "&amp;").replace("<", "&lt;")
-                    .replace(">", "&gt;").replace("\n", "<br>") + "<br><i>Bấm để điền</i></html>");
-            khung.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    if (!dangLuu) {
-                        chonGoiY(loTrinh);
-                    }
-                }
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    khung.setBackground(NEN_GOI_Y_HOVER);
-                    khung.repaint();
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    khung.setBackground(NEN_GOI_Y);
-                    khung.repaint();
+            DlgDichVu.veGoiY(pnlGoiY, loTrinhDaLuu, txaLoTrinh.getText(), loTrinh -> {
+                if (!dangLuu) {
+                    chonGoiY(loTrinh);
                 }
             });
-            return khung;
         }
 
         /** Bấm gợi ý: điền nguyên lộ trình vào ô (người dùng vẫn sửa tiếp được). */
@@ -464,12 +391,106 @@ public class DlgDichVu extends JDialog {
         }
     }
 
+    // ===================== Gợi ý lộ trình (dùng chung cho form Thêm và trang Sửa) =====================
+
+    /** Số khung gợi ý lộ trình tối đa hiện cùng lúc. */
+    public static final int SO_GOI_Y = 5;
+    private static final Color NEN_GOI_Y = new Color(0xEEF1F4);
+    private static final Color NEN_GOI_Y_HOVER = new Color(0xE2E8EE);
+
+    /**
+     * Lọc gợi ý theo nội dung đang gõ: chứa đoạn đã gõ (không phân biệt hoa thường), bỏ cái giống y hệt
+     * nội dung hiện tại (đã điền rồi thì không gợi ý lại), giữ thứ tự mới nhất trước, lấy tối đa
+     * {@value #SO_GOI_Y}. Ô trống thì gợi ý 5 lộ trình mới nhất.
+     */
+    public static List<String> locGoiY(List<String> daLuu, String dangGo) {
+        String tim = dangGo == null ? "" : dangGo.trim().toLowerCase(Locale.ROOT);
+        List<String> ketQua = new ArrayList<>();
+        for (String loTrinh : daLuu) {
+            if (ketQua.size() == SO_GOI_Y) {
+                break;
+            }
+            String thuong = loTrinh.trim().toLowerCase(Locale.ROOT);
+            if (thuong.contains(tim) && !thuong.equals(tim)) {
+                ketQua.add(loTrinh);
+            }
+        }
+        return ketQua;
+    }
+
+    /**
+     * Vẽ lại các khung gợi ý vào {@code pnlGoiY} (nên dùng {@link WrapLayout}) theo nội dung đang gõ.
+     *
+     * @param chon gọi khi người dùng bấm một khung, nhận nguyên lộ trình để điền vào ô
+     */
+    public static void veGoiY(JPanel pnlGoiY, List<String> daLuu, String dangGo, Consumer<String> chon) {
+        pnlGoiY.removeAll();
+        List<String> goiY = locGoiY(daLuu, dangGo);
+        if (!goiY.isEmpty()) {
+            JLabel nhan = new JLabel("Gợi ý:");
+            nhan.setFont(font(12));
+            nhan.setForeground(MUTED);
+            pnlGoiY.add(nhan);
+        }
+        for (int i = 0; i < goiY.size(); i++) {
+            pnlGoiY.add(khungGoiY(goiY.get(i), i, chon));
+        }
+        pnlGoiY.revalidate();
+        pnlGoiY.repaint();
+    }
+
+    /**
+     * Một khung gợi ý: nền xám nhạt bo góc, nội dung rút về 1 dòng (các buổi nối bằng " · ", quá
+     * 60 ký tự thì cắt "…"); rê chuột xem đủ từng buổi; bấm để điền.
+     */
+    private static JComponent khungGoiY(String loTrinh, int thuTu, Consumer<String> chon) {
+        String motDong = loTrinh.trim().replaceAll("\\s*\\R\\s*", " · ");
+        JLabel khung = new JLabel(motDong.length() > 60 ? motDong.substring(0, 57) + "…" : motDong) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        khung.setName("goiY" + thuTu);
+        khung.setFont(font(12));
+        khung.setForeground(TEXT);
+        khung.setBackground(NEN_GOI_Y);
+        khung.setBorder(new EmptyBorder(5, 10, 5, 10));
+        khung.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        khung.setToolTipText("<html>" + loTrinh.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\n", "<br>") + "<br><i>Bấm để điền</i></html>");
+        khung.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                chon.accept(loTrinh);
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                khung.setBackground(NEN_GOI_Y_HOVER);
+                khung.repaint();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                khung.setBackground(NEN_GOI_Y);
+                khung.repaint();
+            }
+        });
+        return khung;
+    }
+
     /**
      * FlowLayout tự xuống hàng theo chiều rộng thật của khung chứa. FlowLayout gốc tính chiều cao như
      * chỉ có 1 hàng nên khi nhiều khung gợi ý, hàng thứ hai bị che mất.
      */
-    static final class WrapLayout extends FlowLayout {
-        WrapLayout(int align, int hgap, int vgap) {
+    public static final class WrapLayout extends FlowLayout {
+        public WrapLayout(int align, int hgap, int vgap) {
             super(align, hgap, vgap);
         }
 

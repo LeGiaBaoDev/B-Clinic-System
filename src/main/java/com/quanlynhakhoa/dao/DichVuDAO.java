@@ -110,65 +110,155 @@ public class DichVuDAO {
         return JdbcHelper.one(c, SQL_SELECT + " WHERE dv.maDV=?", this::mapRow, ma);
     }
 
+    /*
+     * Thứ tự khóa ứng dụng khi ghi dịch vụ (giữ cố định để không deadlock với LichHenDAO):
+     *   "BClinic:lich" -> "BClinic:dich-vu" -> (LoaiDichVuDAO) "BClinic:loai-dich-vu" -> MaSinh.
+     * Khóa "BClinic:lich" chặn việc đặt lịch hẹn mới trong lúc đang đổi thời lượng dịch vụ.
+     */
+
     /**
      * UC005: thêm dịch vụ mới, sinh mã DV###, trạng thái "Đang cung cấp". Loại chỉ cần đúng tên
      * (mã có thể null): DB chưa có loại thì tạo theo 3 loại cố định của Bảng 4.5. Chỉ Quản lý.
+     *
+     * @return true nếu đã lưu; sau khi lưu, {@code dv} được gán mã mới và loại đã lưu
+     * @throws BusinessException tên trùng dịch vụ đang hoạt động, không có quyền, loại không tồn tại
      */
     public boolean them(DichVu dv) {
-        return luu(dv, true);
-    }
-
-    public boolean capNhat(DichVu dv) {
-        return luu(dv, false);
-    }
-
-    private boolean luu(DichVu dv, boolean themMoi) {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
-            new DichVu(dv.getMaDV(), dv.getTenDV(), dv.getDonGia(), dv.getThoiLuong(),
-                    dv.getLoTrinhDichVu(), dv.isTrangThai(), dv.getLoaiDichVu());
+            kiemTraDuLieu(dv);
             MaSinh.khoa(c, "BClinic:lich");
             MaSinh.khoa(c, "BClinic:dich-vu");
 
-            if (!themMoi) {
-                DichVu old = layTheoMa(c, dv.getMaDV());
-                yeuCau(old != null, "Dịch vụ không tồn tại.");
-                if (!dv.isTrangThai() || old.getThoiLuong() != dv.getThoiLuong()) {
-                    yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichHen WHERE maDV=?"
-                            + " AND trangThai IN('DA_DAT','DA_DEN')", dv.getMaDV()),
-                            "Cần xử lý các lịch hẹn hiện có trước khi đổi thời lượng hoặc ngừng dịch vụ.");
-                }
-            }
-            // UC005 hậu điều kiện: dịch vụ mới luôn ở trạng thái "Đang cung cấp".
-            boolean dangCungCap = themMoi || dv.isTrangThai();
-            // UC005 5.1 / UC007 5.2: tên không trùng dịch vụ khác đang hoạt động (collation không phân biệt hoa thường).
-            yeuCau(!dangCungCap || !JdbcHelper.exists(c,
-                    "SELECT 1 FROM DichVu WITH(UPDLOCK,HOLDLOCK) WHERE trangThai=1 AND tenDV=? AND maDV<>?",
-                    dv.getTenDV(), themMoi ? "" : dv.getMaDV()),
-                    themMoi ? "Dịch vụ đã tồn tại. Vui lòng đổi tên dịch vụ." : "Tên dịch vụ đã tồn tại.");
-            // UC005 bước 6: mức thuế đi theo phân loại đã chọn.
+            // UC005 bước 5 / luồng 5.1: tên không trùng dịch vụ đang hoạt động.
+            kiemTraTenKhongTrung(c, dv.getTenDV(), null, "Dịch vụ đã tồn tại. Vui lòng đổi tên dịch vụ.");
+            // UC005 bước 6: mức thuế đi theo phân loại đã chọn (lấy hoặc tạo loại trong cùng transaction).
             LoaiDichVu loai = new LoaiDichVuDAO().layHoacTao(c, dv.getLoaiDichVu());
 
-            String ma = themMoi ? MaSinh.maMoi(c, MaSinh.Bang.DICH_VU, null) : dv.getMaDV();
-            int rows = themMoi
-                    ? JdbcHelper.update(c, "INSERT INTO DichVu(maDV,tenDV,maLoaiDV,donGia,thoiLuong,"
-                            + "loTrinhDichVu,trangThai) VALUES(?,?,?,?,?,?,?)",
-                            ma, dv.getTenDV(), loai.getMaLoaiDV(),
-                            BigDecimal.valueOf(dv.getDonGia()), dv.getThoiLuong(),
-                            dv.getLoTrinhDichVu(), dangCungCap)
-                    : JdbcHelper.update(c, "UPDATE DichVu SET tenDV=?,maLoaiDV=?,donGia=?,thoiLuong=?,"
-                            + "loTrinhDichVu=?,trangThai=? WHERE maDV=?",
-                            dv.getTenDV(), loai.getMaLoaiDV(),
-                            BigDecimal.valueOf(dv.getDonGia()), dv.getThoiLuong(),
-                            dv.getLoTrinhDichVu(), dangCungCap, ma);
+            // UC005 bước 7: sinh mã, lưu với trạng thái "Đang cung cấp" (bỏ qua trangThai bên gọi truyền vào).
+            String ma = MaSinh.maMoi(c, MaSinh.Bang.DICH_VU, null);
+            int rows = JdbcHelper.update(c, "INSERT INTO DichVu(maDV,tenDV,maLoaiDV,donGia,thoiLuong,"
+                    + "loTrinhDichVu,trangThai) VALUES(?,?,?,?,?,?,1)",
+                    ma, dv.getTenDV(), loai.getMaLoaiDV(), BigDecimal.valueOf(dv.getDonGia()),
+                    dv.getThoiLuong(), dv.getLoTrinhDichVu());
             if (rows == 1) {
                 dv.setMaDV(ma);
-                dv.setTrangThai(dangCungCap);
+                dv.setTrangThai(true);
                 dv.setLoaiDichVu(loai);
-                NhatKy.ghi(c, themMoi ? "THEM_DICH_VU" : "CAP_NHAT_DICH_VU", ma);
+                NhatKy.ghi(c, "THEM_DICH_VU", ma);
             }
             return rows == 1;
         });
+    }
+
+    /**
+     * UC007: cập nhật tên, đơn giá, thời lượng, phân loại thuế, lộ trình của dịch vụ ĐANG cung cấp.
+     * Chỉ Quản lý. Không đổi trạng thái ở đây (ngừng / mở lại thuộc UC008).
+     *
+     * <p>Dữ liệu lịch sử không bị ảnh hưởng: mỗi dòng ChiTietPhieuKham tự lưu donGia, mucThueGTGT
+     * tại lúc chỉ định (ChiTietPhieuKhamDAO của Bảo), nên đổi giá ở đây chỉ áp dụng cho lượt mới.</p>
+     *
+     * @param dv dịch vụ đã sửa, phải có {@code maDV} của dịch vụ cần cập nhật
+     * @return true nếu đã lưu
+     * @throws BusinessException dịch vụ không tồn tại / đã ngừng, không có thay đổi, tên trùng,
+     *                           đổi thời lượng khi còn lịch hẹn chưa xử lý, không có quyền
+     */
+    public boolean capNhat(DichVu dv) {
+        return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY);
+            kiemTraDuLieu(dv);
+            yeuCau(dv.getMaDV() != null, "Chưa chọn dịch vụ cần cập nhật.");
+            MaSinh.khoa(c, "BClinic:lich");
+            MaSinh.khoa(c, "BClinic:dich-vu");
+
+            // Đọc lại bản đang lưu trong DB (không tin dữ liệu cũ mà UI đang giữ).
+            DichVu cu = layTheoMa(c, dv.getMaDV());
+            yeuCau(cu != null, "Dịch vụ không tồn tại.");
+            // UC007 tiền điều kiện: chỉ sửa dịch vụ đang cung cấp.
+            yeuCau(cu.isTrangThai(),
+                    "Dịch vụ đã ngừng cung cấp. Hãy mở lại cung cấp trước khi cập nhật.");
+
+            // UC007 luồng 4.1: không thay đổi trường nào -> báo, không ghi DB.
+            String thayDoi = moTaThayDoi(cu, dv);
+            yeuCau(!thayDoi.isEmpty(), "Không có thay đổi để lưu.");
+
+            // Ràng buộc của nhóm (giữ theo quyết định Q2): lịch hẹn đã đặt/đã đến được xếp theo
+            // thời lượng cũ, đổi thời lượng lúc này có thể làm chồng lịch -> buộc xử lý lịch trước.
+            if (cu.getThoiLuong() != dv.getThoiLuong()) {
+                yeuCau(!conLichHenChuaXuLy(c, dv.getMaDV()),
+                        "Dịch vụ còn lịch hẹn đã đặt hoặc đang khám. Cần xử lý các lịch hẹn đó trước khi đổi thời lượng.");
+            }
+            // UC007 bước 5 / luồng 5.2: tên không trùng dịch vụ KHÁC đang hoạt động.
+            kiemTraTenKhongTrung(c, dv.getTenDV(), dv.getMaDV(), "Tên dịch vụ đã tồn tại.");
+            LoaiDichVu loai = new LoaiDichVuDAO().layHoacTao(c, dv.getLoaiDichVu());
+
+            // UC007 bước 6: chỉ cập nhật bảng DichVu, không đụng phiếu khám/hóa đơn cũ.
+            int rows = JdbcHelper.update(c, "UPDATE DichVu SET tenDV=?,maLoaiDV=?,donGia=?,thoiLuong=?,"
+                    + "loTrinhDichVu=? WHERE maDV=? AND trangThai=1",
+                    dv.getTenDV(), loai.getMaLoaiDV(), BigDecimal.valueOf(dv.getDonGia()),
+                    dv.getThoiLuong(), dv.getLoTrinhDichVu(), dv.getMaDV());
+            if (rows == 1) {
+                dv.setTrangThai(true);
+                dv.setLoaiDichVu(loai);
+                // Nhật ký ghi rõ trường nào đổi từ giá trị nào sang giá trị nào, để tra soát sau này.
+                NhatKy.ghi(c, "CAP_NHAT_DICH_VU", dv.getMaDV() + ": " + thayDoi);
+            }
+            return rows == 1;
+        });
+    }
+
+    /** Chạy lại validate của entity (Bảng 4.6) phòng trường hợp bên gọi tạo DichVu rỗng rồi set thiếu. */
+    private static void kiemTraDuLieu(DichVu dv) {
+        new DichVu(dv.getMaDV(), dv.getTenDV(), dv.getDonGia(), dv.getThoiLuong(),
+                dv.getLoTrinhDichVu(), true, dv.getLoaiDichVu());
+    }
+
+    /**
+     * Tên không trùng dịch vụ đang hoạt động khác. Collation Vietnamese_CI_AS nên "Cạo vôi" và
+     * "cạo VÔI" bị coi là trùng. UPDLOCK,HOLDLOCK giữ khóa đến hết transaction để hai người lưu
+     * cùng lúc không cùng lọt qua bước kiểm tra.
+     *
+     * @param maBoQua mã dịch vụ đang sửa (null khi thêm mới)
+     */
+    private static void kiemTraTenKhongTrung(Connection c, String ten, String maBoQua, String thongBao)
+            throws SQLException {
+        yeuCau(!JdbcHelper.exists(c,
+                "SELECT 1 FROM DichVu WITH(UPDLOCK,HOLDLOCK) WHERE trangThai=1 AND tenDV=? AND maDV<>?",
+                ten, maBoQua == null ? "" : maBoQua), thongBao);
+    }
+
+    /** Lịch hẹn đã đặt hoặc khách đã đến (đang chờ/đang khám) còn dùng dịch vụ này. */
+    private static boolean conLichHenChuaXuLy(Connection c, String maDV) throws SQLException {
+        return JdbcHelper.exists(c, "SELECT 1 FROM LichHen WHERE maDV=? AND trangThai IN('DA_DAT','DA_DEN')",
+                maDV);
+    }
+
+    /**
+     * So sánh bản cũ và bản mới; trả mô tả các trường thay đổi (rỗng nếu không đổi gì).
+     * Loại dịch vụ so theo tên vì form chỉ biết tên loại (mã có thể null).
+     * Hàm thuần (không truy cập DB), DlgDichVu dùng lại để báo "Không có thay đổi" ngay trên form.
+     */
+    public static String moTaThayDoi(DichVu cu, DichVu moi) {
+        List<String> doi = new ArrayList<>();
+        if (!cu.getTenDV().equals(moi.getTenDV())) {
+            doi.add("tên '" + cu.getTenDV() + "' -> '" + moi.getTenDV() + "'");
+        }
+        if (Double.compare(cu.getDonGia(), moi.getDonGia()) != 0) {
+            // stripTrailingZeros để ghi "300000" thay vì "300000.0".
+            doi.add("đơn giá " + BigDecimal.valueOf(cu.getDonGia()).stripTrailingZeros().toPlainString()
+                    + " -> " + BigDecimal.valueOf(moi.getDonGia()).stripTrailingZeros().toPlainString());
+        }
+        if (cu.getThoiLuong() != moi.getThoiLuong()) {
+            doi.add("thời lượng " + cu.getThoiLuong() + " -> " + moi.getThoiLuong() + " phút");
+        }
+        if (!cu.getLoaiDichVu().getTenLoaiDV().equals(moi.getLoaiDichVu().getTenLoaiDV())) {
+            doi.add("phân loại '" + cu.getLoaiDichVu().getTenLoaiDV() + "' -> '"
+                    + moi.getLoaiDichVu().getTenLoaiDV() + "'");
+        }
+        if (!java.util.Objects.equals(cu.getLoTrinhDichVu(), moi.getLoTrinhDichVu())) {
+            doi.add("lộ trình");
+        }
+        return String.join("; ", doi);
     }
 
     public boolean ngungCungCap(String ma) {
