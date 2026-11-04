@@ -117,7 +117,7 @@ public class FrmMain extends JFrame {
         return card;
     }
 
-    // ── Header — dải màu teal ─────────────────────────────────────────────────
+    // Header
     private JPanel taoHeader() {
         JPanel header = new JPanel() {
             @Override

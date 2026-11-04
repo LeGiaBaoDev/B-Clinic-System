@@ -1,5 +1,9 @@
 package com.quanlynhakhoa.ui.dialog;
 
+import com.quanlynhakhoa.dao.KhachHangDAO;
+import com.quanlynhakhoa.entity.KhachHang;
+import com.quanlynhakhoa.ui.component.LineIcon;
+import com.quanlynhakhoa.ui.component.SurfacePanel;
 import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.GREEN;
 import static com.quanlynhakhoa.ui.component.UiConstants.MUTED;
@@ -8,11 +12,6 @@ import static com.quanlynhakhoa.ui.component.UiConstants.TEAL_LIGHT;
 import static com.quanlynhakhoa.ui.component.UiConstants.TEXT;
 import static com.quanlynhakhoa.ui.component.UiConstants.bold;
 import static com.quanlynhakhoa.ui.component.UiConstants.font;
-
-import com.quanlynhakhoa.dao.KhachHangDAO;
-import com.quanlynhakhoa.entity.KhachHang;
-import com.quanlynhakhoa.ui.component.LineIcon;
-import com.quanlynhakhoa.ui.component.SurfacePanel;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -26,7 +25,6 @@ import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.KeyEvent;
 import java.time.format.DateTimeFormatter;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -38,7 +36,9 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
-/** Hồ sơ khách hàng chỉ đọc, mở từ danh sách bệnh nhân (UC010). */
+/**
+ * Hồ sơ khách hàng chỉ đọc, mở từ danh sách bệnh nhân (UC010).
+ */
 public class DlgHoSoKhachHang extends JDialog {
 
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -81,7 +81,10 @@ public class DlgHoSoKhachHang extends JDialog {
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
     }
 
-    /** Mở hồ sơ; gọi {@code khiCapNhat} khi thông tin được sửa để danh sách tải lại. */
+    /**
+     * Mở hồ sơ; gọi {@code khiCapNhat} khi thông tin được sửa để danh sách tải
+     * lại.
+     */
     public static void hien(Window owner, KhachHangDAO.TomTat tomTat, Runnable khiCapNhat) {
         new DlgHoSoKhachHang(owner, tomTat, khiCapNhat).setVisible(true);
     }

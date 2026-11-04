@@ -1,17 +1,7 @@
 package com.quanlynhakhoa.ui.panel;
 
-import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
-import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
-import static com.quanlynhakhoa.ui.component.UiConstants.GREEN;
-import static com.quanlynhakhoa.ui.component.UiConstants.MUTED;
-import static com.quanlynhakhoa.ui.component.UiConstants.TEAL;
-import static com.quanlynhakhoa.ui.component.UiConstants.TEXT;
-import static com.quanlynhakhoa.ui.component.UiConstants.bold;
-import static com.quanlynhakhoa.ui.component.UiConstants.font;
-
 import com.quanlynhakhoa.dao.LichHenDAO;
 import com.quanlynhakhoa.dao.PhieuKhamDAO;
-import com.quanlynhakhoa.ui.dialog.DlgPhieuTiepNhan;
 import com.quanlynhakhoa.entity.LichHen;
 import com.quanlynhakhoa.entity.PhieuKham;
 import com.quanlynhakhoa.entity.TaiKhoan;
@@ -21,6 +11,15 @@ import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 import com.quanlynhakhoa.ui.component.LineIcon;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
+import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
+import static com.quanlynhakhoa.ui.component.UiConstants.GREEN;
+import static com.quanlynhakhoa.ui.component.UiConstants.MUTED;
+import static com.quanlynhakhoa.ui.component.UiConstants.TEAL;
+import static com.quanlynhakhoa.ui.component.UiConstants.TEXT;
+import static com.quanlynhakhoa.ui.component.UiConstants.bold;
+import static com.quanlynhakhoa.ui.component.UiConstants.font;
+import com.quanlynhakhoa.ui.dialog.DlgPhieuTiepNhan;
 import com.quanlynhakhoa.util.SessionManager;
 import com.toedter.calendar.JDateChooser;
 import java.awt.BasicStroke;
@@ -42,14 +41,13 @@ import java.awt.geom.RoundRectangle2D;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -71,16 +69,10 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
-/**
- * UC021 — Lễ tân tiếp nhận lịch hẹn trong ngày, lập phiếu khám.
- *
- * <p>Transaction nằm trong {@link PhieuKhamDAO#taoTuLichHen(String)}: tạo phiếu
- * {@code CHO_KHAM} và chuyển lịch sang {@code DA_DEN} cùng lúc. UI chỉ đọc dữ liệu
- * và gọi DAO, không tự mở transaction.</p>
- */
 public class PnlTiepNhan extends JPanel {
 
     private record DuLieu(List<LichHen> lichHen, List<PhieuKham> phieuKham) {
+
     }
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -147,13 +139,14 @@ public class PnlTiepNhan extends JPanel {
         taiDuLieu();
     }
 
-    /** Tải lại lịch hẹn/phiếu của ngày đang chọn; dùng khi chuyển trang. */
+    /**
+     * Tải lại lịch hẹn/phiếu của ngày đang chọn; dùng khi chuyển trang.
+     */
     public void lamMoi() {
         taiDuLieu();
     }
 
     // ---------------------------------------------------------------- giao diện
-
     private void initComponents() {
         add(taoDau(), BorderLayout.NORTH);
         add(taoHaiCot(), BorderLayout.CENTER);
@@ -552,7 +545,6 @@ public class PnlTiepNhan extends JPanel {
     }
 
     // ---------------------------------------------------------------- sự kiện
-
     private void addEvents() {
         btnTim.addActionListener(e -> taiDuLieu());
         dpNgay.addPropertyChangeListener("date", e -> {
@@ -602,7 +594,6 @@ public class PnlTiepNhan extends JPanel {
     }
 
     // ---------------------------------------------------------------- dữ liệu
-
     private void taiDuLieu() {
         if (dpNgay.getDate() == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn ngày cần tiếp nhận.",
@@ -637,7 +628,7 @@ public class PnlTiepNhan extends JPanel {
                     dsLich = new ArrayList<>(d.lichHen());
                     dsCho = d.phieuKham().stream()
                             .filter(pk -> pk.getTrangThai() == TrangThaiPhieuKham.CHO_KHAM
-                            || pk.getTrangThai() == TrangThaiPhieuKham.DANG_KHAM)
+                                    || pk.getTrangThai() == TrangThaiPhieuKham.DANG_KHAM)
                             .sorted(Comparator.comparing(PhieuKham::getNgayLap))
                             .toList();
                     locLich();

@@ -2,11 +2,6 @@ package com.quanlynhakhoa.util;
 
 import com.quanlynhakhoa.entity.TaiKhoan;
 
-/**
- * Singleton lưu thông tin tài khoản đang đăng nhập. Mọi màn hình dùng
- * {@code SessionManager.getInstance().getCurrentUser()} để lấy vai trò và phân
- * quyền hiển thị.
- */
 public class SessionManager {
 
     private static final SessionManager INSTANCE = new SessionManager();

@@ -1,5 +1,9 @@
 package com.quanlynhakhoa.ui.panel;
 
+import com.quanlynhakhoa.entity.TaiKhoan;
+import com.quanlynhakhoa.entity.enums.VaiTro;
+import com.quanlynhakhoa.ui.component.LineIcon;
+import com.quanlynhakhoa.ui.component.SurfacePanel;
 import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
 import static com.quanlynhakhoa.ui.component.UiConstants.GREEN;
@@ -10,12 +14,6 @@ import static com.quanlynhakhoa.ui.component.UiConstants.TEAL_LIGHT;
 import static com.quanlynhakhoa.ui.component.UiConstants.TEXT;
 import static com.quanlynhakhoa.ui.component.UiConstants.bold;
 import static com.quanlynhakhoa.ui.component.UiConstants.font;
-
-import com.quanlynhakhoa.entity.TaiKhoan;
-import com.quanlynhakhoa.entity.enums.VaiTro;
-import com.quanlynhakhoa.ui.component.LineIcon;
-import com.quanlynhakhoa.ui.component.SurfacePanel;
-import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -25,7 +23,6 @@ import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.event.MouseAdapter;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -42,17 +39,16 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
-import javax.swing.JTextField;
 import javax.swing.JSeparator;
+import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
-/** Khung màn hình lễ tân, mở panel khách hàng của L1 (UC009–UC011). */
 public class PnlLeTan extends JPanel {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final DateTimeFormatter DONG_HO =
-            DateTimeFormatter.ofPattern("HH:mm · EEEE, dd/MM/yyyy", Locale.of("vi", "VN"));
+    private static final DateTimeFormatter DONG_HO
+            = DateTimeFormatter.ofPattern("HH:mm · EEEE, dd/MM/yyyy", Locale.of("vi", "VN"));
 
     private final TaiKhoan taiKhoan;
     private final Runnable dangXuat;
@@ -223,13 +219,20 @@ public class PnlLeTan extends JPanel {
 
     private static LineIcon.Type iconCua(String ten) {
         return switch (ten) {
-            case "Tổng quan" -> LineIcon.Type.GRID;
-            case "Lịch hẹn" -> LineIcon.Type.CALENDAR;
-            case "Bệnh nhân" -> LineIcon.Type.PEOPLE;
-            case "Tiếp nhận" -> LineIcon.Type.CLIPBOARD;
-            case "Hóa đơn" -> LineIcon.Type.INVOICE;
-            case "Báo cáo" -> LineIcon.Type.CHART;
-            default -> LineIcon.Type.SETTINGS;
+            case "Tổng quan" ->
+                LineIcon.Type.GRID;
+            case "Lịch hẹn" ->
+                LineIcon.Type.CALENDAR;
+            case "Bệnh nhân" ->
+                LineIcon.Type.PEOPLE;
+            case "Tiếp nhận" ->
+                LineIcon.Type.CLIPBOARD;
+            case "Hóa đơn" ->
+                LineIcon.Type.INVOICE;
+            case "Báo cáo" ->
+                LineIcon.Type.CHART;
+            default ->
+                LineIcon.Type.SETTINGS;
         };
     }
 
