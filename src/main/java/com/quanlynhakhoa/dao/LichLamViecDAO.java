@@ -68,7 +68,7 @@ public class LichLamViecDAO {
     }
 
     private boolean luu(LichLamViec ll, boolean themMoi) {
-        return JdbcHelper.transaction(c -> {
+        String maDaLuu = JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:lich");
             new LichLamViec(ll.getMaLLV(), ll.getNgayTruc(), ll.getCaTruc(), ll.getGioBatDau(),
@@ -90,7 +90,11 @@ public class LichLamViecDAO {
                 yeuCau(old != null, "Ca làm việc không tồn tại.");
                 yeuCau(!old.getNgayTruc().isBefore(homNay), "Không thay đổi lịch sử ca trực.");
             }
-            yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichLamViec WHERE maNV=? AND ngayTruc=?"
+            yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichLamViec WITH(UPDLOCK,HOLDLOCK)"
+                    + " WHERE maNV=? AND ngayTruc=? AND caTruc=? AND maLLV<>?",
+                    ll.getNhanVien().getMaNV(), ll.getNgayTruc(), ll.getCaTruc(), ma),
+                    "Nhân viên đã được phân công ca này trong ngày.");
+            yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichLamViec WITH(UPDLOCK,HOLDLOCK) WHERE maNV=? AND ngayTruc=?"
                     + " AND maLLV<>? AND gioBatDau<? AND gioKetThuc>?",
                     ll.getNhanVien().getMaNV(), ll.getNgayTruc(), ma,
                     ll.getGioKetThuc(), ll.getGioBatDau()),
@@ -131,11 +135,15 @@ public class LichLamViecDAO {
                     + "gioKetThuc=?,trangThai=?,ghiChuNghi=? WHERE maLLV=?",
                     args);
             if (rows == 1) {
-                ll.setMaLLV(ma);
                 NhatKy.ghi(c, "PHAN_CONG_LICH", ma);
             }
-            return rows == 1;
+            return rows == 1 ? ma : null;
         });
+        // Chỉ cấp mã cho đối tượng sau khi cả lịch và nhật ký đã commit thành công.
+        if (maDaLuu != null) {
+            ll.setMaLLV(maDaLuu);
+        }
+        return maDaLuu != null;
     }
 
     public boolean duyetNghiPhep(String ma, String lyDo) {
