@@ -1,3 +1,11 @@
+## Hồ sơ chốt kỹ thuật H2 (04/11/2026)
+
+- [Báo cáo và phiếu kiểm thử chéo](../../docs/H2_TEST_REPORT.md)
+- [Hợp đồng API/bàn giao Long L2](../../docs/H2_HANDOFF.md)
+- [Nội dung PR chuẩn bị sẵn](../../docs/H2_PR.md)
+
+165 test đạt trong tập hồi quy H2 (chỉ chạy test, không đóng gói JAR/RAR); H1IntegrationTest timeout cũ được loại rõ ràng. Các mục bên dưới lưu chi tiết theo từng lượt triển khai; luồng hiện hành xem hồ sơ bàn giao. Chưa đánh dấu kiểm thử chéo hoặc PR merge đã hoàn tất.
+
 # Kiểm thử H1 — Tài khoản và nhân viên
 
 Chạy test thông thường, không cần SQL Server:
@@ -101,7 +109,7 @@ Checklist kiểm thử chéo UC013 (chưa nghiệm thu thủ công):
 | H2-M06 | Đăng nhập Nha sĩ/Lễ tân | Không có chức năng phân công trong menu; DAO vẫn kiểm tra quyền |
 | H2-M07 | Thu nhỏ cửa sổ về 1366×768 hoặc kích thước tối thiểu | Các nút dùng được, form cuộn dọc, bảng cuộn ngang khi cần |
 
-UC012 xem lịch cá nhân, UC014 đổi ca và UC015 nghỉ phép chưa thuộc phần UI đã triển khai ở lượt này.
+Ghi chú lịch sử của lượt UC013 ban đầu: UC012/014/015 khi đó chưa triển khai UI. Hiện cả UC012–015 đã có; xem hồ sơ chốt H2 ở đầu tài liệu.
 
 ### Cập nhật giao diện lịch theo ảnh tham chiếu
 
@@ -178,3 +186,50 @@ Checklist kiểm thử chéo (chưa nghiệm thu thủ công):
 | H2-M18 | Nha sĩ/Lễ tân mở Lịch của tôi | Không có nút Đổi ca; nhận thông báo riêng nếu ca đã đổi |
 
 Form Đổi ca có bộ lọc riêng cho nguồn và đích: chức vụ, ca, ngày, tên/mã NV (không phân biệt dấu/hoa thường). Nhấn Lọc hoặc Enter ở ô tìm; Xóa lọc để trở lại. Ca đích luôn giữ giới hạn cùng chức vụ và khác nhân viên nguồn; không có kết quả sẽ khóa nút đổi ca.
+
+## UC015 — Nhân viên xin nghỉ, Quản lý tiếp nhận và xử lý
+
+Luồng hiện hành theo yêu cầu điều chỉnh ngày 04/11/2026; thay thế luồng Quản lý tự nhập yêu cầu nghỉ trước đây.
+
+1. Nhân viên (Nha sĩ/Lễ tân, cả Quản lý có ca cá nhân) vào **Lịch của tôi → Xin nghỉ phép / Đơn của tôi**. Chọn ca đã được phân công, nhập lý do 1–255 ký tự rồi gửi. Hệ thống lưu đơn **Chờ duyệt**, chưa đổi ca và chưa chặn đặt lịch hẹn.
+2. Quản lý vào **Lịch làm việc → Đơn nghỉ phép**. Mặc định xem Chờ duyệt; có thể lọc theo trạng thái, ngày nghỉ, tên/mã nhân viên hoặc mã đơn. Chọn đơn để xem lý do nhân viên đã gửi (chỉ đọc).
+3. **Duyệt**: chọn đơn để tự động kiểm tra lịch ảnh hưởng. Nếu còn lịch hẹn Đã đặt/Đã đến, phối hợp Lễ tân dời/hủy rồi kiểm tra lại. Sau xác nhận, đơn và ca cập nhật cùng transaction; chỉ lúc này ca chuyển Nghỉ phép, hiển thị vàng. Hệ thống kiểm tra lại khi lưu để chặn lịch hẹn mới phát sinh.
+4. **Từ chối**: nhập lý do từ chối 1–255 ký tự, xác nhận. Đơn lưu người/thời điểm/lý do xử lý; ca giữ nguyên. Đơn có ca đã đổi hoặc kết thúc vẫn có thể từ chối để đóng yêu cầu cũ.
+5. Nhân viên mở lại hoặc làm mới hộp đơn để xem kết quả, người xử lý, thời điểm và lý do từ chối. Có thể gửi lại sau khi bị từ chối nếu ca vẫn hợp lệ. Mỗi ca chỉ có một đơn chờ.
+
+Đơn lưu bản chụp ngày/ca lúc gửi. Nếu ca bị dời/hoán đổi sau đó, Quản lý không được duyệt nhầm ca mới; cần từ chối đơn cũ và nhân viên gửi lại. Nhân viên không gửi hộ hoặc xem đơn người khác; Quản lý cũng chỉ thấy đơn của mình ở hộp cá nhân. Quyết định trên hộp quản lý được kiểm tra quyền trong DB, không dựa vào nút UI.
+
+Flyway V3 thêm bảng DonNghiPhep và ràng buộc; không sửa V1/V2, không tạo đơn giả cho ca nghỉ cũ. Khởi động lại ứng dụng để migration chạy trước khi thử chức năng. Test dùng DB UUID riêng, không migrate DB ứng dụng.
+
+```powershell
+mvn '-Dtest=DlgNghiPhepTest' test
+mvn '-Dbclinic.integration=true' '-Dtest=H2DaoIntegrationTest' test
+```
+
+Checklist kiểm thử chéo (chưa nghiệm thu thủ công):
+
+| Mã | Thao tác | Kết quả mong đợi |
+|---|---|---|
+| H2-M19 | Nha sĩ gửi đơn từ Lịch của tôi | Đơn chờ duyệt, ca giữ nguyên; xuất hiện trong hộp quản lý |
+| H2-M20 | Quản lý kiểm tra ca có lịch Đã đặt/Đã đến | Hiện danh sách lịch ảnh hưởng, khóa Duyệt; sau xử lý lịch hẹn kiểm tra lại được |
+| H2-M21 | Nhập lý do từ chối rồi xác nhận | Ca giữ nguyên; nhân viên thấy kết quả và lý do; có thể gửi lại |
+| H2-M22 | Ca bị dời sau khi nhân viên gửi đơn | Duyệt bị chặn; từ chối đơn cũ được |
+| H2-M23 | Lý do rỗng, >255; ca kết thúc; gửi trùng đơn chờ | Không cho gửi/xử lý sai |
+| H2-M24 | Nha sĩ/Lễ tân mở hộp cá nhân | Chỉ thấy đơn bản thân; không có nút duyệt/từ chối |
+| H2-M25 | Duyệt nghỉ sáng rồi thử đặt khám sáng/chiều | Sáng bị chặn; chiều vẫn được nếu có ca và khung giờ hợp lệ |
+| H2-M26 | Hai người duyệt đồng thời / hủy xác nhận | Chỉ một quyết định được lưu / hủy không ghi dữ liệu |
+| H2-M27 | Quản lý gửi đơn của bản thân | Có trong hộp cá nhân và hộp tiếp nhận; dữ liệu tách theo quyền xem |
+
+API ca trực bàn giao cho Long L2: lịch DA_PHAN_CONG mới dùng để đặt lịch, NGHI_PHEP không dùng; dùng khóa nghiệp vụ BClinic:lich trong transaction đặt/dời lịch. Đơn CHO_DUYET không đổi trạng thái ca. H2 integration đã gọi LichHenDAO.them thật để kiểm chứng hợp đồng này; không đổi API/file thuộc Long. API duyệt trực tiếp trên ca cũ bị chặn, dùng DonNghiPhepDAO.duyet(maDon)/tuChoi(maDon,lyDo).
+
+### Sửa hiển thị đơn sau khi gửi (04/11/2026)
+
+Sau khi gửi thành công, hộp cá nhân xóa bộ lọc ngày/tìm kiếm/trạng thái, tải lại và tự chọn đúng đơn vừa gửi với trạng thái Chờ duyệt. Nút Làm mới ở hộp cá nhân trả về tất cả đơn của người đang đăng nhập; hộp quản lý vẫn giữ bộ lọc khi làm mới. Bộ lọc ngày có nhãn Ngày nghỉ, không lọc theo ngày gửi. Nếu đơn bị bộ lọc che, thông báo nêu rõ có đơn nhưng không khớp bộ lọc.
+
+Kiểm thử hồi quy: gửi khi đang lọc ngày khác + từ khóa không khớp + trạng thái Từ chối; đơn mới vẫn hiện Chờ duyệt và được chọn. Làm mới hộp cá nhân khi lọc ngày không khớp phải hiện lại đơn đã gửi.
+
+### Bố cục và kiểm tra tự động UC015 (04/11/2026)
+
+Nhân viên: khối Tạo đơn ở trên (ca hợp lệ, lý do, gửi); bên dưới là Đơn nghỉ phép của tôi, lọc trạng thái/ngày nghỉ, tìm mã đơn, Xóa lọc và Làm mới. Màu trạng thái: chờ duyệt vàng, đã duyệt xanh, từ chối đỏ nhạt; nền/thẻ/nút theo UiConstants. Các quy tắc gửi đơn và quyền xem giữ nguyên.
+
+Quản lý: chọn đơn chờ là tự kiểm tra lịch hẹn bằng SwingWorker, bỏ nút kiểm tra thủ công. Trong lúc kiểm tra khóa hành động; chỉ bật Duyệt khi kiểm tra thành công và không có lịch ảnh hưởng. Lỗi/ca đã thay đổi vẫn cho từ chối kèm lý do. Chọn lại đơn hoặc Làm mới rồi chọn đơn để kiểm tra lại sau khi xử lý lịch hẹn. Khi duyệt, DAO tiếp tục revalidate trong transaction.

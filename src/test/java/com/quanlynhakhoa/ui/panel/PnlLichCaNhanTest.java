@@ -44,6 +44,7 @@ class PnlLichCaNhanTest {
             assertEquals("Nghỉ phép",table().getValueAt(0,5));
             assertFalse(table().isCellEditable(0,0));
             assertNull(find(panel,"moPhanCa")); assertNull(find(panel,"luuPhanCong"));
+            assertNull(find(panel,"moDoiCa"));assertNull(find(panel,"moNghiPhep"));
             assertNull(find(panel,"locNhanVienLich")); assertNull(find(panel,"locChucVuLich"));
             assertNotNull(find(panel,"ca-LLV00001")); assertNull(find(panel,"ca-LLV00002"));
         });
