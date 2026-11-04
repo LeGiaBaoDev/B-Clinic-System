@@ -22,7 +22,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
-/** UC013: Quản lý phân công ca; mọi truy cập dữ liệu chạy ngoài EDT. */
 public class PnlLichLamViec extends JPanel {
     private static final Logger LOG = Logger.getLogger(PnlLichLamViec.class.getName());
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");

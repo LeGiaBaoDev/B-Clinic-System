@@ -36,9 +36,6 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
-/**
- * Hồ sơ khách hàng chỉ đọc, mở từ danh sách bệnh nhân (UC010).
- */
 public class DlgHoSoKhachHang extends JDialog {
 
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -158,10 +155,6 @@ public class DlgHoSoKhachHang extends JDialog {
 
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
-        JLabel note = new JLabel("Hồ sơ bệnh án chỉ thêm mới, không sửa dữ liệu điều trị.");
-        note.setFont(font(10));
-        note.setForeground(MUTED);
-        footer.add(note, BorderLayout.WEST);
         JButton dong = new JButton("Đóng");
         dong.setFont(bold(13));
         dong.setBackground(TEAL);
@@ -266,10 +259,6 @@ public class DlgHoSoKhachHang extends JDialog {
         dong.add(nhan, BorderLayout.WEST);
         dong.add(lblLichTab, BorderLayout.CENTER);
         card.add(dong, BorderLayout.CENTER);
-        JLabel note = new JLabel("Chi tiết lịch hẹn và tái khám thuộc giai đoạn L2.");
-        note.setFont(font(10));
-        note.setForeground(MUTED);
-        card.add(note, BorderLayout.SOUTH);
         return card;
     }
 
@@ -290,11 +279,6 @@ public class DlgHoSoKhachHang extends JDialog {
         dong.add(nhan, BorderLayout.WEST);
         dong.add(lblHoSoTab, BorderLayout.CENTER);
         card.add(dong, BorderLayout.CENTER);
-        JLabel note = new JLabel("Hồ sơ được tạo tự động khi thêm bệnh nhân. "
-                + "Chẩn đoán và đơn điều trị do nha sĩ ghi nhận khi khám.");
-        note.setFont(font(10));
-        note.setForeground(MUTED);
-        card.add(note, BorderLayout.SOUTH);
         return card;
     }
 

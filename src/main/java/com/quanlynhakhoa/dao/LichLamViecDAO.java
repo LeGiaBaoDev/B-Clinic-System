@@ -31,7 +31,7 @@ public class LichLamViecDAO {
         });
     }
 
-    /** UC012: luôn lấy mã nhân viên từ tài khoản còn hoạt động trong DB, gồm cả Quản lý. */
+    
     public List<LichLamViec> layLichCaNhan() {
         return JdbcHelper.doc(c -> {
             Actor actor=PhanQuyen.quyen(c);
@@ -77,7 +77,7 @@ public class LichLamViecDAO {
         return luu(ll, false);
     }
 
-    /** UC014: caDich khác null là hoán đổi; ngược lại dời caNguon sang ngày/ca mới. */
+    
     public record YeuCauDoiCa(LichLamViec caNguon,LichLamViec caDich,LocalDate ngayMoi,CaTruc caMoi) { }
     public record ThongBaoDoiCa(String maTK,LocalDateTime thoiDiem,String noiDung) { }
     /** Thông báo cá nhân lấy từ thay đổi đã commit; không trả phần lịch của người hoán đổi còn lại. */

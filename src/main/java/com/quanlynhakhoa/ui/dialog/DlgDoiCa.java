@@ -18,7 +18,6 @@ import java.util.function.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-/** UC014: kiểm tra trước xác nhận, kiểm tra lại trong transaction lúc lưu. */
 public class DlgDoiCa extends JDialog {
     public DlgDoiCa(Window owner,List<LichLamViec> lich,List<TaiKhoan> accounts,Runnable daLuu) {
         super(owner,"Đổi ca làm việc",ModalityType.APPLICATION_MODAL);
