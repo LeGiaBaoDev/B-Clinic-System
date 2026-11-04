@@ -79,12 +79,11 @@ class PnlNhanVienTest {
             table.getRowSorter().toggleSortOrder(0);
             table.getRowSorter().toggleSortOrder(0);
             table.setRowSelectionInterval(0, 0);
-            String detail = ((JLabel) tim("chiTietNhanVien")).getText();
-            assertTrue(detail.contains("Bình Nha sĩ"));
-            assertTrue(detail.contains("binh@example.com"));
-            assertTrue(detail.contains("Đã khóa"));
+            assertEquals("Bình Nha sĩ", ((JLabel) tim("chiTietNhanVien")).getText());
+            assertTrue(((JLabel) tim("chiTietMetaNhanVien")).getText().contains("binh@example.com"));
+            assertEquals("Đã khóa", ((JLabel) tim("chiTietTrangThaiNhanVien")).getText());
             table.setRowSelectionInterval(1, 1);
-            assertTrue(((JLabel) tim("chiTietNhanVien")).getText().contains("An &lt;Quản lý&gt;"));
+            assertEquals("An <Quản lý>", ((JLabel) tim("chiTietNhanVien")).getText());
         });
     }
 

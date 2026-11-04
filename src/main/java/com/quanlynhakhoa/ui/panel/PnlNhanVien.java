@@ -43,6 +43,27 @@ public class PnlNhanVien extends JPanel {
     private boolean dangTai;
     private final JLabel lblKetQua = new JLabel("Chưa tải danh sách nhân viên.");
     private final JLabel lblChiTiet = new JLabel("Chọn một nhân viên để xem thông tin chi tiết.");
+    private final JLabel lblMaNV = new JLabel(" ");
+    private final JLabel lblGioiTinh = new JLabel(" ");
+    private final JLabel lblSdt = new JLabel(" ");
+    private final JLabel lblEmail = new JLabel(" ");
+    private final JLabel lblChuyenMon = new JLabel(" ");
+    private final JLabel lblTaiKhoan = new JLabel(" ");
+    private final JLabel lblVaiTro = new JLabel(" ");
+    private final TrangThaiPill lblTrangThai = new TrangThaiPill();
+    private final JLabel lblAvatar = new JLabel("?", SwingConstants.CENTER) {
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(TEAL_LIGHT);
+            int duongKinh = Math.min(getWidth(), getHeight());
+            g2.fillOval((getWidth() - duongKinh) / 2, (getHeight() - duongKinh) / 2,
+                    duongKinh, duongKinh);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    };
     private final DefaultTableModel modelNhanVien = new DefaultTableModel(new String[]{
         "Mã NV", "Họ tên", "Số điện thoại", "Chuyên môn", "Tài khoản", "Vai trò", "Trạng thái"
     }, 0) {
@@ -71,17 +92,7 @@ public class PnlNhanVien extends JPanel {
         setBorder(new EmptyBorder(24, 24, 24, 24));
         add(taoThanhTimKiem(), BorderLayout.NORTH);
         add(taoDanhSach(), BorderLayout.CENTER);
-        SurfacePanel chiTiet = new SurfacePanel(new BorderLayout());
-        chiTiet.setBorder(new EmptyBorder(16, 18, 16, 18));
-        lblChiTiet.setName("chiTietNhanVien");
-        lblChiTiet.setFont(font(13));
-        lblChiTiet.setForeground(TEXT);
-        chiTiet.add(lblChiTiet);
-        btnCapNhat.setName("capNhatNhanVien");
-        btnCapNhat.setFont(bold(12));
-        btnCapNhat.setEnabled(false);
-        chiTiet.add(btnCapNhat, BorderLayout.EAST);
-        add(chiTiet, BorderLayout.SOUTH);
+        add(taoTheChiTiet(), BorderLayout.SOUTH);
 
         btnTimKiem.addActionListener(e -> lamMoiDuLieu());
         btnThem.addActionListener(e -> moThemNhanVien());
@@ -110,6 +121,114 @@ public class PnlNhanVien extends JPanel {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) { lamMoiDuLieu(); }
         });
+    }
+
+    private JPanel taoTheChiTiet() {
+        SurfacePanel card = new SurfacePanel(new BorderLayout(0, 12));
+        card.setBorder(new EmptyBorder(14, 18, 16, 18));
+
+        JPanel top = new JPanel(new BorderLayout(16, 0));
+        top.setOpaque(false);
+        lblAvatar.setFont(bold(16));
+        lblAvatar.setForeground(TEAL);
+        lblAvatar.setPreferredSize(new Dimension(54, 54));
+        top.add(lblAvatar, BorderLayout.WEST);
+
+        JPanel ten = new JPanel();
+        ten.setOpaque(false);
+        ten.setLayout(new BoxLayout(ten, BoxLayout.Y_AXIS));
+        JPanel dongTen = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        dongTen.setOpaque(false);
+        dongTen.setAlignmentX(LEFT_ALIGNMENT);
+        lblChiTiet.setName("chiTietNhanVien");
+        lblChiTiet.setFont(bold(17));
+        lblChiTiet.setForeground(TEXT);
+        lblMaNV.setFont(font(11));
+        lblMaNV.setForeground(MUTED);
+        dongTen.add(lblChiTiet);
+        dongTen.add(Box.createHorizontalStrut(8));
+        dongTen.add(lblMaNV);
+        JLabel phu = new JLabel("Thông tin nhân viên và tài khoản");
+        phu.setFont(font(10));
+        phu.setForeground(MUTED);
+        ten.add(dongTen);
+        ten.add(Box.createVerticalStrut(4));
+        ten.add(phu);
+        top.add(ten, BorderLayout.CENTER);
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        actions.setOpaque(false);
+        lblTrangThai.setName("chiTietTrangThaiNhanVien");
+        lblTrangThai.setFont(bold(10));
+        btnCapNhat.setName("capNhatNhanVien");
+        btnCapNhat.setFont(bold(12));
+        btnCapNhat.setBackground(Color.WHITE);
+        btnCapNhat.setForeground(TEXT);
+        btnCapNhat.setPreferredSize(new Dimension(140, 36));
+        btnCapNhat.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnCapNhat.setEnabled(false);
+        actions.add(lblTrangThai);
+        actions.add(btnCapNhat);
+        top.add(actions, BorderLayout.EAST);
+
+        JPanel body = new JPanel();
+        body.setOpaque(false);
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        JPanel chinh = new JPanel(new GridLayout(1, 3, 16, 0));
+        chinh.setOpaque(false);
+        chinh.setAlignmentX(LEFT_ALIGNMENT);
+        chinh.add(khoi("Giới tính", lblGioiTinh));
+        chinh.add(khoi("Số điện thoại", lblSdt));
+        chinh.add(khoi("Email", lblEmail));
+        body.add(chinh);
+        body.add(Box.createVerticalStrut(12));
+
+        JPanel phuInfo = new JPanel();
+        phuInfo.setOpaque(false);
+        phuInfo.setLayout(new BoxLayout(phuInfo, BoxLayout.Y_AXIS));
+        phuInfo.setAlignmentX(LEFT_ALIGNMENT);
+        phuInfo.add(dongPhu("Chuyên môn", lblChuyenMon));
+        phuInfo.add(Box.createVerticalStrut(4));
+        phuInfo.add(dongPhu("Tài khoản", lblTaiKhoan));
+        phuInfo.add(Box.createVerticalStrut(4));
+        phuInfo.add(dongPhu("Vai trò", lblVaiTro));
+        body.add(phuInfo);
+
+        card.add(top, BorderLayout.NORTH);
+        card.add(body, BorderLayout.CENTER);
+        return card;
+    }
+
+    private static JPanel khoi(String nhan, JLabel giaTri) {
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        JLabel lbl = new JLabel(nhan);
+        lbl.setFont(font(10));
+        lbl.setForeground(MUTED);
+        lbl.setAlignmentX(LEFT_ALIGNMENT);
+        giaTri.setFont(bold(12));
+        giaTri.setForeground(TEXT);
+        giaTri.setAlignmentX(LEFT_ALIGNMENT);
+        p.add(lbl);
+        p.add(Box.createVerticalStrut(4));
+        p.add(giaTri);
+        return p;
+    }
+
+    private static JPanel dongPhu(String nhan, JLabel giaTri) {
+        JPanel p = new JPanel(new BorderLayout(8, 0));
+        p.setOpaque(false);
+        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+        JLabel lbl = new JLabel(nhan);
+        lbl.setFont(font(10));
+        lbl.setForeground(MUTED);
+        lbl.setPreferredSize(new Dimension(105, 18));
+        giaTri.setFont(font(11));
+        giaTri.setForeground(TEXT);
+        p.add(lbl, BorderLayout.WEST);
+        p.add(giaTri, BorderLayout.CENTER);
+        return p;
     }
 
     private JPanel taoThanhTimKiem() {
@@ -330,20 +449,41 @@ public class PnlNhanVien extends JPanel {
         nhanVien = List.of();
         taiKhoanTheoNhanVien = Map.of();
         lblChiTiet.setText("Chọn một nhân viên để xem thông tin chi tiết.");
+        lblMaNV.setText(" ");
+        lblGioiTinh.setText(" ");
+        lblSdt.setText(" ");
+        lblEmail.setText(" ");
+        lblChuyenMon.setText(" ");
+        lblTaiKhoan.setText(" ");
+        lblVaiTro.setText(" ");
+        lblAvatar.setText("?");
+        lblTrangThai.set("", MUTED, new Color(0xF0F2F5));
     }
 
     private void hienChiTiet() {
         int viewRow = tblNhanVien.getSelectedRow();
-        if (viewRow < 0) { return; }
+        if (viewRow < 0) {
+            return;
+        }
         NhanVien nv = nhanVien.get(tblNhanVien.convertRowIndexToModel(viewRow));
         TaiKhoan tk = taiKhoanTheoNhanVien.get(nv.getMaNV());
-        lblChiTiet.setText("<html><b>" + html(nv.getHoTenNV()) + " · " + html(nv.getMaNV())
-                + "</b><br>Giới tính: " + (nv.isGioiTinh() ? "Nam" : "Nữ")
-                + " &nbsp; | &nbsp; SĐT: " + html(nv.getSdt()) + " &nbsp; | &nbsp; Email: " + html(nv.getEmail())
-                + "<br>Chuyên môn: " + html(nv.getChuyenMon())
-                + "<br>Tài khoản: " + (tk == null ? "Chưa có" : html(tk.getTenTK()))
-                + " &nbsp; | &nbsp; Vai trò: " + (tk == null ? "—" : tenVaiTro(tk.getVaiTro()))
-                + " &nbsp; | &nbsp; Trạng thái: " + trangThai(tk) + "</html>");
+        lblChiTiet.setText(nv.getHoTenNV());
+        lblMaNV.setText(nv.getMaNV());
+        lblGioiTinh.setText(nv.isGioiTinh() ? "Nam" : "Nữ");
+        lblSdt.setText(nv.getSdt());
+        lblEmail.setName("chiTietMetaNhanVien");
+        lblEmail.setText(nv.getEmail());
+        lblChuyenMon.setText(nv.getChuyenMon());
+        lblTaiKhoan.setText(tk == null ? "Chưa có" : tk.getTenTK());
+        lblVaiTro.setText(tk == null ? "—" : tenVaiTro(tk.getVaiTro()));
+        lblAvatar.setText(vietTat(nv.getHoTenNV()));
+        if (tk == null) {
+            lblTrangThai.set("Chưa có tài khoản", MUTED, new Color(0xF0F2F5));
+        } else if (tk.isTrangThai()) {
+            lblTrangThai.set("Hoạt động", GREEN, new Color(0xE7F7EF));
+        } else {
+            lblTrangThai.set("Đã khóa", new Color(0xC0392B), new Color(0xFDECEA));
+        }
     }
 
     private static String cheSdt(String sdt) {
@@ -356,6 +496,46 @@ public class PnlNhanVien extends JPanel {
 
     private static String trangThai(TaiKhoan tk) {
         return tk == null ? "Chưa có tài khoản" : tk.isTrangThai() ? "Hoạt động" : "Đã khóa";
+    }
+
+    private static String vietTat(String ten) {
+        String[] phan = ten == null ? new String[0] : ten.trim().split("\\s+");
+        if (phan.length == 0) {
+            return "?";
+        }
+        if (phan.length == 1) {
+            return phan[0].substring(0, Math.min(2, phan[0].length())).toUpperCase(java.util.Locale.ROOT);
+        }
+        return (phan[0].charAt(0) + "" + phan[phan.length - 1].charAt(0))
+                .toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private static final class TrangThaiPill extends JLabel {
+
+        private Color nen = new Color(0xF0F2F5);
+
+        TrangThaiPill() {
+            super("", SwingConstants.CENTER);
+            setOpaque(false);
+            setBorder(new EmptyBorder(4, 10, 4, 10));
+        }
+
+        void set(String text, Color chu, Color nen) {
+            setText(text);
+            setForeground(chu);
+            this.nen = nen;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(nen);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+            g2.dispose();
+            super.paintComponent(g);
+        }
     }
 
     private static String tenVaiTro(VaiTro vaiTro) {
