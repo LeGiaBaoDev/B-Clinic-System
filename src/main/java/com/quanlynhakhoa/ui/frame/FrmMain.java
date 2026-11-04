@@ -3,6 +3,8 @@ package com.quanlynhakhoa.ui.frame;
 import com.quanlynhakhoa.dao.NhatKyHeThongDAO;
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
+import com.quanlynhakhoa.ui.panel.PnlLeTan;
+import com.quanlynhakhoa.ui.panel.PnlLichNhaSi;
 import com.quanlynhakhoa.ui.panel.PnlQuanLy;
 import com.quanlynhakhoa.util.SessionManager;
 import java.awt.*;
@@ -38,6 +40,18 @@ public class FrmMain extends JFrame {
         khoiTaoFrame();
         if (taiKhoan.getVaiTro() == VaiTro.QUANLY) {
             setContentPane(new PnlQuanLy(taiKhoan, this::yeuCauDangXuat));
+            setMinimumSize(new Dimension(1100, 680));
+            Rectangle available = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            setSize(Math.min(1440, available.width - 32), Math.min(900, available.height - 24));
+            setLocationRelativeTo(null);
+        } else if (taiKhoan.getVaiTro() == VaiTro.NHASI) {
+            setContentPane(new PnlLichNhaSi(taiKhoan, this::yeuCauDangXuat));
+            setMinimumSize(new Dimension(1240, 720));
+            Rectangle available = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            setSize(Math.min(1440, available.width - 32), Math.min(900, available.height - 24));
+            setLocationRelativeTo(null);
+        } else if (taiKhoan.getVaiTro() == VaiTro.LETAN) {
+            setContentPane(new PnlLeTan(taiKhoan, this::yeuCauDangXuat));
             setMinimumSize(new Dimension(1100, 680));
             Rectangle available = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
             setSize(Math.min(1440, available.width - 32), Math.min(900, available.height - 24));
@@ -144,7 +158,7 @@ public class FrmMain extends JFrame {
         return card;
     }
 
-    // ── Header — dải màu teal ─────────────────────────────────────────────────
+    // Header
     private JPanel taoHeader() {
         JPanel header = new JPanel() {
             @Override

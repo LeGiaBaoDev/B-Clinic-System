@@ -326,8 +326,8 @@ public class DlgQuenMatKhau extends JDialog {
         btnToggle.setPreferredSize(new Dimension(36, 36));
 
         if (laMk1) {
-            btnToggle1 = btnToggle; 
-        }else {
+            btnToggle1 = btnToggle;
+        } else {
             btnToggle2 = btnToggle;
         }
 

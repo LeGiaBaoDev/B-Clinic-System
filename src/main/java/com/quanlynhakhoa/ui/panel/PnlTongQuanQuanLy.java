@@ -31,10 +31,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 
-/**
- * Tổng quan quản lý, tải dữ liệu DAO bằng SwingWorker; không chạy truy vấn trên
- * EDT.
- */
 public class PnlTongQuanQuanLy extends JPanel {
 
     private static final Logger LOG = Logger.getLogger(PnlTongQuanQuanLy.class.getName());
