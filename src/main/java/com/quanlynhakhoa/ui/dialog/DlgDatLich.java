@@ -31,9 +31,12 @@ import java.awt.Window;
 import java.awt.event.KeyEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.util.Date;
+import com.toedter.calendar.JDateChooser;
 import java.util.List;
 import java.util.Objects;
 import javax.swing.BorderFactory;
@@ -59,13 +62,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-/**
- * UC016 đặt lịch hẹn và UC019 dời lịch (cùng một luồng chọn khung giờ trống).
- *
- * <p>Ba bước: (1) chọn bệnh nhân, dịch vụ, nha sĩ, ngày; (2) xem khung giờ trống rồi chọn;
- * (3) xác nhận. Khi dời lịch, bệnh nhân và dịch vụ bị khóa, khung giờ cũ của chính lịch đó vẫn được gợi ý.
- * Chỉ gọi DAO; mọi truy vấn chạy trong {@link SwingWorker}.</p>
- */
 public class DlgDatLich extends JDialog {
 
     private enum CheDo { DAT_MOI, DOI_LICH }
@@ -79,6 +75,7 @@ public class DlgDatLich extends JDialog {
     private final CheDo cheDo;
     private final LichHen lichCu;
     private final KhachHang khachChonSan;
+    private final LocalDate ngayMacDinh;
     private final LichHenDAO lichHenDAO = new LichHenDAO();
     private final KhachHangDAO khachHangDAO = new KhachHangDAO();
 
@@ -90,7 +87,7 @@ public class DlgDatLich extends JDialog {
     private final JLabel lblThongBaoBenhNhan = new JLabel(" ");
     private final JComboBox<DichVu> cboDichVu = new JComboBox<>();
     private final JComboBox<NhanVien> cboNhaSi = new JComboBox<>();
-    private final JTextField txtNgay = new JTextField();
+    private final JDateChooser dpNgay = new JDateChooser();
     private final JTextField txtGhiChu = new JTextField();
     private final JButton btnTimKhung = new JButton("Tìm khung giờ trống");
     private final DefaultListModel<LocalDateTime> modelKhung = new DefaultListModel<>();
@@ -104,11 +101,13 @@ public class DlgDatLich extends JDialog {
     private SwingWorker<List<KhachHang>, Void> workerBenhNhan;
     private LichHen ketQua;
 
-    private DlgDatLich(Window owner, CheDo cheDo, LichHen lichCu, KhachHang khachChonSan) {
+    private DlgDatLich(Window owner, CheDo cheDo, LichHen lichCu, KhachHang khachChonSan,
+            LocalDate ngayMacDinh) {
         super(owner, cheDo == CheDo.DAT_MOI ? "Đặt lịch hẹn" : "Dời lịch hẹn", ModalityType.APPLICATION_MODAL);
         this.cheDo = cheDo;
         this.lichCu = lichCu;
         this.khachChonSan = khachChonSan;
+        this.ngayMacDinh = ngayMacDinh;
         khoiTao();
         addEvents();
         napBanDau();
@@ -117,24 +116,28 @@ public class DlgDatLich extends JDialog {
         setLocationRelativeTo(owner);
     }
 
-    /** UC016: mở form đặt lịch; trả về lịch vừa đặt hoặc null nếu không đặt. */
+    
     public static LichHen datMoi(Window owner) {
         return datMoi(owner, null);
     }
 
-    /**
-     * UC016: mở form đặt lịch với bệnh nhân đã được chọn sẵn (vd từ danh sách bệnh nhân). Muốn chọn
-     * người khác, xóa ô lọc để hiện lại toàn bộ danh sách.
-     */
+    
     public static LichHen datMoi(Window owner, KhachHang khachChonSan) {
-        DlgDatLich dlg = new DlgDatLich(owner, CheDo.DAT_MOI, null, khachChonSan);
+        DlgDatLich dlg = new DlgDatLich(owner, CheDo.DAT_MOI, null, khachChonSan, null);
         dlg.setVisible(true);
         return dlg.ketQua;
     }
 
-    /** UC019: mở form dời lịch cho một lịch đang ở trạng thái đã đặt; trả về lịch sau khi dời. */
+    /** Tiếp nhận khách đến trực tiếp: mở form đặt lịch mặc định hôm nay. */
+    public static LichHen datMoiHomNay(Window owner) {
+        DlgDatLich dlg = new DlgDatLich(owner, CheDo.DAT_MOI, null, null, LocalDate.now());
+        dlg.setVisible(true);
+        return dlg.ketQua;
+    }
+
+    
     public static LichHen doiLich(Window owner, LichHen lich) {
-        DlgDatLich dlg = new DlgDatLich(owner, CheDo.DOI_LICH, Objects.requireNonNull(lich), null);
+        DlgDatLich dlg = new DlgDatLich(owner, CheDo.DOI_LICH, Objects.requireNonNull(lich), null, null);
         dlg.setVisible(true);
         return dlg.ketQua;
     }
@@ -179,8 +182,14 @@ public class DlgDatLich extends JDialog {
 
         JPanel pnlNgay = new JPanel(new BorderLayout(8, 0));
         pnlNgay.setOpaque(false);
-        txtNgay.putClientProperty("JTextField.placeholderText", "dd/MM/yyyy");
-        pnlNgay.add(txtNgay, BorderLayout.CENTER);
+        dpNgay.setDateFormatString("dd/MM/yyyy");
+        LocalDate homNay = LocalDate.now();
+        dpNgay.setMinSelectableDate(Date.from(homNay.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        dpNgay.setMaxSelectableDate(Date.from(homNay.plusMonths(3).atTime(23, 59, 59)
+                .atZone(ZoneId.systemDefault()).toInstant()));
+        dpNgay.setFont(font(13));
+        dpNgay.setPreferredSize(new Dimension(190, 34));
+        pnlNgay.add(dpNgay, BorderLayout.CENTER);
         pnlNgay.add(btnTimKhung, BorderLayout.EAST);
         themDong(form, dong++, "Ngày hẹn * (dd/MM/yyyy)", pnlNgay);
 
@@ -291,12 +300,14 @@ public class DlgDatLich extends JDialog {
             txtTimBenhNhan.setEnabled(false);
             btnTimBenhNhan.setEnabled(false);
             btnThemKhach.setVisible(false);
-            txtNgay.setText(lichCu.getNgayGioHen().toLocalDate().format(NGAY));
+            dpNgay.setDate(Date.from(lichCu.getNgayGioHen().toLocalDate()
+                    .atStartOfDay(ZoneId.systemDefault()).toInstant()));
             lblThongBaoBenhNhan.setForeground(MUTED);
             lblThongBaoBenhNhan.setText("Dời lịch " + lichCu.getMaLH() + " (hiện tại "
                     + lichCu.getNgayGioHen().format(DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy")) + ")");
         } else {
-            txtNgay.setText(LocalDate.now().plusDays(1).format(NGAY));
+            LocalDate macDinh = ngayMacDinh == null ? LocalDate.now().plusDays(1) : ngayMacDinh;
+            dpNgay.setDate(Date.from(macDinh.atStartOfDay(ZoneId.systemDefault()).toInstant()));
             if (khachChonSan != null) {
                 // lọc theo mã để chỉ còn đúng bệnh nhân này và được chọn sẵn
                 txtTimBenhNhan.setText(khachChonSan.getMaKH());
@@ -382,7 +393,6 @@ public class DlgDatLich extends JDialog {
         txtTimBenhNhan.addActionListener(e -> timBenhNhan());
         btnThemKhach.addActionListener(e -> themKhachMoi());
         btnTimKhung.addActionListener(e -> timKhung());
-        txtNgay.addActionListener(e -> timKhung());
         btnXacNhan.addActionListener(e -> xacNhan());
         btnHuy.addActionListener(e -> dispose());
         getRootPane().registerKeyboardAction(e -> dispose(),
@@ -465,15 +475,13 @@ public class DlgDatLich extends JDialog {
             baoThieu("Vui lòng chọn dịch vụ và nha sĩ.", cboDichVu);
             return;
         }
-        LocalDate ngay;
-        try {
-            ngay = LocalDate.parse(txtNgay.getText().trim(), NGAY);
-        } catch (DateTimeParseException e) {
-            baoThieu("Ngày hẹn phải theo định dạng dd/MM/yyyy.", txtNgay);
+        if (dpNgay.getDate() == null) {
+            baoThieu("Vui lòng chọn ngày hẹn.", dpNgay);
             return;
         }
+        LocalDate ngay = dpNgay.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         if (ngay.isBefore(LocalDate.now())) {
-            baoThieu("Ngày hẹn phải từ hôm nay trở đi.", txtNgay);
+            baoThieu("Ngày hẹn phải từ hôm nay trở đi.", dpNgay);
             return;
         }
         String boQua = cheDo == CheDo.DOI_LICH ? lichCu.getMaLH() : null;

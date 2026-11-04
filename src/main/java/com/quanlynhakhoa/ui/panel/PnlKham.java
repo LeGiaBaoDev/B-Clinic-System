@@ -327,11 +327,7 @@ public class PnlKham extends JPanel {
         moKham(pk);
     }
 
-    /**
-     * Mở thẳng phiếu khám chờ/đang khám hôm nay của một bệnh nhân (gọi từ màn tra cứu UC024).
-     * {@code truocKhiMo} chạy ngay trước khi mở (để màn ngoài chuyển sang thẻ khám);
-     * nếu không có phiếu thì chỉ báo và không chuyển màn.
-     */
+    
     public void moKhamTheoKhachHang(String maKH, Runnable truocKhiMo, Runnable khiQuayLai) {
         this.khiQuayLai = khiQuayLai;
         new SwingWorker<PhieuKham, Void>() {

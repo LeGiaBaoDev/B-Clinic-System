@@ -53,7 +53,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
-/** UC027 — Lễ tân/Nha sĩ tra cứu phiếu khám theo mã phiếu hoặc khách hàng. */
 public class PnlTraCuuPhieu extends JPanel {
 
     private static final DateTimeFormatter NGAY_GIO = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");

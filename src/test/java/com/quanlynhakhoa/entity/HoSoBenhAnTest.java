@@ -11,13 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/*
- * UC009 – Hồ sơ bệnh án (Bảng 4.4), quan hệ 1–1 với khách hàng
- * [x] mã HSBA đúng "HS" + 5 số, cho phép null khi chưa sinh mã
- * [x] bắt buộc gắn với một khách hàng
- * [x] tiền sử bệnh rỗng -> null, được trim
- * [x] equals/hashCode theo mã
- */
 class HoSoBenhAnTest {
 
     private static KhachHang khachHang() {

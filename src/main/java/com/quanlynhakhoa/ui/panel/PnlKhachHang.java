@@ -84,12 +84,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-/**
- * UC010 tra cứu bệnh nhân; mở hồ sơ, form thêm (UC009) và cập nhật (UC011).
- *
- * <p>Bảng hiển thị toàn chiều rộng theo figma; hồ sơ chi tiết mở trong dialog.
- * Nha sĩ chỉ tra cứu bệnh nhân được phân công (DAO tự lọc).</p>
- */
 public class PnlKhachHang extends JPanel {
 
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -535,7 +529,7 @@ public class PnlKhachHang extends JPanel {
         return 0;
     }
 
-    /** UC016: đặt lịch hẹn cho bệnh nhân của dòng này; bệnh nhân được chọn sẵn trong form. */
+    
     private void moDatLich(int hang) {
         if (hang < 0 || hang >= trangHienTai.size()) {
             return;
