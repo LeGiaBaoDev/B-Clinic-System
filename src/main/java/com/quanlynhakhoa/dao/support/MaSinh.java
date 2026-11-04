@@ -27,6 +27,7 @@ public final class MaSinh {
         LOAI_DICH_VU("LoaiDichVu", "maLoaiDV", "LDV", 2),
         DICH_VU("DichVu", "maDV", "DV", 3),
         LICH_LAM_VIEC("LichLamViec", "maLLV", "LLV", 5),
+        DON_NGHI_PHEP("DonNghiPhep", "maDon", "DNP", 6),
         LICH_HEN("LichHen", "maLH", "LH", 3),
         PHIEU_KHAM("PhieuKham", "maPK", "PK", 3),
         HOA_DON("HoaDon", "maHD", "HD", 3),
