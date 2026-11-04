@@ -65,7 +65,7 @@ public class LichLamViecDAO {
         });
     }
 
-    private LichLamViec layTheoMa(Connection c, String ma) throws SQLException {
+    LichLamViec layTheoMa(Connection c, String ma) throws SQLException {
         return JdbcHelper.one(c, SQL_SELECT + " WHERE maLLV=?", r -> mapRow(c, r), ma);
     }
 
@@ -84,14 +84,17 @@ public class LichLamViecDAO {
     public ThongBaoDoiCa layThongBaoDoiCaGanNhat() {
         return JdbcHelper.doc(c -> {
             Actor actor=PhanQuyen.quyen(c);
-            return JdbcHelper.one(c,"SELECT TOP 1 thoiDiem,noiDungThayDoi FROM NhatKyHeThong"
-                    +" WHERE hanhDong IN('DOI_CA','HOAN_DOI_CA') AND noiDungThayDoi LIKE ? ORDER BY thoiDiem DESC,maNhatKy DESC",
+            return JdbcHelper.one(c,"SELECT TOP 1 thoiDiem,noiDungThayDoi,hanhDong FROM NhatKyHeThong"
+                    +" WHERE (hanhDong IN('DOI_CA','HOAN_DOI_CA') AND noiDungThayDoi LIKE ?)"
+                    +" OR (hanhDong IN('DUYET_NGHI_PHEP','TU_CHOI_NGHI_PHEP')"
+                    +" AND LEFT(noiDungThayDoi,CHARINDEX(':',noiDungThayDoi)) LIKE ?) ORDER BY thoiDiem DESC,maNhatKy DESC",
                     r -> {
-                        String segment=java.util.Arrays.stream(r.getString(2).split(";"))
+                        boolean leave=r.getString(3).contains("NGHI_PHEP");
+                        String segment=leave?r.getString(2):java.util.Arrays.stream(r.getString(2).split(";"))
                                 .filter(x -> x.contains(" "+actor.maNV()+": ")).findFirst().orElse("");
                         String text=segment.isBlank()?"Hãy làm mới để xem ca mới.":segment.substring(segment.indexOf(": ")+2).trim();
-                        return new ThongBaoDoiCa(actor.maTK(),r.getObject(1,LocalDateTime.class),"Lịch làm việc của bạn đã được đổi: "+text);
-                    },"% "+actor.maNV()+": %");
+                        return new ThongBaoDoiCa(actor.maTK(),r.getObject(1,LocalDateTime.class),leave?text:"Lịch làm việc của bạn đã được đổi: "+text);
+                    },"% "+actor.maNV()+": %","% "+actor.maNV()+":");
         });
     }
     private record KeHoachDoiCa(List<LichLamViec> cu,List<LichLamViec> moi) { }
@@ -162,15 +165,19 @@ public class LichLamViecDAO {
         return new KeHoachDoiCa(List.copyOf(old),List.copyOf(next));
     }
     private LichLamViec caChuaDoi(Connection c,LichLamViec expected) throws SQLException {
-        yeuCau(expected.getMaLLV()!=null&&expected.getNhanVien()!=null,"Thông tin ca cần đổi không hợp lệ.");
+        LichLamViec actual=caTheoSnapshot(c,expected);
+        yeuCau(actual.getTrangThai()==TrangThaiLichLamViec.DA_PHAN_CONG,"Không đổi ca đã nghỉ phép.");
+        yeuCau(actual.getNgayTruc().atTime(actual.getGioBatDau()).isAfter(LocalDateTime.now()),"Chỉ được đổi ca chưa bắt đầu.");
+        return actual;
+    }
+    private LichLamViec caTheoSnapshot(Connection c,LichLamViec expected) throws SQLException {
+        yeuCau(expected!=null&&expected.getMaLLV()!=null&&expected.getNhanVien()!=null,"Vui lòng chọn ca làm việc hợp lệ.");
         LichLamViec actual=JdbcHelper.one(c,SQL_SELECT+" WITH(UPDLOCK,HOLDLOCK) WHERE maLLV=?",r -> mapRow(c,r),expected.getMaLLV());
         yeuCau(actual!=null,"Ca làm việc không còn tồn tại.");
         yeuCau(actual.getNhanVien().getMaNV().equals(expected.getNhanVien().getMaNV())&&actual.getNgayTruc().equals(expected.getNgayTruc())
                 &&actual.getCaTruc()==expected.getCaTruc()&&actual.getGioBatDau().equals(expected.getGioBatDau())
                 &&actual.getGioKetThuc().equals(expected.getGioKetThuc())&&actual.getTrangThai()==expected.getTrangThai()
                 &&java.util.Objects.equals(actual.getGhiChuNghi(),expected.getGhiChuNghi()),"Ca đã thay đổi. Hãy tải lại danh sách trước khi đổi.");
-        yeuCau(actual.getTrangThai()==TrangThaiLichLamViec.DA_PHAN_CONG,"Không đổi ca đã nghỉ phép.");
-        yeuCau(actual.getNgayTruc().atTime(actual.getGioBatDau()).isAfter(LocalDateTime.now()),"Chỉ được đổi ca chưa bắt đầu.");
         return actual;
     }
     private String vaiTroDangLam(Connection c,LichLamViec ca) throws SQLException {
@@ -187,6 +194,7 @@ public class LichLamViecDAO {
         String maDaLuu = JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:lich");
+            yeuCau(ll.getTrangThai()==TrangThaiLichLamViec.DA_PHAN_CONG,"Nghỉ phép phải được duyệt từ đơn nhân viên đã gửi.");
             new LichLamViec(ll.getMaLLV(), ll.getNgayTruc(), ll.getCaTruc(), ll.getGioBatDau(),
                     ll.getGioKetThuc(), ll.getTrangThai(), ll.getGhiChuNghi(), ll.getNhanVien());
 
@@ -204,6 +212,7 @@ public class LichLamViecDAO {
             if (!themMoi) {
                 LichLamViec old = layTheoMa(c, ma);
                 yeuCau(old != null, "Ca làm việc không tồn tại.");
+                yeuCau(old.getTrangThai()==TrangThaiLichLamViec.DA_PHAN_CONG,"Không thay đổi ca đã được duyệt nghỉ phép.");
                 yeuCau(!old.getNgayTruc().isBefore(homNay), "Không thay đổi lịch sử ca trực.");
             }
             yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichLamViec WITH(UPDLOCK,HOLDLOCK)"
@@ -268,11 +277,37 @@ public class LichLamViecDAO {
         return maDaLuu != null;
     }
 
-    public boolean duyetNghiPhep(String ma, String lyDo) {
-        LichLamViec ll = layTheoMa(ma);
-        yeuCau(ll != null, "Ca làm việc không tồn tại.");
-        ll.nghiPhep(lyDo);
-        return capNhat(ll);
+    public record LichHenAnhHuong(String maLH,String tenKhachHang,String dichVu,LocalDateTime batDau,LocalDateTime ketThuc,String trangThai) { }
+    public List<LichHenAnhHuong> kiemTraNghiPhep(LichLamViec expected,String lyDo) {
+        return JdbcHelper.transaction(c -> {
+            LichLamViec ca=caXinNghi(c,expected,lyDo);
+            return lichHenAnhHuong(c,ca);
+        });
+    }
+    /** @deprecated Xử lý theo mã đơn đã được nhân viên gửi qua DonNghiPhepDAO. */
+    @Deprecated public boolean duyetNghiPhep(String ma,String lyDo) { throw new BusinessException("Hãy duyệt đơn nhân viên đã gửi trong danh sách đơn nghỉ phép."); }
+    @Deprecated public boolean duyetNghiPhep(LichLamViec ca,String lyDo) { return duyetNghiPhep(ca==null?null:ca.getMaLLV(),lyDo); }
+    @Deprecated public boolean tuChoiNghiPhep(LichLamViec ca,String lyDo) { throw new BusinessException("Hãy từ chối đơn nhân viên đã gửi trong danh sách đơn nghỉ phép."); }
+    LichLamViec caXinNghi(Connection c,LichLamViec expected,String lyDo) throws SQLException {
+        PhanQuyen.quyen(c,VaiTro.QUANLY);MaSinh.khoa(c,"BClinic:lich");
+        yeuCau(lyDo!=null&&!lyDo.isBlank()&&lyDo.strip().length()<=255,"Lý do nghỉ bắt buộc nhập, tối đa 255 ký tự.");
+        LichLamViec ca=caTheoSnapshot(c,expected);
+        yeuCau(ca.getTrangThai()==TrangThaiLichLamViec.DA_PHAN_CONG,"Ca đã nghỉ phép hoặc không còn được phân công.");
+        yeuCau(ca.getNgayTruc().atTime(ca.getGioKetThuc()).isAfter(LocalDateTime.now()),"Không xử lý nghỉ phép cho ca đã kết thúc.");
+        vaiTroDangLam(c,ca);return ca;
+    }
+    List<LichHenAnhHuong> lichHenAnhHuong(Connection c,LichLamViec ca) throws SQLException {
+        return JdbcHelper.query(c,"SELECT lh.maLH,kh.tenKH,dv.tenDV,lh.ngayGioHen,DATEADD(MINUTE,dv.thoiLuong,lh.ngayGioHen),lh.trangThai"
+                +" FROM LichHen lh WITH(UPDLOCK,HOLDLOCK) JOIN DichVu dv ON dv.maDV=lh.maDV JOIN KhachHang kh ON kh.maKH=lh.maKH"
+                +" WHERE lh.maNV=? AND lh.trangThai IN('DA_DAT','DA_DEN') AND lh.ngayGioHen<?"
+                +" AND DATEADD(MINUTE,dv.thoiLuong,lh.ngayGioHen)>? ORDER BY lh.ngayGioHen",
+                r -> new LichHenAnhHuong(r.getString(1),r.getString(2),r.getString(3),r.getObject(4,LocalDateTime.class),r.getObject(5,LocalDateTime.class),r.getString(6)),
+                ca.getNhanVien().getMaNV(),ca.getNgayTruc().atTime(ca.getGioKetThuc()),ca.getNgayTruc().atTime(ca.getGioBatDau()));
+    }
+    void ghiKetQuaNghi(Connection c,LichLamViec ca,String lyDo,boolean duyet) throws SQLException {
+        String text=ca.getMaLLV()+" "+ca.getNhanVien().getMaNV()+": "+(duyet?"Đã duyệt nghỉ phép":"Đã từ chối nghỉ phép, giữ nguyên ca")
+                +" ngày "+ca.getNgayTruc().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))+" "+tenCa(ca.getCaTruc())+"; Lý do xin nghỉ: "+lyDo.strip();
+        NhatKy.ghi(c,duyet?"DUYET_NGHI_PHEP":"TU_CHOI_NGHI_PHEP",text);
     }
 
     private LichLamViec mapRow(Connection c, ResultSet r) throws SQLException {

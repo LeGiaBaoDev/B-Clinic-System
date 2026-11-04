@@ -49,6 +49,7 @@ public class PnlLichLamViec extends JPanel {
     private final JTable tblLich = new JTable(model);
     private final JButton btnPhanCa = new JButton("+ Phân ca");
     private final JButton btnDoiCa = new JButton("Đổi ca");
+    private final JButton btnNghiPhep = new JButton("Đơn nghỉ phép");
     private JPanel pnlForm;
     private final JComboBox<String> cboLocNhanVien = new JComboBox<>(new String[]{"Tất cả nhân viên"});
     private final JComboBox<String> cboLocVaiTro = new JComboBox<>(new String[]{"Tất cả chức vụ", "Nha sĩ", "Lễ tân", "Quản lý"});
@@ -100,6 +101,11 @@ public class PnlLichLamViec extends JPanel {
             new com.quanlynhakhoa.ui.dialog.DlgDoiCa(SwingUtilities.getWindowAncestor(this),lich,taiKhoan,this::lamMoiDuLieu).setVisible(true);
         });
         actions.add(btnDoiCa,0);
+        btnNghiPhep.setName("moNghiPhep");btnNghiPhep.setToolTipText("Tiếp nhận, duyệt hoặc từ chối đơn nhân viên đã gửi.");
+        btnNghiPhep.addActionListener(e->{
+            if(chiXemCaNhan||!laQuanLy()||dangTai||dangLuu)return;
+            new com.quanlynhakhoa.ui.dialog.DlgNghiPhep(SwingUtilities.getWindowAncestor(this),true,this::lamMoiDuLieu).setVisible(true);
+        });actions.add(btnNghiPhep,1);
         header.add(actions,BorderLayout.EAST); add(header,BorderLayout.NORTH);
         SurfacePanel list = new SurfacePanel(new BorderLayout(0, 12)); list.setBorder(new EmptyBorder(14,14,12,14));
         JPanel controls = new JPanel(new BorderLayout(0,12)); controls.setOpaque(false);
@@ -146,7 +152,7 @@ public class PnlLichLamViec extends JPanel {
         add(list,BorderLayout.CENTER);
         pnlForm=taoForm(); pnlForm.setVisible(false); add(pnlForm,BorderLayout.EAST);
         if(chiXemCaNhan) {
-            actions.remove(btnPhanCa); actions.remove(btnDoiCa); remove(pnlForm);
+            actions.remove(btnPhanCa); actions.remove(btnDoiCa); actions.remove(btnNghiPhep); remove(pnlForm);
             filters.remove(cboLocNhanVien); filters.remove(cboLocVaiTro);
         }
         for(JComboBox<?> filter: new JComboBox<?>[]{cboLocNhanVien,cboLocVaiTro,cboLocTrangThai}) filter.addActionListener(e -> {
@@ -260,6 +266,7 @@ public class PnlLichLamViec extends JPanel {
     private void capNhatNut() {
         boolean ready=duocXemLich()&&!dangLuu&&!dangTai&&!chiXemCaNhan;
         btnDoiCa.setEnabled(ready&&lich.stream().anyMatch(x -> x.getTrangThai()==TrangThaiLichLamViec.DA_PHAN_CONG&&x.getNgayTruc().atTime(x.getGioBatDau()).isAfter(LocalDateTime.now())));
+        btnNghiPhep.setEnabled(ready);
         btnPhanCa.setEnabled(ready); btnLuu.setEnabled(ready&&cboNhanVien.getItemCount()>0&&cboCa.getSelectedIndex()>=0&&dpNgay.getDate()!=null&&lyDoKhongThePhanCong()==null); btnLamMoi.setEnabled(duocXemLich()&&!dangLuu&&!dangTai);
         for (JComponent field : new JComponent[]{cboVaiTro,cboNhanVien,dpNgay,cboCa}) field.setEnabled(ready);
         dpNgay.setEnabled(ready&&cboNhanVien.getSelectedItem()!=null&&cboCa.getSelectedIndex()>=0);

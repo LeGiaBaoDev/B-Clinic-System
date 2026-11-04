@@ -16,7 +16,11 @@ public class PnlLichCaNhan extends PnlLichLamViec {
         TaiKhoan current=SessionManager.getInstance().getCurrentUser();maTK=current==null?null:current.getMaTK();
         java.awt.Component title=((java.awt.BorderLayout)getLayout()).getLayoutComponent(java.awt.BorderLayout.NORTH);
         javax.swing.JPanel header=new javax.swing.JPanel(new java.awt.BorderLayout(0,10));header.setOpaque(false);
-        header.add(title,java.awt.BorderLayout.NORTH);lblCapNhat.setName("thongBaoDoiCa");lblCapNhat.setForeground(com.quanlynhakhoa.ui.component.UiConstants.TEAL);
+        header.add(title,java.awt.BorderLayout.NORTH);
+        javax.swing.JButton btnDon=new javax.swing.JButton("Xin nghỉ phép / Đơn của tôi");btnDon.setName("moDonNghiCaNhan");
+        btnDon.addActionListener(e->new com.quanlynhakhoa.ui.dialog.DlgNghiPhep(javax.swing.SwingUtilities.getWindowAncestor(this),false,this::lamMoiDuLieu).setVisible(true));javax.swing.JPanel actions=new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT,0,0));actions.setOpaque(false);
+        btnDon.setBackground(com.quanlynhakhoa.ui.component.UiConstants.TEAL);btnDon.setForeground(java.awt.Color.WHITE);
+        actions.add(btnDon);header.add(actions,java.awt.BorderLayout.CENTER);lblCapNhat.setName("thongBaoDoiCa");lblCapNhat.setForeground(com.quanlynhakhoa.ui.component.UiConstants.TEAL);
         lblCapNhat.setFont(com.quanlynhakhoa.ui.component.UiConstants.font(12));lblCapNhat.setVisible(false);header.add(lblCapNhat,java.awt.BorderLayout.SOUTH);add(header,java.awt.BorderLayout.NORTH);
     }
     @Override public void lamMoiDuLieu() {
