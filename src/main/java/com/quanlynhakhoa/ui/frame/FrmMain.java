@@ -2,6 +2,8 @@ package com.quanlynhakhoa.ui.frame;
 
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
+import com.quanlynhakhoa.ui.panel.PnlLeTan;
+import com.quanlynhakhoa.ui.panel.PnlLichNhaSi;
 import com.quanlynhakhoa.ui.panel.PnlQuanLy;
 import com.quanlynhakhoa.util.SessionManager;
 import java.awt.*;
@@ -35,7 +37,19 @@ public class FrmMain extends JFrame {
         this.taiKhoan = taiKhoan;
         khoiTaoFrame();
         if (taiKhoan.getVaiTro() == VaiTro.QUANLY) {
-            setContentPane(new PnlQuanLy(taiKhoan, this::dangXuatQuanLy));
+            setContentPane(new PnlQuanLy(taiKhoan, this::dangXuat));
+            setMinimumSize(new Dimension(1100, 680));
+            Rectangle available = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            setSize(Math.min(1440, available.width - 32), Math.min(900, available.height - 24));
+            setLocationRelativeTo(null);
+        } else if (taiKhoan.getVaiTro() == VaiTro.NHASI) {
+            setContentPane(new PnlLichNhaSi(taiKhoan, this::dangXuat));
+            setMinimumSize(new Dimension(1240, 720));
+            Rectangle available = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            setSize(Math.min(1440, available.width - 32), Math.min(900, available.height - 24));
+            setLocationRelativeTo(null);
+        } else if (taiKhoan.getVaiTro() == VaiTro.LETAN) {
+            setContentPane(new PnlLeTan(taiKhoan, this::dangXuat));
             setMinimumSize(new Dimension(1100, 680));
             Rectangle available = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
             setSize(Math.min(1440, available.width - 32), Math.min(900, available.height - 24));
@@ -45,7 +59,7 @@ public class FrmMain extends JFrame {
         }
     }
 
-    private void dangXuatQuanLy() {
+    private void dangXuat() {
         if (JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn muốn đăng xuất?", "Đăng xuất",
                 JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION) {
             SessionManager.getInstance().logout();
