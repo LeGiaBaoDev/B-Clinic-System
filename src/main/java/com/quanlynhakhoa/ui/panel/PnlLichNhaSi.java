@@ -151,6 +151,11 @@ public class PnlLichNhaSi extends JPanel {
     private final JButton btnXemBenhAn = new JButton("Xem bệnh án");
     private final CardLayout theNoiDung = new CardLayout();
     private final JPanel pnlNoiDung = new JPanel(theNoiDung);
+    private final CardLayout cardsTrang=new CardLayout();
+    private final JPanel pnlTrang=new JPanel(cardsTrang);
+    private final java.util.Map<String,JButton> menuTrang=new java.util.LinkedHashMap<>();
+    private final JLabel lblTrangCaNhan=label("Lịch trực",bold(18),TEXT);
+    private PnlLichCaNhan pnlLichCaNhan;
     private final DefaultTableModel modelLich = new DefaultTableModel(COT, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -187,7 +192,8 @@ public class PnlLichNhaSi extends JPanel {
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
         main.add(taoHeader(), BorderLayout.NORTH);
-        main.add(taoNoiDung(), BorderLayout.CENTER);
+        pnlTrang.add(taoNoiDung(),"Lịch trực");
+        main.add(pnlTrang, BorderLayout.CENTER);
         main.add(taoThanhTrangThai(), BorderLayout.SOUTH);
         add(main, BorderLayout.CENTER);
     }
@@ -223,7 +229,9 @@ public class PnlLichNhaSi extends JPanel {
 
         top.add(menuItem("Tổng quan", LineIcon.Type.GRID, false, () -> thongBaoChuaCo("Tổng quan nha sĩ")));
         top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Lịch trực", LineIcon.Type.CALENDAR, true, null));
+        top.add(menuItem("Lịch trực", LineIcon.Type.CALENDAR, true, () -> moTrangLich("Lịch trực")));
+        top.add(Box.createVerticalStrut(4));
+        top.add(menuItem("Lịch của tôi", LineIcon.Type.CALENDAR, false, () -> moTrangLich("Lịch của tôi")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Bệnh án", LineIcon.Type.CLIPBOARD, false, () -> thongBaoChuaCo("Hồ sơ bệnh án (UC024)")));
         top.add(Box.createVerticalStrut(4));
@@ -273,13 +281,16 @@ public class PnlLichNhaSi extends JPanel {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(active ? TEAL_LIGHT : SURFACE);
+                g2.setColor(Boolean.TRUE.equals(getClientProperty("menu.active")) ? TEAL_LIGHT : SURFACE);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 5, 5);
                 g2.dispose();
                 super.paintComponent(g);
             }
         };
         button.setLayout(new BorderLayout());
+        button.putClientProperty("menu.active",active);
+        button.putClientProperty("menu.icon",icon);
+        menuTrang.put(text,button);
         button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setFont(active ? bold(14) : font(14));
         button.setForeground(active ? TEAL : TEXT);
@@ -299,14 +310,27 @@ public class PnlLichNhaSi extends JPanel {
         return button;
     }
 
+    private void moTrangLich(String name) {
+        if("Lịch của tôi".equals(name)) {
+            if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlTrang.add(pnlLichCaNhan,name); }
+            pnlLichCaNhan.lamMoiDuLieu();
+        }
+        cardsTrang.show(pnlTrang,name); lblTrangCaNhan.setText(name);
+        txtTimKiemHeader.setEnabled(!"Lịch của tôi".equals(name));
+        menuTrang.forEach((title,button) -> {
+            boolean selected=title.equals(name); button.putClientProperty("menu.active",selected);
+            button.setForeground(selected?TEAL:TEXT); button.setFont(selected?bold(14):font(14));
+            button.setIcon(new LineIcon((LineIcon.Type)button.getClientProperty("menu.icon"),selected?TEAL:MUTED,17)); button.repaint();
+        });
+    }
+
     private JPanel taoHeader() {
         JPanel header = new JPanel(new BorderLayout(20, 0));
         header.setBackground(SURFACE);
         header.setPreferredSize(new Dimension(0, 78));
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER), new EmptyBorder(14, 24, 14, 24)));
-        JLabel tieuDe = label("Lịch trực", bold(18), TEXT);
-        header.add(tieuDe, BorderLayout.WEST);
+        header.add(lblTrangCaNhan, BorderLayout.WEST);
 
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 0));
         controls.setOpaque(false);
@@ -1084,7 +1108,8 @@ public class PnlLichNhaSi extends JPanel {
         getActionMap().put("lamMoi", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                taiDuLieu();
+                if("Lịch của tôi".equals(lblTrangCaNhan.getText())&&pnlLichCaNhan!=null) pnlLichCaNhan.lamMoiDuLieu();
+                else taiDuLieu();
             }
         });
     }

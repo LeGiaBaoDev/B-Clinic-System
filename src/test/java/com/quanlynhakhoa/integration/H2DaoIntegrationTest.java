@@ -166,12 +166,50 @@ class H2DaoIntegrationTest {
                     assertTrue(assertThrows(BusinessException.class,()->DAO.them(blockedAfternoon)).getMessage().contains("nghỉ phép"));
                     assertEquals(1,DAO.layTheoNhanVien("NV002",DAY.plusDays(5),DAY.plusDays(5)).size());
                     phanCongQuaGiaoDien();
+                    lichCaNhanBaVaiTro(c);
                     System.out.println("H2_DAO_INTEGRATION_OK");
                 } finally {
                     SessionManager.getInstance().logout();
                     DatabaseConnection.getInstance().getDataSource().close();
                 }
             }
+        }
+
+        private static void lichCaNhanBaVaiTro(Connection c) throws Exception {
+            assertTrue(DAO.them(shift(DAY.plusDays(10),"NV001",7,9)));
+            for(VaiTro role:VaiTro.values()) {
+                login(role);
+                String staff=SessionManager.getInstance().getCurrentUser().getNhanVien().getMaNV();
+                var own=DAO.layLichCaNhan();
+                assertFalse(own.isEmpty()); assertTrue(own.stream().allMatch(x -> staff.equals(x.getNhanVien().getMaNV())));
+                // Giả mạo mã nhân viên trong session cũng không đổi chủ dữ liệu mà DAO trả về.
+                SessionManager.getInstance().getCurrentUser().getNhanVien().setMaNV(staff.equals("NV001")?"NV002":"NV001");
+                assertTrue(DAO.layLichCaNhan().stream().allMatch(x -> staff.equals(x.getNhanVien().getMaNV())));
+                login(role);
+                var ref=new java.util.concurrent.atomic.AtomicReference<com.quanlynhakhoa.ui.panel.PnlLichCaNhan>();
+                javax.swing.SwingUtilities.invokeAndWait(() -> {
+                    var panel=new com.quanlynhakhoa.ui.panel.PnlLichCaNhan(); ref.set(panel); panel.lamMoiDuLieu();
+                });
+                var panel=ref.get();
+                choGiaoDien(() -> ((javax.swing.JButton)tim(panel,"lamMoiLich")).isEnabled());
+                javax.swing.SwingUtilities.invokeAndWait(() -> {
+                    assertNull(tim(panel,"moPhanCa")); assertNull(tim(panel,"luuPhanCong"));
+                    assertNull(tim(panel,"locNhanVienLich"));
+                    var table=(javax.swing.JTable)tim(panel,"bangLichLamViec");
+                    LocalDate first=LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+                    long expected=own.stream().filter(x -> !x.getNgayTruc().isBefore(first)&&!x.getNgayTruc().isAfter(first.plusDays(6))).count();
+                    assertEquals(expected,table.getRowCount());
+                    assertFalse(((javax.swing.JLabel)tim(panel,"ketQuaLich")).getText().contains("Không thể"));
+                    for(int i=0;i<table.getRowCount();i++) assertTrue(table.getValueAt(i,1).toString().contains(staff));
+                });
+                System.out.println("UC012_PERSONAL_ONLY_"+role+"_OK");
+            }
+            login(VaiTro.LETAN);
+            try(var s=c.prepareStatement("UPDATE TaiKhoan SET trangThai=0 WHERE maNV='NV003'")) {s.executeUpdate();}
+            try { assertThrows(BusinessException.class,DAO::layLichCaNhan); }
+            finally {try(var s=c.prepareStatement("UPDATE TaiKhoan SET trangThai=1 WHERE maNV='NV003'")){s.executeUpdate();}}
+            SessionManager.getInstance().logout(); assertThrows(BusinessException.class,DAO::layLichCaNhan);
+            login(VaiTro.QUANLY);
         }
 
         private static void phanCongQuaGiaoDien() throws Exception {

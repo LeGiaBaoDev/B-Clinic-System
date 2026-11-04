@@ -31,6 +31,16 @@ public class LichLamViecDAO {
         });
     }
 
+    /** UC012: luôn lấy mã nhân viên từ tài khoản còn hoạt động trong DB, gồm cả Quản lý. */
+    public List<LichLamViec> layLichCaNhan() {
+        return JdbcHelper.doc(c -> {
+            Actor actor=PhanQuyen.quyen(c);
+            var nhanVien=new NhanVienDAO().layTheoMa(c,actor.maNV());
+            return JdbcHelper.query(c,SQL_SELECT+" WHERE maNV=? ORDER BY ngayTruc,gioBatDau",
+                    r -> mapRow(r,nhanVien),actor.maNV());
+        });
+    }
+
     public List<LichLamViec> layTheoNhanVien(String maNV, LocalDate tu, LocalDate den) {
         khoangNgay(tu, den);
         return JdbcHelper.doc(c -> {
@@ -160,6 +170,9 @@ public class LichLamViecDAO {
     }
 
     private LichLamViec mapRow(Connection c, ResultSet r) throws SQLException {
+        return mapRow(r,new NhanVienDAO().layTheoMa(c,r.getString("maNV")));
+    }
+    private LichLamViec mapRow(ResultSet r,com.quanlynhakhoa.entity.NhanVien nhanVien) throws SQLException {
         return new LichLamViec(
                 r.getString("maLLV"),
                 r.getObject("ngayTruc", LocalDate.class),
@@ -168,7 +181,7 @@ public class LichLamViecDAO {
                 r.getObject("gioKetThuc", LocalTime.class),
                 TrangThaiLichLamViec.valueOf(r.getString("trangThai")),
                 r.getString("ghiChuNghi"),
-                new NhanVienDAO().layTheoMa(c, r.getString("maNV")));
+                nhanVien);
     }
 
     private static void khoangNgay(LocalDate tu, LocalDate den) {

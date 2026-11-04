@@ -26,6 +26,7 @@ public class PnlQuanLy extends JPanel {
     private final PnlTongQuanQuanLy pnlTongQuan;
     private PnlNhanVien pnlNhanVien;
     private PnlLichLamViec pnlLichLamViec;
+    private PnlLichCaNhan pnlLichCaNhan;
     private final JLabel lblCaHienTai = label("Đang tải ca làm việc...", font(11), MUTED);
     private final JLabel lblKetNoi = label("● Đang tải dữ liệu", font(10), MUTED);
     private final JLabel lblDongBo = label("Đang tải dữ liệu...", font(10), MUTED);
@@ -94,10 +95,16 @@ public class PnlQuanLy extends JPanel {
         addMenu(top, "Nhân viên", LineIcon.Type.PEOPLE);
         addMenu(top, "Dịch vụ", LineIcon.Type.CLIPBOARD);
         addMenu(top, "Lịch làm việc", LineIcon.Type.CALENDAR);
+        addMenu(top, "Lịch của tôi", LineIcon.Type.CALENDAR);
         addMenu(top, "Báo cáo", LineIcon.Type.CHART);
         addMenu(top, "Voucher", LineIcon.Type.VOUCHER);
         addMenu(top, "Cài đặt", LineIcon.Type.SETTINGS);
-        sidebar.add(top, BorderLayout.NORTH);
+        JScrollPane scrollMenu=new JScrollPane(top);
+        scrollMenu.setBorder(BorderFactory.createEmptyBorder());
+        scrollMenu.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollMenu.getViewport().setBackground(SURFACE);
+        scrollMenu.getVerticalScrollBar().setUnitIncrement(16);
+        sidebar.add(scrollMenu,BorderLayout.CENTER);
 
         JPanel bottom = new JPanel();
         bottom.setOpaque(false);
@@ -329,7 +336,9 @@ public class PnlQuanLy extends JPanel {
     }
 
     private void lamMoiTrangHienTai() {
-        if ("Nhân viên".equals(lblTrang.getText()) && pnlNhanVien != null) {
+        if ("Lịch của tôi".equals(lblTrang.getText()) && pnlLichCaNhan != null) {
+            pnlLichCaNhan.lamMoiDuLieu();
+        } else if ("Nhân viên".equals(lblTrang.getText()) && pnlNhanVien != null) {
             pnlNhanVien.lamMoiDuLieu();
         } else if ("Lịch làm việc".equals(lblTrang.getText()) && pnlLichLamViec != null) {
             pnlLichLamViec.lamMoiDuLieu();
@@ -341,6 +350,10 @@ public class PnlQuanLy extends JPanel {
     public void moTrang(String name) {
         if (!"Tổng quan".equals(name) && !menu.containsKey(name)) {
             return;
+        }
+        if ("Lịch của tôi".equals(name)) {
+            if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlCards.add(pnlLichCaNhan,name); }
+            pnlLichCaNhan.lamMoiDuLieu();
         }
         if ("Nhân viên".equals(name) && pnlNhanVien == null) {
             pnlNhanVien = new PnlNhanVien();
@@ -391,7 +404,7 @@ public class PnlQuanLy extends JPanel {
                     LineIcon.Type.PEOPLE;
                 case "Dịch vụ" ->
                     LineIcon.Type.CLIPBOARD;
-                case "Lịch làm việc" ->
+                case "Lịch làm việc", "Lịch của tôi" ->
                     LineIcon.Type.CALENDAR;
                 case "Báo cáo" ->
                     LineIcon.Type.CHART;

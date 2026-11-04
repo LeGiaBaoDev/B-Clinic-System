@@ -54,6 +54,7 @@ public class PnlLeTan extends JPanel {
     private final Runnable dangXuat;
     private final PnlKhachHang pnlKhachHang;
     private final PnlTiepNhan pnlTiepNhan;
+    private PnlLichCaNhan pnlLichCaNhan;
     private final CardLayout cards = new CardLayout();
     private final JPanel pnlCards = new JPanel(cards);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
@@ -121,6 +122,8 @@ public class PnlLeTan extends JPanel {
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Lịch hẹn", LineIcon.Type.CALENDAR, () -> thongBaoChuaCo("Lịch hẹn (L2)")));
         top.add(Box.createVerticalStrut(5));
+        top.add(menuItem("Lịch của tôi", LineIcon.Type.CALENDAR, () -> moTrang("Lịch của tôi")));
+        top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Bệnh nhân", LineIcon.Type.PEOPLE, () -> moTrang("Bệnh nhân")));
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Tiếp nhận", LineIcon.Type.CLIPBOARD, () -> moTrang("Tiếp nhận")));
@@ -130,7 +133,12 @@ public class PnlLeTan extends JPanel {
         top.add(menuItem("Báo cáo", LineIcon.Type.CHART, () -> thongBaoChuaCo("Báo cáo")));
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, () -> thongBaoChuaCo("Cài đặt tài khoản")));
-        sidebar.add(top, BorderLayout.NORTH);
+        JScrollPane scrollMenu=new JScrollPane(top);
+        scrollMenu.setBorder(BorderFactory.createEmptyBorder());
+        scrollMenu.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollMenu.getViewport().setBackground(SURFACE);
+        scrollMenu.getVerticalScrollBar().setUnitIncrement(16);
+        sidebar.add(scrollMenu,BorderLayout.CENTER);
 
         JPanel bottom = new JPanel();
         bottom.setOpaque(false);
@@ -200,6 +208,10 @@ public class PnlLeTan extends JPanel {
     }
 
     private void moTrang(String trang) {
+        if("Lịch của tôi".equals(trang)) {
+            if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlCards.add(pnlLichCaNhan,trang); }
+            pnlLichCaNhan.lamMoiDuLieu();
+        }
         cards.show(pnlCards, trang);
         lblTrang.setText(trang);
         txtTimKiemNhanh.setEnabled("Bệnh nhân".equals(trang));
@@ -221,7 +233,7 @@ public class PnlLeTan extends JPanel {
         return switch (ten) {
             case "Tổng quan" ->
                 LineIcon.Type.GRID;
-            case "Lịch hẹn" ->
+            case "Lịch hẹn", "Lịch của tôi" ->
                 LineIcon.Type.CALENDAR;
             case "Bệnh nhân" ->
                 LineIcon.Type.PEOPLE;
