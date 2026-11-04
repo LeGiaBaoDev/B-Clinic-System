@@ -148,3 +148,33 @@ Checklist kiểm thử chéo (chưa nghiệm thu thủ công):
 | H2-M12 | Tài khoản chưa có ca trong kỳ | Hiển thị chưa có ca, không nhầm lỗi tải dữ liệu |
 
 Calendar trên thanh điều hướng dùng để xem lịch: chọn ngày sẽ mở tuần/tháng chứa ngày đó, cho phép xem quá khứ. Nút trước/sau và Hôm nay đồng bộ với ngày đang chọn; calendar phân công vẫn khóa ngày không hợp lệ theo ca.
+
+## UC014 — Đổi ca làm việc (Quản lý)
+
+Trong **Lịch làm việc**, nhấn **Đổi ca**:
+
+1. Chọn ca cần đổi (chỉ ca đã phân công, chưa bắt đầu, nhân viên còn hoạt động).
+2. Chọn **Dời ngày / ca làm** rồi chọn ca mới và ngày còn trống, hoặc **Hoán đổi hai nhân viên** rồi chọn ca của nhân viên cùng chức vụ.
+3. Nhấn **Kiểm tra và đổi ca**. Nếu hợp lệ, xem tóm tắt và xác nhận. Lưu kiểm tra lại để chặn dữ liệu đã thay đổi sau bước kiểm tra.
+
+Không đổi ca nghỉ phép, ca đã bắt đầu, ca trùng/nghỉ phép ở thời gian mới hoặc ca làm mất khoảng trực phục vụ lịch hẹn DA_DAT/DA_DEN. Hoán đổi giữ mã ca và nhân viên của từng bản ghi, đổi khung ngày/giờ của hai người trong cùng transaction; lỗi ở bất kỳ bước nào rollback cả hai ca và nhật ký. Không tự chuyển bệnh nhân sang nha sĩ khác.
+
+Sau đổi, người liên quan thấy thông báo cập nhật riêng khi mở/Làm mới **Lịch của tôi**. Đây là thông báo trong ứng dụng lấy từ thay đổi đã commit, không có thông báo đẩy ngoài ứng dụng.
+
+```powershell
+mvn '-Dtest=DlgDoiCaTest' test
+mvn '-Dbclinic.integration=true' '-Dtest=H2DaoIntegrationTest' test
+```
+
+Checklist kiểm thử chéo (chưa nghiệm thu thủ công):
+
+| Mã | Thao tác | Kết quả mong đợi |
+|---|---|---|
+| H2-M13 | Dời một ca chưa bắt đầu sang ngày/ca trống | Kiểm tra → xác nhận → thành công; mã ca/nhân viên giữ nguyên |
+| H2-M14 | Hủy hộp xác nhận | Không đổi dữ liệu, form vẫn dùng được |
+| H2-M15 | Hoán đổi hai người cùng chức vụ | Hai khung ngày/giờ đổi cho nhau, không đổi một bên |
+| H2-M16 | Chọn ca vướng lịch hẹn, nghỉ phép hoặc ca đã có | Báo lý do, không ghi thay đổi |
+| H2-M17 | Hai cửa sổ cùng đổi một ca | Yêu cầu dùng dữ liệu cũ bị từ chối; tải lại trước khi đổi tiếp |
+| H2-M18 | Nha sĩ/Lễ tân mở Lịch của tôi | Không có nút Đổi ca; nhận thông báo riêng nếu ca đã đổi |
+
+Form Đổi ca có bộ lọc riêng cho nguồn và đích: chức vụ, ca, ngày, tên/mã NV (không phân biệt dấu/hoa thường). Nhấn Lọc hoặc Enter ở ô tìm; Xóa lọc để trở lại. Ca đích luôn giữ giới hạn cùng chức vụ và khác nhân viên nguồn; không có kết quả sẽ khóa nút đổi ca.

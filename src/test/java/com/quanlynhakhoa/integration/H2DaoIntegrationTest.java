@@ -167,12 +167,69 @@ class H2DaoIntegrationTest {
                     assertEquals(1,DAO.layTheoNhanVien("NV002",DAY.plusDays(5),DAY.plusDays(5)).size());
                     phanCongQuaGiaoDien();
                     lichCaNhanBaVaiTro(c);
+                    doiCaVaHoanDoi(c);
                     System.out.println("H2_DAO_INTEGRATION_OK");
                 } finally {
                     SessionManager.getInstance().logout();
                     DatabaseConnection.getInstance().getDataSource().close();
                 }
             }
+        }
+
+        private static void doiCaVaHoanDoi(Connection c) throws Exception {
+            var nv=new NhanVien(null,"Lê Kiểm Thử",true,"0980000004","uc014@example.com","Nha sĩ");
+            var tk=new TaiKhoan(null,"ignored","ignored",VaiTro.NHASI,true,nv);
+            assertTrue(new TaiKhoanDAO().taoNhanVienVaTaiKhoan(nv,tk));
+            var a=shift(DAY.plusDays(20),"NV002",8,12); assertTrue(DAO.them(a));
+            var b=shift(DAY.plusDays(21),nv.getMaNV(),14,17);b.setCaTruc(CaTruc.CA_CHIEU);assertTrue(DAO.them(b));
+            var move=new LichLamViecDAO.YeuCauDoiCa(a,null,DAY.plusDays(22),CaTruc.CA_CHIEU);
+            DAO.kiemTraDoiCa(move);assertEquals(DAY.plusDays(20),DAO.layTheoMa(a.getMaLLV()).getNgayTruc());
+            assertTrue(DAO.doiCa(move));assertEquals(DAY.plusDays(20),a.getNgayTruc());
+            assertEquals(DAY.plusDays(22),DAO.layTheoMa(a.getMaLLV()).getNgayTruc());
+            assertThrows(BusinessException.class,()->DAO.doiCa(move)); // snapshot cũ
+            var fresh=DAO.layTheoMa(a.getMaLLV());
+            for(var role:List.of(VaiTro.NHASI,VaiTro.LETAN)) {
+                login(role);assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(fresh,null,DAY.plusDays(24),CaTruc.CA_SANG)));
+            }
+            login(VaiTro.QUANLY);
+            assertTrue(DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(fresh,b,null,null)));
+            var aa=DAO.layTheoMa(a.getMaLLV());var bb=DAO.layTheoMa(b.getMaLLV());
+            assertEquals(DAY.plusDays(21),aa.getNgayTruc());assertEquals(DAY.plusDays(22),bb.getNgayTruc());
+            assertEquals("NV002",aa.getNhanVien().getMaNV());assertEquals(nv.getMaNV(),bb.getNhanVien().getMaNV());
+            login(VaiTro.NHASI);var note=DAO.layThongBaoDoiCaGanNhat();assertNotNull(note);assertEquals("TK002",note.maTK());assertFalse(note.noiDung().contains(";"));
+            SessionManager.getInstance().login(new TaiKhoanDAO().dangNhap(tk.getTenTK(),"Clinic@123"));
+            var secondNote=DAO.layThongBaoDoiCaGanNhat();assertNotNull(secondNote);assertEquals(tk.getMaTK(),secondNote.maTK());
+            login(VaiTro.QUANLY);
+            String auditCount=scalar(c,"SELECT COUNT(*) FROM NhatKyHeThong WHERE hanhDong IN('DOI_CA','HOAN_DOI_CA')");
+            try(var s=c.createStatement()) {s.execute("CREATE TRIGGER UC014_FailSecond ON LichLamViec AFTER UPDATE AS BEGIN IF EXISTS(SELECT 1 FROM inserted WHERE maLLV='"+bb.getMaLLV()+"') THROW 51001,'UC014 rollback',1; END");}
+            try {assertThrows(DataAccessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(aa,bb,null,null)));}
+            finally {try(var s=c.createStatement()){s.execute("DROP TRIGGER UC014_FailSecond");}}
+            assertEquals(aa.getNgayTruc(),DAO.layTheoMa(aa.getMaLLV()).getNgayTruc());assertEquals(bb.getNgayTruc(),DAO.layTheoMa(bb.getMaLLV()).getNgayTruc());
+            assertEquals(auditCount,scalar(c,"SELECT COUNT(*) FROM NhatKyHeThong WHERE hanhDong IN('DOI_CA','HOAN_DOI_CA')"));
+            var leave=shift(DAY.plusDays(23),"NV002",8,17);leave.setCaTruc(CaTruc.CA_NGAY);leave.nghiPhep("Nghỉ phép");assertTrue(DAO.them(leave));
+            assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(aa,null,DAY.plusDays(23),CaTruc.CA_SANG)));
+            assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(leave,null,DAY.plusDays(24),CaTruc.CA_SANG)));
+            var other=shift(DAY.plusDays(26),"NV003",8,12);assertTrue(DAO.them(other));
+            assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(aa,other,null,null)));
+            assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(aa,null,LocalDate.now().minusDays(1),CaTruc.CA_SANG)));
+            try(var s=c.createStatement()) {
+                s.executeUpdate("IF NOT EXISTS(SELECT 1 FROM KhachHang WHERE maKH='KH00001') INSERT INTO KhachHang(maKH,tenKH,gioiTinh,sdt) VALUES('KH00001',N'Khách Test',1,'0909999999')");
+                s.executeUpdate("IF NOT EXISTS(SELECT 1 FROM LoaiDichVu WHERE maLoaiDV='LDV01') INSERT INTO LoaiDichVu(maLoaiDV,tenLoaiDV,mucThueGTGT) VALUES('LDV01',N'Điều trị bệnh lý',0)");
+                s.executeUpdate("IF NOT EXISTS(SELECT 1 FROM DichVu WHERE maDV='DV001') INSERT INTO DichVu(maDV,maLoaiDV,tenDV,donGia,thoiLuong) VALUES('DV001','LDV01',N'Khám',100000,30)");
+            }
+            try(var s=c.prepareStatement("INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai) VALUES(?,'KH00001','NV002','DV001',?,'DA_DAT')")) {
+                s.setString(1,"LH"+DAY.plusDays(21).format(java.time.format.DateTimeFormatter.ofPattern("yyMMdd"))+"777");s.setObject(2,DAY.plusDays(21).atTime(15,0));s.executeUpdate();
+            }
+            assertTrue(assertThrows(BusinessException.class,()->DAO.kiemTraDoiCa(new LichLamViecDAO.YeuCauDoiCa(aa,null,DAY.plusDays(25),CaTruc.CA_CHIEU))).getMessage().contains("lịch hẹn"));
+            assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(aa,bb,null,null)));
+            assertEquals(aa.getNgayTruc(),DAO.layTheoMa(aa.getMaLLV()).getNgayTruc());
+            ExecutorService pool=Executors.newFixedThreadPool(2);CountDownLatch gate=new CountDownLatch(1);
+            try {
+                List<Future<Boolean>> results=new ArrayList<>();
+                for(int i=0;i<2;i++){final int d=i;results.add(pool.submit(()->{gate.await();try{return DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(bb,null,DAY.plusDays(28+d),CaTruc.CA_SANG));}catch(BusinessException ex){return false;}}));}
+                gate.countDown();int successes=0;for(var f:results)if(f.get(20,TimeUnit.SECONDS))successes++;assertEquals(1,successes);
+            } finally {pool.shutdownNow();}
+            System.out.println("UC014_MOVE_SWAP_PERMISSION_APPOINTMENT_ROLLBACK_CONCURRENT_OK");
         }
 
         private static void lichCaNhanBaVaiTro(Connection c) throws Exception {
