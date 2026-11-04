@@ -25,6 +25,7 @@ public class PnlQuanLy extends JPanel {
     private final JTextField txtTimKiem = new JTextField();
     private final PnlTongQuanQuanLy pnlTongQuan;
     private PnlNhanVien pnlNhanVien;
+    private PnlLichLamViec pnlLichLamViec;
     private final JLabel lblCaHienTai = label("Đang tải ca làm việc...", font(11), MUTED);
     private final JLabel lblKetNoi = label("● Đang tải dữ liệu", font(10), MUTED);
     private final JLabel lblDongBo = label("Đang tải dữ liệu...", font(10), MUTED);
@@ -330,6 +331,8 @@ public class PnlQuanLy extends JPanel {
     private void lamMoiTrangHienTai() {
         if ("Nhân viên".equals(lblTrang.getText()) && pnlNhanVien != null) {
             pnlNhanVien.lamMoiDuLieu();
+        } else if ("Lịch làm việc".equals(lblTrang.getText()) && pnlLichLamViec != null) {
+            pnlLichLamViec.lamMoiDuLieu();
         } else {
             pnlTongQuan.lamMoiDuLieu();
         }
@@ -342,6 +345,13 @@ public class PnlQuanLy extends JPanel {
         if ("Nhân viên".equals(name) && pnlNhanVien == null) {
             pnlNhanVien = new PnlNhanVien();
             pnlCards.add(pnlNhanVien, name);
+        }
+        if ("Lịch làm việc".equals(name) && pnlLichLamViec == null) {
+            pnlLichLamViec = new PnlLichLamViec();
+            pnlCards.add(pnlLichLamViec, name);
+        }
+        if ("Lịch làm việc".equals(name)) {
+            pnlLichLamViec.lamMoiDuLieu();
         }
         if (!"Tổng quan".equals(name) && java.util.Arrays.stream(pnlCards.getComponents()).noneMatch(c -> name.equals(c.getName()))) {
             JPanel empty = new JPanel(new GridBagLayout());

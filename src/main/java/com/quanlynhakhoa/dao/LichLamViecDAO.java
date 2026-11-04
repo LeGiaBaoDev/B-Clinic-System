@@ -91,6 +91,12 @@ public class LichLamViecDAO {
                 yeuCau(!old.getNgayTruc().isBefore(homNay), "Không thay đổi lịch sử ca trực.");
             }
             yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichLamViec WITH(UPDLOCK,HOLDLOCK)"
+                    + " WHERE maNV=? AND ngayTruc=? AND maLLV<>? AND trangThai='NGHI_PHEP'"
+                    + " AND (caTruc=? OR (gioBatDau<? AND gioKetThuc>?))",
+                    ll.getNhanVien().getMaNV(), ll.getNgayTruc(), ma, ll.getCaTruc(),
+                    ll.getGioKetThuc(), ll.getGioBatDau()),
+                    "Nhân viên đã nghỉ phép trong ca này. Vui lòng chọn ca hoặc nhân viên khác.");
+            yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichLamViec WITH(UPDLOCK,HOLDLOCK)"
                     + " WHERE maNV=? AND ngayTruc=? AND caTruc=? AND maLLV<>?",
                     ll.getNhanVien().getMaNV(), ll.getNgayTruc(), ll.getCaTruc(), ma),
                     "Nhân viên đã được phân công ca này trong ngày.");
