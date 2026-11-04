@@ -118,15 +118,16 @@ class DichVuDAOTest {
     }
 
     @Test
-    void timKiem_locTrangThai_tachDangCungCapVaNgungCungCap() {
-        DichVu dang = themDichVu(ma + " Trám răng", MucThue.THUE_0);
+    void timKiem_locTrangThai_tachDangCungCapVaNgungCungCap_tatCaSapTheoMa() {
+        // Dịch vụ bị ngừng được tạo TRƯỚC nên có mã nhỏ hơn.
         DichVu ngung = themDichVu(ma + " Niềng răng cũ", MucThue.THUE_10);
+        DichVu dang = themDichVu(ma + " Trám răng", MucThue.THUE_0);
         assertTrue(dao.ngungCungCap(ngung.getMaDV()));
 
         assertEquals(List.of(dang.getMaDV()), maCua(dao.timKiem(ma, true, null)));
         assertEquals(List.of(ngung.getMaDV()), maCua(dao.timKiem(ma, false, null)));
-        assertEquals(List.of(dang.getMaDV(), ngung.getMaDV()), maCua(dao.timKiem(ma, null, null)),
-                "Tất cả: dịch vụ đang cung cấp đứng trước");
+        assertEquals(List.of(ngung.getMaDV(), dang.getMaDV()), maCua(dao.timKiem(ma, null, null)),
+                "Tất cả: sắp theo mã, dịch vụ đã ngừng không bị dồn xuống cuối");
     }
 
     @Test

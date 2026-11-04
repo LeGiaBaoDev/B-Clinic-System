@@ -61,7 +61,8 @@ public class DichVuDAO {
             sql.append(" AND ldv.mucThueGTGT=?");
             thamSo.add(LoaiDichVuDAO.thue(mucThue));
         }
-        sql.append(" ORDER BY dv.trangThai DESC, dv.maDV");
+        // Sắp theo mã để dịch vụ đã ngừng nằm đúng vị trí, không bị dồn xuống trang cuối khi xem "Tất cả".
+        sql.append(" ORDER BY dv.maDV");
         return JdbcHelper.doc(c -> {
             PhanQuyen.quyen(c);
             return JdbcHelper.query(c, sql.toString(), this::mapRow, thamSo.toArray());
