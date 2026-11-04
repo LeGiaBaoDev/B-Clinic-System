@@ -82,6 +82,24 @@ public class TaiKhoanDAO {
         XAC_MINH.remove(maTK);
     }
 
+    /** Đổi mật khẩu mặc định trước khi cấp session; luôn kiểm tra lại thông tin xác thực trong transaction. */
+    public TaiKhoan doiMatKhauLanDau(String maTK, String matKhauHienTai, String matKhauMoi) {
+        String loi = com.quanlynhakhoa.util.KiemTraXacThuc.loiDoiMatKhauLanDau(matKhauMoi, matKhauMoi);
+        yeuCau(loi == null, loi);
+        yeuCau(QuyTacTaiKhoan.MAT_KHAU_MAC_DINH.equals(matKhauHienTai), "Mật khẩu hiện tại không hợp lệ.");
+        return JdbcHelper.transaction(c -> {
+            String hash = JdbcHelper.one(c,
+                    "SELECT matKhau FROM TaiKhoan WITH(UPDLOCK,HOLDLOCK) WHERE maTK=? AND trangThai=1",
+                    r -> r.getString(1), maTK);
+            yeuCau(PasswordHasher.xacMinh(matKhauHienTai, hash),
+                    "Tài khoản đã bị khóa hoặc mật khẩu đã thay đổi. Vui lòng đăng nhập lại.");
+            JdbcHelper.update(c, "UPDATE TaiKhoan SET matKhau=? WHERE maTK=?",
+                    PasswordHasher.bam(matKhauMoi), maTK);
+            NhatKy.ghi(c, maTK, "DOI_MAT_KHAU_LAN_DAU", "Đã đổi mật khẩu mặc định; không ghi nội dung mật khẩu.");
+            return layTheoMa(c, maTK);
+        });
+    }
+
     public List<TaiKhoan> layTatCa() {
         return JdbcHelper.doc(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
