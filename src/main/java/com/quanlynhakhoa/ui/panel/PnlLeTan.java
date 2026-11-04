@@ -55,6 +55,7 @@ public class PnlLeTan extends JPanel {
     private final PnlKhachHang pnlKhachHang;
     private final PnlTiepNhan pnlTiepNhan;
     private final PnlTraCuuPhieu pnlPhieuKham;
+    private final PnlLichHen pnlLichHen;
     private final CardLayout cards = new CardLayout();
     private final JPanel pnlCards = new JPanel(cards);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
@@ -74,10 +75,12 @@ public class PnlLeTan extends JPanel {
         pnlKhachHang = new PnlKhachHang(VaiTro.LETAN);
         pnlTiepNhan = new PnlTiepNhan();
         pnlPhieuKham = new PnlTraCuuPhieu(taiKhoan);
+        pnlLichHen = new PnlLichHen();
         pnlCards.setOpaque(false);
         pnlCards.add(pnlKhachHang, "Bệnh nhân");
         pnlCards.add(pnlTiepNhan, "Tiếp nhận");
         pnlCards.add(pnlPhieuKham, "Phiếu khám");
+        pnlCards.add(pnlLichHen, "Lịch hẹn");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
@@ -122,7 +125,7 @@ public class PnlLeTan extends JPanel {
 
         top.add(menuItem("Tổng quan", LineIcon.Type.GRID, () -> thongBaoChuaCo("Tổng quan lễ tân")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Lịch hẹn", LineIcon.Type.CALENDAR, () -> thongBaoChuaCo("Lịch hẹn (L2)")));
+        top.add(menuItem("Lịch hẹn", LineIcon.Type.CALENDAR, () -> moTrang("Lịch hẹn")));
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Bệnh nhân", LineIcon.Type.PEOPLE, () -> moTrang("Bệnh nhân")));
         top.add(Box.createVerticalStrut(5));
@@ -213,6 +216,10 @@ public class PnlLeTan extends JPanel {
             pnlTiepNhan.lamMoi();
         } else if ("Phiếu khám".equals(trang)) {
             pnlPhieuKham.lamMoi();
+        }
+        if ("Lịch hẹn".equals(trang)) {
+            txtTimKiemNhanh.setText("");
+            pnlLichHen.lamMoi();
         }
         menu.forEach((ten, nut) -> {
             boolean chon = ten.equals(trang);
