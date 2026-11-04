@@ -271,8 +271,6 @@ public class PnlLeTan extends JPanel {
         });
         search.add(txtTimKiemNhanh, BorderLayout.CENTER);
         right.add(search);
-        JLabel phimTat = menuLabel("Ctrl + K", font(11), MUTED);
-        right.add(phimTat);
         JButton bell = new JButton(new LineIcon(LineIcon.Type.BELL, MUTED, 23)) {
             @Override
             protected void paintComponent(Graphics g) {
