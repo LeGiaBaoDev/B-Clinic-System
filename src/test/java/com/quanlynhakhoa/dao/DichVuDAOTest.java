@@ -50,6 +50,13 @@ import org.junit.jupiter.api.Test;
  * [x] không đổi trạng thái qua capNhat
  * [x] đổi thời lượng khi còn lịch hẹn DA_DAT -> chặn; đổi giá vẫn được (quyết định Q2)
  * [x] Lễ tân bị chặn
+ * UC008 ngừng / mở lại cung cấp:
+ * [x] ngừng: chuyển "Ngừng cung cấp", không xóa cứng, mất khỏi danh sách chọn timKiem("", true), ghi nhật ký
+ * [x] ngừng dịch vụ đã ngừng / không tồn tại -> chặn
+ * [x] ngừng khi còn lịch hẹn DA_DAT -> chặn (Q2), dịch vụ vẫn đang cung cấp
+ * [x] mở lại: về "Đang cung cấp", ghi nhật ký; mở lại dịch vụ đang cung cấp -> chặn
+ * [x] mở lại khi đã có dịch vụ khác đang cung cấp cùng tên -> chặn
+ * [x] Lễ tân bị chặn cả ngừng lẫn mở lại
  */
 class DichVuDAOTest {
 
@@ -269,6 +276,88 @@ class DichVuDAOTest {
                 new LoaiDichVu("LDV99", LoaiDichVu.DIEU_TRI, MucThue.THUE_0));
         BusinessException loi = assertThrows(BusinessException.class, () -> dao.them(dv));
         assertEquals("Loại dịch vụ không tồn tại.", loi.getMessage());
+    }
+
+    // ---- UC008 ngừng / mở lại cung cấp ----
+
+    @Test
+    void ngungCungCap_chuyenTrangThai_khongXoaCung_matKhoiDanhSachChon_ghiNhatKy() {
+        DichVu dv = themDichVu(ma + " Gói chỉnh nha", MucThue.THUE_10);
+        String demNhatKy = "SELECT COUNT(*) FROM NhatKyHeThong WHERE hanhDong='NGUNG_DICH_VU' AND noiDungThayDoi=?";
+
+        assertTrue(dao.ngungCungCap(dv.getMaDV()));
+
+        DichVu doc = dao.layTheoMa(dv.getMaDV());
+        assertNotNull(doc, "Không xóa cứng");
+        assertFalse(doc.isTrangThai());
+        assertTrue(dao.timKiem(ma, true).isEmpty(), "Không còn trong danh sách chọn khi đặt lịch / chỉ định");
+        assertTrue(DaoTestSupport.dem(demNhatKy, dv.getMaDV() + ": " + dv.getTenDV()) >= 1,
+                "Ghi người + thời điểm thực hiện (UC008 bước 5)");
+    }
+
+    @Test
+    void ngungCungCap_daNgungHoacKhongTonTai_biChan() {
+        DichVu dv = themDichVu(ma + " Gói thử", MucThue.THUE_0);
+        assertTrue(dao.ngungCungCap(dv.getMaDV()));
+
+        assertTrue(assertThrows(BusinessException.class, () -> dao.ngungCungCap(dv.getMaDV()))
+                .getMessage().contains("đã ngừng cung cấp từ trước"));
+        Assumptions.assumeTrue(dao.layTheoMa("DV999") == null, "DB test đã có DV999");
+        assertEquals("Dịch vụ không tồn tại.",
+                assertThrows(BusinessException.class, () -> dao.ngungCungCap("DV999")).getMessage());
+    }
+
+    @Test
+    void ngungCungCap_conLichHenDaDat_biChan_vanDangCungCap() {
+        DichVu dv = themDichVu(ma + " Nhổ răng sâu", MucThue.THUE_0);
+        String maKH = taoLichHenDaDat(dv.getMaDV());
+        try {
+            assertTrue(assertThrows(BusinessException.class, () -> dao.ngungCungCap(dv.getMaDV()))
+                    .getMessage().contains("trước khi ngừng cung cấp"));
+            assertTrue(dao.layTheoMa(dv.getMaDV()).isTrangThai());
+        } finally {
+            xoaLichHenVaKhach(maKH);
+        }
+    }
+
+    @Test
+    void moLaiCungCap_veDangCungCap_ghiNhatKy_dangCungCapThiBiChan() {
+        DichVu dv = themDichVu(ma + " Gói tẩy trắng tại nhà", MucThue.THUE_10);
+        assertEquals("Dịch vụ " + dv.getMaDV() + " đang cung cấp.",
+                assertThrows(BusinessException.class, () -> dao.moLaiCungCap(dv.getMaDV())).getMessage());
+        assertTrue(dao.ngungCungCap(dv.getMaDV()));
+
+        assertTrue(dao.moLaiCungCap(dv.getMaDV()));
+
+        assertTrue(dao.layTheoMa(dv.getMaDV()).isTrangThai());
+        assertEquals(List.of(dv.getMaDV()), maCua(dao.timKiem(ma, true)), "Có lại trong danh sách chọn");
+        assertTrue(DaoTestSupport.dem("SELECT COUNT(*) FROM NhatKyHeThong WHERE hanhDong='MO_LAI_DICH_VU'"
+                + " AND noiDungThayDoi=?", dv.getMaDV() + ": " + dv.getTenDV()) >= 1);
+    }
+
+    @Test
+    void moLaiCungCap_daCoDichVuKhacCungTenDangCungCap_biChan() {
+        DichVu cu = themDichVu(ma + " Răng giả tháo lắp", MucThue.THUE_5);
+        assertTrue(dao.ngungCungCap(cu.getMaDV()));
+        themDichVu(ma + " Răng giả tháo lắp", MucThue.THUE_5); // UC005 cho thêm trùng tên với dịch vụ đã ngừng
+
+        assertTrue(assertThrows(BusinessException.class, () -> dao.moLaiCungCap(cu.getMaDV()))
+                .getMessage().startsWith("Đã có dịch vụ khác đang cung cấp tên"));
+        assertFalse(dao.layTheoMa(cu.getMaDV()).isTrangThai());
+    }
+
+    @Test
+    void ngungVaMoLai_leTan_biChan() {
+        DichVu dang = themDichVu(ma + " Khám răng trẻ em", MucThue.THUE_0);
+        DichVu ngung = themDichVu(ma + " Gói ngừng", MucThue.THUE_0);
+        assertTrue(dao.ngungCungCap(ngung.getMaDV()));
+        DaoTestSupport.dangNhap(VaiTro.LETAN);
+
+        assertThrows(BusinessException.class, () -> dao.ngungCungCap(dang.getMaDV()));
+        assertThrows(BusinessException.class, () -> dao.moLaiCungCap(ngung.getMaDV()));
+        DaoTestSupport.dangNhap(VaiTro.QUANLY);
+        assertTrue(dao.layTheoMa(dang.getMaDV()).isTrangThai());
+        assertFalse(dao.layTheoMa(ngung.getMaDV()).isTrangThai());
     }
 
     // ---- Gợi ý lộ trình (UC005) ----
