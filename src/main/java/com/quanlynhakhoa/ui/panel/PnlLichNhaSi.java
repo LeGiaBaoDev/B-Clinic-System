@@ -156,6 +156,7 @@ public class PnlLichNhaSi extends JPanel {
     private final Map<String, JButton> menu = new LinkedHashMap<>();
     private final JLabel lblTrang = new JLabel("Lịch trực");
     private PnlKham pnlKham;
+    private PnlTraCuuHoSo pnlTraCuu;
     private final CardLayout theNoiDung = new CardLayout();
     private final JPanel pnlNoiDung = new JPanel(theNoiDung);
     private final DefaultTableModel modelLich = new DefaultTableModel(COT, 0) {
@@ -191,9 +192,11 @@ public class PnlLichNhaSi extends JPanel {
 
     private void initComponents() {
         pnlKham = new PnlKham(taiKhoan, dangXuat);
+        pnlTraCuu = new PnlTraCuuHoSo(taiKhoan, this::moKhamTuTraCuu);
         pnlTrang.setOpaque(false);
         pnlTrang.add(taoNoiDung(), "Lịch trực");
-        pnlTrang.add(pnlKham, "Bệnh án");
+        pnlTrang.add(pnlTraCuu, "Bệnh án");
+        pnlTrang.add(pnlKham, "Khám");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
@@ -319,7 +322,7 @@ public class PnlLichNhaSi extends JPanel {
         lblTrang.setText(trang);
         txtTimKiemHeader.setEnabled("Lịch trực".equals(trang));
         if ("Bệnh án".equals(trang)) {
-            pnlKham.lamMoi();
+            pnlTraCuu.lamMoi();
         }
         menu.forEach((ten, nut) -> {
             boolean chon = ten.equals(trang);
@@ -329,6 +332,14 @@ public class PnlLichNhaSi extends JPanel {
             nut.setIcon(new LineIcon(iconCua(ten), chon ? TEAL : MUTED, 17));
             nut.repaint();
         });
+    }
+
+    /** Từ màn tra cứu hồ sơ (UC024) mở thẳng phiếu khám của bệnh nhân; vẫn thuộc mục "Bệnh án". */
+    private void moKhamTuTraCuu(String maKH) {
+        pnlKham.moKhamTheoKhachHang(maKH, () -> {
+            theTrang.show(pnlTrang, "Khám");
+            lblTrang.setText("Bệnh án");
+        }, () -> moTrang("Bệnh án"));
     }
 
     private static LineIcon.Type iconCua(String ten) {
