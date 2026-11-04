@@ -6,10 +6,12 @@ import com.quanlynhakhoa.dao.support.NhatKy;
 import com.quanlynhakhoa.dao.support.PhanQuyen;
 import com.quanlynhakhoa.entity.DichVu;
 import com.quanlynhakhoa.entity.LoaiDichVu;
+import com.quanlynhakhoa.entity.enums.MucThue;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.exception.BusinessException;
 import java.math.BigDecimal;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,15 +30,49 @@ public class DichVuDAO {
         return timKiem("", false);
     }
 
+    /**
+     * Danh sách chọn dịch vụ cho bên khác (đặt lịch, chỉ định): {@code timKiem("", true)}
+     * chỉ trả dịch vụ đang cung cấp (UC008).
+     */
     public List<DichVu> timKiem(String ten, boolean chiDangHoatDong) {
+        return timKiem(ten, chiDangHoatDong ? Boolean.TRUE : null, null);
+    }
+
+    /**
+     * UC006: tra cứu danh mục theo tên hoặc mã, lọc trạng thái và phân loại thuế.
+     *
+     * @param tuKhoa    một phần tên hoặc mã dịch vụ; rỗng/null = tất cả
+     * @param trangThai true = đang cung cấp, false = ngừng cung cấp, null = tất cả
+     * @param mucThue   mức thuế GTGT của loại dịch vụ; null = tất cả
+     */
+    public List<DichVu> timKiem(String tuKhoa, Boolean trangThai, MucThue mucThue) {
+        StringBuilder sql = new StringBuilder(SQL_SELECT)
+                .append(" WHERE (dv.tenDV LIKE ? ESCAPE '\\' OR dv.maDV LIKE ? ESCAPE '\\')");
+        List<Object> thamSo = new ArrayList<>();
+        String mau = mauTimKiem(tuKhoa);
+        thamSo.add(mau);
+        thamSo.add(mau);
+        // Chỉ ghép đoạn SQL cố định; giá trị lọc luôn đi qua tham số.
+        if (trangThai != null) {
+            sql.append(" AND dv.trangThai=?");
+            thamSo.add(trangThai);
+        }
+        if (mucThue != null) {
+            sql.append(" AND ldv.mucThueGTGT=?");
+            thamSo.add(LoaiDichVuDAO.thue(mucThue));
+        }
+        sql.append(" ORDER BY dv.trangThai DESC, dv.maDV");
         return JdbcHelper.doc(c -> {
             PhanQuyen.quyen(c);
-            return JdbcHelper.query(c, SQL_SELECT
-                    + " WHERE (dv.tenDV LIKE ? OR dv.maDV LIKE ?)"
-                    + " AND (?=0 OR dv.trangThai=1) ORDER BY dv.maDV",
-                    this::mapRow, JdbcHelper.tuKhoa(ten), JdbcHelper.tuKhoa(ten),
-                    chiDangHoatDong);
+            return JdbcHelper.query(c, sql.toString(), this::mapRow, thamSo.toArray());
         });
+    }
+
+    /** Mẫu LIKE coi %, _, [ người dùng gõ là ký tự thường. */
+    private static String mauTimKiem(String tuKhoa) {
+        String text = tuKhoa == null ? "" : tuKhoa.trim();
+        return "%" + text.replace("\\", "\\\\").replace("%", "\\%")
+                .replace("_", "\\_").replace("[", "\\[") + "%";
     }
 
     public DichVu layTheoMa(String ma) {
