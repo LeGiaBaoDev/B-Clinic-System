@@ -59,6 +59,7 @@ public class PnlLeTan extends JPanel {
     private PnlLichCaNhan pnlLichCaNhan;
     private final PnlTraCuuPhieu pnlPhieuKham;
     private final PnlLichHen pnlLichHen;
+    private final PnlThanhToan pnlThanhToan;
     private final CardLayout cards = new CardLayout();
     private final JPanel pnlCards = new JPanel(cards);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
@@ -79,11 +80,13 @@ public class PnlLeTan extends JPanel {
         pnlTiepNhan = new PnlTiepNhan();
         pnlPhieuKham = new PnlTraCuuPhieu(taiKhoan);
         pnlLichHen = new PnlLichHen();
+        pnlThanhToan = new PnlThanhToan();
         pnlCards.setOpaque(false);
         pnlCards.add(pnlKhachHang, "Bệnh nhân");
         pnlCards.add(pnlTiepNhan, "Tiếp nhận");
         pnlCards.add(pnlPhieuKham, "Phiếu khám");
         pnlCards.add(pnlLichHen, "Lịch hẹn");
+        pnlCards.add(pnlThanhToan, "Hóa đơn");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
@@ -138,7 +141,7 @@ public class PnlLeTan extends JPanel {
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Phiếu khám", LineIcon.Type.INVOICE, () -> moTrang("Phiếu khám")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Hóa đơn", LineIcon.Type.INVOICE, () -> thongBaoChuaCo("Hóa đơn (UC025/UC026)")));
+        top.add(menuItem("Hóa đơn", LineIcon.Type.INVOICE, () -> moTrang("Hóa đơn")));
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Báo cáo", LineIcon.Type.CHART, () -> thongBaoChuaCo("Báo cáo")));
         top.add(Box.createVerticalStrut(5));
@@ -230,6 +233,8 @@ public class PnlLeTan extends JPanel {
             pnlTiepNhan.lamMoi();
         } else if ("Phiếu khám".equals(trang)) {
             pnlPhieuKham.lamMoi();
+        } else if ("Hóa đơn".equals(trang)) {
+            pnlThanhToan.lamMoi();
         }
         if ("Lịch hẹn".equals(trang)) {
             txtTimKiemNhanh.setText("");
