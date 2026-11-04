@@ -95,7 +95,7 @@ public class PnlDichVu extends JPanel {
     private static final String[] TEN_TRANG_THAI = {"Tất cả trạng thái", "Đang cung cấp", "Ngừng cung cấp"};
     // Thứ tự cột của bảng (dùng chung cho model, renderer, độ rộng).
     static final int COT_MA = 0, COT_TEN = 1, COT_DANH_MUC = 2, COT_THOI_LUONG = 3, COT_DON_GIA = 4,
-            COT_THUE = 5, COT_TRANG_THAI = 6;
+            COT_THUE = 5, COT_TRANG_THAI = 6, COT_THAO_TAC = 7;
 
     private final TimDichVu timDichVu;
 
@@ -121,7 +121,7 @@ public class PnlDichVu extends JPanel {
 
     // --- Bảng + phân trang ---
     private final DefaultTableModel modelDichVu = new DefaultTableModel(new String[]{
-        "MÃ", "TÊN DỊCH VỤ", "DANH MỤC", "THỜI LƯỢNG", "ĐƠN GIÁ", "THUẾ GTGT", "TRẠNG THÁI"
+        "MÃ", "TÊN DỊCH VỤ", "DANH MỤC", "THỜI LƯỢNG", "ĐƠN GIÁ", "THUẾ GTGT", "TRẠNG THÁI", "THAO TÁC"
     }, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -161,21 +161,38 @@ public class PnlDichVu extends JPanel {
     private final PnlCapNhatDichVu.LuuDichVu capNhatDichVu;
     private final Supplier<List<String>> layLoTrinh;
 
+    /** UC008: ngừng / mở lại cung cấp theo mã dịch vụ (DichVuDAO); tách ra để test không cần DB. */
+    @FunctionalInterface
+    interface DoiTrangThai {
+        boolean thucHien(String maDV);
+    }
+
+    private final DoiTrangThai ngungCungCap;
+    private final DoiTrangThai moLaiCungCap;
+
     public PnlDichVu() {
-        this(new DichVuDAO()::timKiem, new DichVuDAO()::capNhat, new DichVuDAO()::layLoTrinhDaLuu);
+        this(new DichVuDAO()::timKiem, new DichVuDAO()::capNhat, new DichVuDAO()::layLoTrinhDaLuu,
+                new DichVuDAO()::ngungCungCap, new DichVuDAO()::moLaiCungCap);
     }
 
     /** Dùng trong test chỉ cần xem danh sách. */
     PnlDichVu(TimDichVu timDichVu) {
         this(timDichVu, dv -> {
             throw new IllegalStateException("Test không cấu hình lưu");
-        }, List::of);
+        }, List::of, ma -> {
+            throw new IllegalStateException("Test không cấu hình ngừng");
+        }, ma -> {
+            throw new IllegalStateException("Test không cấu hình mở lại");
+        });
     }
 
-    PnlDichVu(TimDichVu timDichVu, PnlCapNhatDichVu.LuuDichVu capNhatDichVu, Supplier<List<String>> layLoTrinh) {
+    PnlDichVu(TimDichVu timDichVu, PnlCapNhatDichVu.LuuDichVu capNhatDichVu, Supplier<List<String>> layLoTrinh,
+            DoiTrangThai ngungCungCap, DoiTrangThai moLaiCungCap) {
         this.timDichVu = Objects.requireNonNull(timDichVu);
         this.capNhatDichVu = Objects.requireNonNull(capNhatDichVu);
         this.layLoTrinh = Objects.requireNonNull(layLoTrinh);
+        this.ngungCungCap = Objects.requireNonNull(ngungCungCap);
+        this.moLaiCungCap = Objects.requireNonNull(moLaiCungCap);
         setLayout(the);
         setName("Dịch vụ");
         setBackground(BACKGROUND);
@@ -342,7 +359,8 @@ public class PnlDichVu extends JPanel {
         };
         tblDichVu.setDefaultRenderer(Object.class, thuong);
         tblDichVu.getColumnModel().getColumn(COT_TRANG_THAI).setCellRenderer(new BadgeRenderer());
-        int[] widths = {80, 260, 190, 100, 120, 90, 140};
+        tblDichVu.getColumnModel().getColumn(COT_THAO_TAC).setCellRenderer(new ThaoTacRenderer());
+        int[] widths = {80, 240, 180, 95, 115, 85, 130, 200};
         for (int i = 0; i < widths.length; i++) {
             tblDichVu.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
@@ -415,15 +433,36 @@ public class PnlDichVu extends JPanel {
                 hienChiTiet();
             }
         });
-        // UC007 bước 1: nhấn đúp một dòng để mở trang chỉnh sửa dịch vụ đó.
+        /*
+         * Chuột trên bảng:
+         *  - bấm 1 lần vào link ở cột THAO TÁC: Sửa (UC007) / Ngừng cung cấp / Mở lại cung cấp (UC008);
+         *  - nhấn đúp ở các cột khác: mở trang chỉnh sửa (UC007 bước 1). Nhấn đúp ở cột THAO TÁC bị bỏ
+         *    qua vì lần bấm đầu đã chạy thao tác của link rồi.
+         */
         tblDichVu.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 int row = tblDichVu.rowAtPoint(e.getPoint());
-                if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2 && row >= 0) {
-                    tblDichVu.setRowSelectionInterval(row, row);
+                if (!SwingUtilities.isLeftMouseButton(e) || row < 0) {
+                    return;
+                }
+                tblDichVu.setRowSelectionInterval(row, row);
+                String link = linkTaiDiem(e.getPoint());
+                if (link != null) {
+                    if (e.getClickCount() == 1) {
+                        chayThaoTac(link, dichVuDangChon());
+                    }
+                } else if (e.getClickCount() == 2 && !laCotThaoTac(e.getPoint())) {
                     moCapNhatDichVu(dichVuDangChon());
                 }
+            }
+        });
+        // Rê chuột lên link thì đổi con trỏ thành bàn tay cho dễ nhận biết.
+        tblDichVu.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent e) {
+                tblDichVu.setCursor(linkTaiDiem(e.getPoint()) != null
+                        ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
             }
         });
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
@@ -529,7 +568,8 @@ public class PnlDichVu extends JPanel {
         for (DichVu dv : trangHienTai) {
             modelDichVu.addRow(new Object[]{dv.getMaDV(), dv.getTenDV(), dv.getLoaiDichVu().getTenLoaiDV(),
                 dv.getThoiLuong(), dv.getDonGia(), tenMucThue(dv.getLoaiDichVu().getMucThueGTGT()),
-                dv.isTrangThai() ? "Đang cung cấp" : "Ngừng cung cấp"});
+                dv.isTrangThai() ? "Đang cung cấp" : "Ngừng cung cấp",
+                dv.isTrangThai() ? "Sửa · Ngừng cung cấp" : "Mở lại cung cấp"}); // chữ để đọc/test; ô vẽ bằng link
         }
         veTab();
 
@@ -640,7 +680,25 @@ public class PnlDichVu extends JPanel {
         btnXoaLoc.setEnabled(!dangTai);
         // Ẩn/hiện theo vai trò mỗi lần tải, phòng trường hợp đổi tài khoản mà panel vẫn giữ.
         btnThem.setVisible(laQuanLy());
-        tblDichVu.setToolTipText(laQuanLy() ? "Nhấn đúp một dịch vụ đang cung cấp để chỉnh sửa." : null);
+        tblDichVu.setToolTipText(laQuanLy() ? "Nhấn đúp hoặc bấm \"Sửa\" để chỉnh sửa dịch vụ đang cung cấp." : null);
+        hienCotThaoTac(laQuanLy());
+    }
+
+    /**
+     * Cột THAO TÁC chỉ dành cho Quản lý (UC007, UC008). Lễ tân / Nha sĩ chỉ xem (UC006) nên thu cột
+     * về rộng 0 thay vì xóa cột, để chỉ số cột của bảng không đổi.
+     */
+    private void hienCotThaoTac(boolean hien) {
+        javax.swing.table.TableColumn cot = tblDichVu.getColumnModel().getColumn(COT_THAO_TAC);
+        if (hien) {
+            cot.setMaxWidth(Integer.MAX_VALUE); // nới giới hạn trên trước rồi mới đặt giới hạn dưới
+            cot.setMinWidth(170);
+            cot.setPreferredWidth(200);
+        } else {
+            cot.setMinWidth(0);
+            cot.setMaxWidth(0);
+            cot.setPreferredWidth(0);
+        }
     }
 
     private static boolean laQuanLy() {
@@ -662,8 +720,7 @@ public class PnlDichVu extends JPanel {
     /** UC005 bước 8: báo thành công và hiện dịch vụ mới trong danh sách. */
     void daThemDichVu(DichVu dv) {
         hienDichVuVuaLuu(dv);
-        JOptionPane.showMessageDialog(this, "Thêm dịch vụ thành công: " + dv.getMaDV() + " – " + dv.getTenDV(),
-                "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        thongBao("Thêm dịch vụ thành công: " + dv.getMaDV() + " – " + dv.getTenDV());
     }
 
     /** Về tab "Đang cung cấp", tìm theo mã dịch vụ vừa lưu để người dùng thấy ngay kết quả. */
@@ -715,13 +772,132 @@ public class PnlDichVu extends JPanel {
     void daCapNhatDichVu(DichVu dv) {
         dongTrangCapNhat();
         hienDichVuVuaLuu(dv);
-        JOptionPane.showMessageDialog(this, "Cập nhật dịch vụ thành công: " + dv.getMaDV() + " – " + dv.getTenDV(),
-                "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        thongBao("Cập nhật dịch vụ thành công: " + dv.getMaDV() + " – " + dv.getTenDV());
     }
 
     /** Trang chỉnh sửa đang mở (để test), null nếu đang ở danh sách. */
     PnlCapNhatDichVu trangCapNhat() {
         return trangCapNhat;
+    }
+
+    // ===================== Cột THAO TÁC + UC008 ngừng / mở lại cung cấp =====================
+
+    static final String LINK_SUA = "linkSua";
+    static final String LINK_NGUNG = "linkNgung";
+    static final String LINK_MO_LAI = "linkMoLai";
+
+    private boolean laCotThaoTac(Point diem) {
+        int cot = tblDichVu.columnAtPoint(diem);
+        return cot >= 0 && tblDichVu.convertColumnIndexToModel(cot) == COT_THAO_TAC;
+    }
+
+    /**
+     * Tên link nằm dưới con trỏ ở cột THAO TÁC (LINK_SUA / LINK_NGUNG / LINK_MO_LAI), null nếu không
+     * trúng link nào. Cách làm: dựng lại ô bằng renderer đúng kích thước ô rồi tìm thành phần con tại điểm bấm.
+     */
+    String linkTaiDiem(Point diem) {
+        int row = tblDichVu.rowAtPoint(diem);
+        int cot = tblDichVu.columnAtPoint(diem);
+        if (row < 0 || cot < 0 || tblDichVu.convertColumnIndexToModel(cot) != COT_THAO_TAC || !laQuanLy()) {
+            return null;
+        }
+        Rectangle o = tblDichVu.getCellRect(row, cot, false);
+        Component ve = tblDichVu.prepareRenderer(tblDichVu.getCellRenderer(row, cot), row, cot);
+        ve.setBounds(0, 0, o.width, o.height);
+        ve.doLayout();
+        Component con = SwingUtilities.getDeepestComponentAt(ve, diem.x - o.x, diem.y - o.y);
+        String ten = con == null ? null : con.getName();
+        return LINK_SUA.equals(ten) || LINK_NGUNG.equals(ten) || LINK_MO_LAI.equals(ten) ? ten : null;
+    }
+
+    /** Chạy thao tác của link vừa bấm trên dòng {@code dv}. */
+    void chayThaoTac(String link, DichVu dv) {
+        if (dv == null || !laQuanLy()) {
+            return;
+        }
+        switch (link) {
+            case LINK_SUA -> moCapNhatDichVu(dv); // UC007; dịch vụ đã ngừng sẽ được báo trong hàm này
+            case LINK_NGUNG -> {
+                // UC008 bước 3: cảnh báo xác nhận đúng nội dung báo cáo.
+                if (xacNhan("Ngừng cung cấp dịch vụ",
+                        "Ngừng cung cấp " + dv.getMaDV() + " – " + dv.getTenDV() + "?\n\n"
+                        + "Dịch vụ sẽ không còn hiển thị khi Nha sĩ chỉ định điều trị cho lượt khám mới.\n"
+                        + "Các phiếu khám/hóa đơn cũ không bị ảnh hưởng.", "Ngừng cung cấp")) {
+                    doiTrangThai(dv, ngungCungCap, "Đã ngừng cung cấp dịch vụ " + dv.getMaDV() + " – " + dv.getTenDV() + ".");
+                } // UC008 luồng 4.1–4.2: Hủy -> giữ nguyên "Đang cung cấp"
+            }
+            case LINK_MO_LAI -> {
+                // UC008 luồng 2.1–2.2: xác nhận rồi chuyển về "Đang cung cấp".
+                if (xacNhan("Mở lại cung cấp dịch vụ",
+                        "Mở lại cung cấp " + dv.getMaDV() + " – " + dv.getTenDV() + "?\n\n"
+                        + "Dịch vụ sẽ hiển thị lại khi đặt lịch hẹn và khi Nha sĩ chỉ định điều trị.",
+                        "Mở lại cung cấp")) {
+                    doiTrangThai(dv, moLaiCungCap, "Đã mở lại cung cấp dịch vụ " + dv.getMaDV() + " – " + dv.getTenDV() + ".");
+                }
+            }
+            default -> {
+                // link lạ: không làm gì
+            }
+        }
+    }
+
+    /**
+     * UC008 bước 5: gọi DAO chạy nền; thành công thì báo và tải lại danh sách (giữ nguyên bộ lọc, tab).
+     * Lỗi nghiệp vụ (còn lịch hẹn, trùng tên khi mở lại…) hiện đúng thông báo của DAO.
+     */
+    private void doiTrangThai(DichVu dv, DoiTrangThai hanhDong, String thongBaoThanhCong) {
+        datDangTai(true);
+        lblKetQua.setForeground(MUTED);
+        lblKetQua.setText("Đang cập nhật trạng thái dịch vụ " + dv.getMaDV() + "...");
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                return hanhDong.thucHien(dv.getMaDV());
+            }
+
+            @Override
+            protected void done() {
+                datDangTai(false);
+                try {
+                    if (Boolean.TRUE.equals(get())) {
+                        lamMoiDuLieu();
+                        thongBao(thongBaoThanhCong);
+                    } else {
+                        // false: không dòng nào đổi (vd người khác vừa đổi trạng thái) -> tải lại cho đúng.
+                        lamMoiDuLieu();
+                        baoLoi("Trạng thái dịch vụ " + dv.getMaDV() + " đã thay đổi. Danh sách được tải lại.");
+                    }
+                } catch (ExecutionException ex) {
+                    Throwable cause = ex.getCause();
+                    lamMoiDuLieu();
+                    if (cause instanceof BusinessException) {
+                        baoLoi(cause.getMessage());
+                    } else {
+                        LOG.log(Level.WARNING, "Không thể đổi trạng thái dịch vụ", cause);
+                        baoLoi("Không thể cập nhật trạng thái dịch vụ. Vui lòng thử lại.");
+                    }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }.execute();
+    }
+
+    /** Hộp xác nhận 2 nút; tách riêng để test thay được. */
+    boolean xacNhan(String tieuDe, String noiDung, String nutDongY) {
+        Object[] nut = {nutDongY, "Hủy"};
+        return JOptionPane.showOptionDialog(this, noiDung, tieuDe, JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE, null, nut, nut[1]) == 0; // mặc định chọn "Hủy" cho an toàn
+    }
+
+    /** Thông báo thành công; tách riêng để test thay được. */
+    void thongBao(String noiDung) {
+        JOptionPane.showMessageDialog(this, noiDung, "Thành công", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /** Thông báo lỗi nghiệp vụ; tách riêng để test thay được. */
+    void baoLoi(String noiDung) {
+        JOptionPane.showMessageDialog(this, noiDung, "Không thực hiện được", JOptionPane.WARNING_MESSAGE);
     }
 
     // ===================== Chi tiết dòng chọn =====================
@@ -778,6 +954,38 @@ public class PnlDichVu extends JPanel {
             setOpaque(true);
             setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER), new EmptyBorder(0, 12, 0, 12)));
+            return this;
+        }
+    }
+
+    /**
+     * Ô THAO TÁC: các link chữ teal như thiết kế. Dịch vụ đang cung cấp: "Sửa" + "Ngừng cung cấp";
+     * đã ngừng: "Sửa" (xám, vì UC007 chỉ sửa dịch vụ đang cung cấp) + "Mở lại cung cấp".
+     * Mỗi link có tên riêng để {@link #linkTaiDiem} biết người dùng bấm vào link nào.
+     */
+    private final class ThaoTacRenderer extends JPanel implements TableCellRenderer {
+        private final JLabel lblSua = new JLabel("Sửa");
+        private final JLabel lblDoi = new JLabel();
+
+        ThaoTacRenderer() {
+            super(new FlowLayout(FlowLayout.LEFT, 12, 13));
+            lblSua.setName(LINK_SUA);
+            lblSua.setFont(bold(12));
+            lblDoi.setFont(bold(12));
+            lblDoi.setForeground(TEAL);
+            add(lblSua);
+            add(lblDoi);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean selected,
+                boolean focus, int row, int column) {
+            DichVu dv = row < trangHienTai.size() ? trangHienTai.get(table.convertRowIndexToModel(row)) : null;
+            boolean dang = dv != null && dv.isTrangThai();
+            lblSua.setForeground(dang ? TEAL : MUTED);
+            lblDoi.setText(dang ? "Ngừng cung cấp" : "Mở lại cung cấp");
+            lblDoi.setName(dang ? LINK_NGUNG : LINK_MO_LAI);
+            setBackground(selected ? table.getSelectionBackground() : table.getBackground());
             return this;
         }
     }

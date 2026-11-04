@@ -261,21 +261,66 @@ public class DichVuDAO {
         return String.join("; ", doi);
     }
 
+    /**
+     * UC008: ngừng cung cấp dịch vụ (không xóa cứng). Chỉ Quản lý.
+     *
+     * <p>Sau khi ngừng, dịch vụ không còn trong danh sách chọn khi đặt lịch / chỉ định
+     * ({@code timKiem("", true)}); phiếu khám, hóa đơn cũ vẫn giữ dịch vụ và giá lúc phát sinh.
+     * Người thực hiện + thời điểm được ghi vào nhật ký (UC008 bước 5).</p>
+     *
+     * @return true nếu đã ngừng
+     * @throws BusinessException dịch vụ không tồn tại / đã ngừng sẵn, còn lịch hẹn chưa xử lý, không có quyền
+     */
     public boolean ngungCungCap(String ma) {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
+            // Khóa "lịch" trước để không ai đặt lịch hẹn mới cho dịch vụ này trong lúc đang ngừng.
             MaSinh.khoa(c, "BClinic:lich");
-            yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichHen WHERE maDV=?"
-                    + " AND trangThai IN('DA_DAT','DA_DEN')", ma),
-                    "Dịch vụ còn lịch hẹn chưa xử lý.");
-            boolean ok = JdbcHelper.update(c, "UPDATE DichVu SET trangThai=0 WHERE maDV=?", ma) == 1;
+            MaSinh.khoa(c, "BClinic:dich-vu");
+            DichVu dv = layTheoMa(c, ma);
+            yeuCau(dv != null, "Dịch vụ không tồn tại.");
+            // UC008 tiền điều kiện: chỉ ngừng dịch vụ đang cung cấp.
+            yeuCau(dv.isTrangThai(), "Dịch vụ " + ma + " đã ngừng cung cấp từ trước.");
+            // Ràng buộc nhóm giữ (Q2): còn lịch đã đặt / khách đã đến thì phải xử lý lịch trước,
+            // tránh lịch hẹn treo với một dịch vụ không còn cung cấp.
+            yeuCau(!conLichHenChuaXuLy(c, ma),
+                    "Dịch vụ còn lịch hẹn đã đặt hoặc đang khám. Cần xử lý các lịch hẹn đó trước khi ngừng cung cấp.");
+            boolean ok = JdbcHelper.update(c, "UPDATE DichVu SET trangThai=0 WHERE maDV=? AND trangThai=1", ma) == 1;
             if (ok) {
-                NhatKy.ghi(c, "NGUNG_DICH_VU", ma);
+                NhatKy.ghi(c, "NGUNG_DICH_VU", ma + ": " + dv.getTenDV());
             }
             return ok;
         });
     }
 
+    /**
+     * UC008 luồng 2.1–2.2: mở lại cung cấp dịch vụ đang ngừng. Chỉ Quản lý.
+     *
+     * <p>Vì UC005 cho phép thêm dịch vụ mới trùng tên với dịch vụ đã ngừng, khi mở lại phải kiểm tra
+     * tên không trùng với dịch vụ KHÁC đang cung cấp (giữ đúng quy tắc tên của UC005/UC007).</p>
+     *
+     * @return true nếu đã mở lại
+     * @throws BusinessException dịch vụ không tồn tại / đang cung cấp sẵn, trùng tên, không có quyền
+     */
+    public boolean moLaiCungCap(String ma) {
+        return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY);
+            MaSinh.khoa(c, "BClinic:lich");
+            MaSinh.khoa(c, "BClinic:dich-vu");
+            DichVu dv = layTheoMa(c, ma);
+            yeuCau(dv != null, "Dịch vụ không tồn tại.");
+            yeuCau(!dv.isTrangThai(), "Dịch vụ " + ma + " đang cung cấp.");
+            kiemTraTenKhongTrung(c, dv.getTenDV(), ma, "Đã có dịch vụ khác đang cung cấp tên \""
+                    + dv.getTenDV() + "\". Đổi tên hoặc ngừng dịch vụ đó trước khi mở lại.");
+            boolean ok = JdbcHelper.update(c, "UPDATE DichVu SET trangThai=1 WHERE maDV=? AND trangThai=0", ma) == 1;
+            if (ok) {
+                NhatKy.ghi(c, "MO_LAI_DICH_VU", ma + ": " + dv.getTenDV());
+            }
+            return ok;
+        });
+    }
+
+    /** Giữ tên chuẩn của DAO (NAMING_CONVENTIONS): "xóa" dịch vụ = ngừng cung cấp, không xóa cứng. */
     public boolean xoa(String ma) {
         return ngungCungCap(ma);
     }

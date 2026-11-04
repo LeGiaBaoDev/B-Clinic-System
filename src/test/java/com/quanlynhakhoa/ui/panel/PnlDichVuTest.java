@@ -34,6 +34,11 @@ import org.junit.jupiter.api.Test;
  * UC005: nút "Thêm dịch vụ" (góc phải tiêu đề) chỉ hiện với Quản lý
  * UC007: nhấn đúp dịch vụ đang cung cấp (Quản lý) -> mở trang Chỉnh sửa; dịch vụ đã ngừng -> báo,
  *        không mở; Lễ tân nhấn đúp không mở; Hủy trên trang -> về danh sách
+ * UC008: cột THAO TÁC chỉ Quản lý thấy (Lễ tân: rộng 0); dịch vụ đang cung cấp có "Sửa · Ngừng cung cấp",
+ *        đã ngừng có "Mở lại cung cấp"; bấm link tìm đúng link dưới con trỏ
+ * [x] Ngừng: xác nhận Có -> gọi DAO đúng mã, tải lại, báo thành công; Hủy -> không gọi DAO (4.1)
+ * [x] Mở lại: xác nhận Có -> gọi DAO, dịch vụ về Đang cung cấp
+ * [x] DAO báo lỗi nghiệp vụ (còn lịch hẹn) -> hiện đúng thông báo, trạng thái giữ nguyên
  */
 class PnlDichVuTest {
 
@@ -300,6 +305,176 @@ class PnlDichVuTest {
         table.dispatchEvent(new java.awt.event.MouseEvent(table, java.awt.event.MouseEvent.MOUSE_CLICKED,
                 System.currentTimeMillis(), 0, o.x + o.width / 2, o.y + o.height / 2, 2, false,
                 java.awt.event.MouseEvent.BUTTON1));
+    }
+
+    // ---- UC008 ngừng / mở lại cung cấp ----
+
+    /** Dữ liệu "DB giả" có thể đổi trạng thái, để kiểm tra danh sách được tải lại sau thao tác. */
+    private final List<DichVu> dbGia = new ArrayList<>();
+    private final List<String> daNgung = new ArrayList<>();
+    private final List<String> daMoLai = new ArrayList<>();
+    private final List<String> daThongBao = new ArrayList<>();
+    private final List<String> daBaoLoi = new ArrayList<>();
+    private boolean traLoiXacNhan;
+    private RuntimeException loiKhiDoi;
+
+    /** Panel có ngừng / mở lại giả và hộp thoại giả (không bật JOptionPane thật). */
+    private void taoPanelThaoTac() throws Exception {
+        dbGia.clear();
+        dbGia.add(new DichVu(caoVoi));
+        dbGia.add(new DichVu(niengRang));
+        SwingUtilities.invokeAndWait(() -> panel = new PnlDichVu((k, t, m) -> List.copyOf(dbGia), dv -> true,
+                List::of, ma -> doiTrangThaiGia(ma, false, daNgung), ma -> doiTrangThaiGia(ma, true, daMoLai)) {
+            @Override
+            boolean xacNhan(String tieuDe, String noiDung, String nutDongY) {
+                return traLoiXacNhan;
+            }
+
+            @Override
+            void thongBao(String noiDung) {
+                daThongBao.add(noiDung);
+            }
+
+            @Override
+            void baoLoi(String noiDung) {
+                daBaoLoi.add(noiDung);
+            }
+        });
+    }
+
+    private boolean doiTrangThaiGia(String ma, boolean trangThaiMoi, List<String> ghiLai) {
+        ghiLai.add(ma);
+        if (loiKhiDoi != null) {
+            throw loiKhiDoi;
+        }
+        dbGia.replaceAll(dv -> {
+            if (!dv.getMaDV().equals(ma)) {
+                return dv;
+            }
+            DichVu moi = new DichVu(dv);
+            moi.setTrangThai(trangThaiMoi);
+            return moi;
+        });
+        return true;
+    }
+
+    private void dangNhap(VaiTro vaiTro) {
+        NhanVien nv = new NhanVien("NV001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
+        SessionManager.getInstance().login(new TaiKhoan("TK001", "tk.kiemthu", "x", vaiTro, true, nv));
+    }
+
+    @Test
+    void cotThaoTac_quanLyThayLinkTheoTrangThai_leTanAnCot_bamTrungLink() throws Exception {
+        try {
+            dangNhap(VaiTro.QUANLY);
+            taoPanelThaoTac();
+            taiVaCho("1 dịch vụ");
+            SwingUtilities.invokeAndWait(() -> {
+                ((JButton) tim("tabTatCa")).doClick();
+                JTable table = bang();
+                assertTrue(table.getColumnModel().getColumn(PnlDichVu.COT_THAO_TAC).getWidth() > 0
+                        || table.getColumnModel().getColumn(PnlDichVu.COT_THAO_TAC).getPreferredWidth() > 0);
+                assertEquals("Sửa · Ngừng cung cấp", table.getValueAt(0, PnlDichVu.COT_THAO_TAC));
+                assertEquals("Mở lại cung cấp", table.getValueAt(1, PnlDichVu.COT_THAO_TAC));
+
+                // Dựng bảng có kích thước thật rồi trỏ đúng vào chữ "Ngừng cung cấp" ở dòng 0.
+                table.setSize(1200, 300);
+                table.doLayout();
+                assertEquals(PnlDichVu.LINK_NGUNG, panel.linkTaiDiem(diemCuaLink(table, 0, PnlDichVu.LINK_NGUNG)));
+                assertEquals(PnlDichVu.LINK_SUA, panel.linkTaiDiem(diemCuaLink(table, 0, PnlDichVu.LINK_SUA)));
+                assertEquals(PnlDichVu.LINK_MO_LAI, panel.linkTaiDiem(diemCuaLink(table, 1, PnlDichVu.LINK_MO_LAI)));
+                java.awt.Rectangle oTen = table.getCellRect(0, PnlDichVu.COT_TEN, true);
+                assertNull(panel.linkTaiDiem(new java.awt.Point(oTen.x + 5, oTen.y + 5)), "Ngoài cột thao tác");
+            });
+
+            dangNhap(VaiTro.LETAN);
+            taoPanelThaoTac();
+            taiVaCho("1 dịch vụ");
+            SwingUtilities.invokeAndWait(() -> assertEquals(0,
+                    bang().getColumnModel().getColumn(PnlDichVu.COT_THAO_TAC).getMaxWidth(), "Lễ tân chỉ xem"));
+        } finally {
+            SessionManager.getInstance().logout();
+        }
+    }
+
+    @Test
+    void ngung_xacNhanCo_goiDaoDungMa_taiLai_baoThanhCong_huyThiKhongGoi() throws Exception {
+        try {
+            dangNhap(VaiTro.QUANLY);
+            taoPanelThaoTac();
+            taiVaCho("1 dịch vụ");
+
+            traLoiXacNhan = false; // UC008 luồng 4.1: Hủy
+            SwingUtilities.invokeAndWait(() -> panel.chayThaoTac(PnlDichVu.LINK_NGUNG, dbGia.get(0)));
+            assertTrue(daNgung.isEmpty(), "Hủy xác nhận thì không gọi DAO");
+
+            traLoiXacNhan = true;
+            SwingUtilities.invokeAndWait(() -> panel.chayThaoTac(PnlDichVu.LINK_NGUNG, dbGia.get(0)));
+            choKetQua("Không tìm thấy dịch vụ phù hợp."); // tab Đang cung cấp giờ trống
+            assertEquals(List.of("DV001"), daNgung);
+            assertEquals(1, daThongBao.size());
+            assertTrue(daThongBao.getFirst().startsWith("Đã ngừng cung cấp dịch vụ DV001"));
+            SwingUtilities.invokeAndWait(() ->
+                    assertEquals("Ngừng cung cấp (2)", ((JButton) tim("tabNgungCungCap")).getText()));
+        } finally {
+            SessionManager.getInstance().logout();
+        }
+    }
+
+    @Test
+    void moLai_xacNhanCo_dichVuVeDangCungCap() throws Exception {
+        try {
+            dangNhap(VaiTro.QUANLY);
+            taoPanelThaoTac();
+            taiVaCho("1 dịch vụ");
+            traLoiXacNhan = true;
+            SwingUtilities.invokeAndWait(() -> panel.chayThaoTac(PnlDichVu.LINK_MO_LAI, dbGia.get(1)));
+            choKetQua("2 dịch vụ"); // tab Đang cung cấp: DV001 + DV002 vừa mở lại
+            assertEquals(List.of("DV002"), daMoLai);
+            assertTrue(daThongBao.getFirst().startsWith("Đã mở lại cung cấp dịch vụ DV002"));
+        } finally {
+            SessionManager.getInstance().logout();
+        }
+    }
+
+    @Test
+    void daoBaoLoiNghiepVu_hienDungThongBao_trangThaiGiuNguyen() throws Exception {
+        try {
+            dangNhap(VaiTro.QUANLY);
+            taoPanelThaoTac();
+            taiVaCho("1 dịch vụ");
+            traLoiXacNhan = true;
+            loiKhiDoi = new BusinessException("Dịch vụ còn lịch hẹn đã đặt hoặc đang khám. "
+                    + "Cần xử lý các lịch hẹn đó trước khi ngừng cung cấp.");
+            SwingUtilities.invokeAndWait(() -> panel.chayThaoTac(PnlDichVu.LINK_NGUNG, dbGia.get(0)));
+            choKetQua("1 dịch vụ");
+            long het = System.nanoTime() + 5_000_000_000L;
+            while (daBaoLoi.isEmpty() && System.nanoTime() < het) {
+                Thread.sleep(20);
+            }
+            assertEquals(1, daBaoLoi.size());
+            assertTrue(daBaoLoi.getFirst().contains("trước khi ngừng cung cấp"));
+            assertTrue(daThongBao.isEmpty());
+            assertTrue(dbGia.get(0).isTrangThai(), "Vẫn đang cung cấp");
+        } finally {
+            loiKhiDoi = null;
+            SessionManager.getInstance().logout();
+        }
+    }
+
+    /** Điểm nằm giữa link {@code tenLink} trong ô THAO TÁC của dòng {@code row}. */
+    private static java.awt.Point diemCuaLink(JTable table, int row, String tenLink) {
+        java.awt.Rectangle o = table.getCellRect(row, PnlDichVu.COT_THAO_TAC, false);
+        Component ve = table.prepareRenderer(table.getCellRenderer(row, PnlDichVu.COT_THAO_TAC),
+                row, PnlDichVu.COT_THAO_TAC);
+        ve.setBounds(0, 0, o.width, o.height);
+        ve.doLayout();
+        for (Component con : ((Container) ve).getComponents()) {
+            if (tenLink.equals(con.getName())) {
+                return new java.awt.Point(o.x + con.getX() + con.getWidth() / 2, o.y + con.getY() + con.getHeight() / 2);
+            }
+        }
+        throw new AssertionError("Ô không có link " + tenLink);
     }
 
     @Test
