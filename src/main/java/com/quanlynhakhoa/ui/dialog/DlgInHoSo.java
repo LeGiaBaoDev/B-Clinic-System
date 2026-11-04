@@ -20,6 +20,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.Window;
@@ -30,6 +32,9 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -64,16 +69,16 @@ public class DlgInHoSo extends JDialog {
     private final transient KhachHang kh;
     private final transient HoSoBenhAn hs;
     private final transient List<PhieuKham> phieu;
-    private final transient Map<String, ChiTietPhieuKham> ctDau;
+    private final transient Map<String, List<ChiTietPhieuKham>> dsTheoPhieu;
     private JPanel phieuPanel;
 
     private DlgInHoSo(Window owner, KhachHang kh, HoSoBenhAn hs,
-            List<PhieuKham> phieu, Map<String, ChiTietPhieuKham> ctDau) {
+            List<PhieuKham> phieu, Map<String, List<ChiTietPhieuKham>> dsTheoPhieu) {
         super(owner, "Hồ sơ bệnh án điện tử", ModalityType.APPLICATION_MODAL);
         this.kh = kh;
         this.hs = hs;
         this.phieu = phieu;
-        this.ctDau = ctDau;
+        this.dsTheoPhieu = dsTheoPhieu;
         setContentPane(taoNoiDung());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         pack();
@@ -85,8 +90,8 @@ public class DlgInHoSo extends JDialog {
     }
 
     public static void hien(Window owner, KhachHang kh, HoSoBenhAn hs,
-            List<PhieuKham> phieu, Map<String, ChiTietPhieuKham> ctDau) {
-        new DlgInHoSo(owner, kh, hs, phieu, ctDau).setVisible(true);
+            List<PhieuKham> phieu, Map<String, List<ChiTietPhieuKham>> dsTheoPhieu) {
+        new DlgInHoSo(owner, kh, hs, phieu, dsTheoPhieu).setVisible(true);
     }
 
     private JPanel taoNoiDung() {
@@ -140,7 +145,7 @@ public class DlgInHoSo extends JDialog {
             @Override
             public Dimension getPreferredSize() {
                 Dimension d = super.getPreferredSize();
-                return new Dimension(700, d.height);
+                return new Dimension(660, d.height);
             }
         };
         phieuWrap.setBackground(Color.WHITE);
@@ -235,45 +240,113 @@ public class DlgInHoSo extends JDialog {
         panel.add(hang("Dị ứng / Tiền sử · Bệnh nền", tienSu));
 
         panel.add(mucPhu("II. LỊCH SỬ KHÁM & ĐIỀU TRỊ"));
-        if (phieu == null || phieu.isEmpty()) {
-            panel.add(dong("Chưa có phiếu khám nào.", font(11), MUTED, 0));
+        panel.add(dong("Chỉ hiển thị các lượt khám đã hoàn tất.", font(9), MUTED, 0));
+        List<PhieuKham> hoanTat = phieu == null ? List.of()
+                : phieu.stream().filter(pk -> pk.getTrangThai() == TrangThaiPhieuKham.HOAN_TAT).toList();
+        if (hoanTat.isEmpty()) {
+            panel.add(dong("Chưa có phiếu khám nào đã hoàn tất.", font(11), MUTED, 0));
         } else {
-            for (PhieuKham pk : phieu) {
-                panel.add(khoiPhieu(pk, ctDau == null ? null : ctDau.get(pk.getMaPK())));
+            for (PhieuKham pk : hoanTat) {
+                List<ChiTietPhieuKham> ds = dsTheoPhieu == null ? null : dsTheoPhieu.get(pk.getMaPK());
+                panel.add(khoiPhieu(pk, ds));
             }
         }
         return panel;
     }
 
-    private JPanel khoiPhieu(PhieuKham pk, ChiTietPhieuKham ct) {
+    private JPanel khoiPhieu(PhieuKham pk, List<ChiTietPhieuKham> ds) {
         JPanel p = new JPanel();
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setAlignmentX(LEFT_ALIGNMENT);
-        p.setBorder(new EmptyBorder(8, 0, 6, 0));
+        p.setBorder(new EmptyBorder(8, 0, 10, 0));
 
         String bs = pk.getLichHen() != null && pk.getLichHen().getNhaSi() != null
                 ? "BS. " + pk.getLichHen().getNhaSi().getHoTenNV() : "—";
-        String dv = pk.getLichHen() != null && pk.getLichHen().getDichVu() != null
-                ? pk.getLichHen().getDichVu().getTenDV() : "—";
-        p.add(dong("• Phiếu khám ngày " + pk.getNgayLap().format(NGAY)
+        p.add(dong("• Ngày " + pk.getNgayLap().format(NGAY)
                 + "  —  " + trangThai(pk.getTrangThai()), bold(12), TEXT, 0));
-        p.add(dong(bs + " · " + dv, font(10), MUTED, 12));
-        if (ct != null) {
-            p.add(dong("Triệu chứng: " + trieuChungNgan(ct.getTrieuChung()), font(11), TEXT, 12));
-            p.add(dong("Chẩn đoán: " + chanDoanNgan(ct.getChanDoan()), font(11), TEXT, 12));
-        }
+        p.add(dong(bs, font(10), MUTED, 12));
+        p.add(Box.createVerticalStrut(5));
+        p.add(taoBangDichVu(ds));
         if (pk.getLoiDan() != null && !pk.getLoiDan().isBlank()) {
             p.add(dong("Lời dặn: " + motDong(pk.getLoiDan()), font(11), TEXT, 12));
         }
         return p;
     }
 
+    private JPanel taoBangDichVu(List<ChiTietPhieuKham> ds) {
+        JPanel p = new JPanel(new GridBagLayout());
+        p.setOpaque(true);
+        p.setBackground(Color.WHITE);
+        p.setAlignmentX(LEFT_ALIGNMENT);
+        p.setBorder(BorderFactory.createMatteBorder(1, 1, 0, 0, new Color(0xB9C5D1)));
+        double[] w = {0.05, 0.25, 0.20, 0.16, 0.11, 0.07, 0.16};
+        String[] header = {"STT", "Triệu chứng / Chẩn đoán", "Tên dịch vụ điều trị",
+            "Nha sĩ", "Đơn giá", "SL", "Thành tiền"};
+        themDongBang(p, 0, header, w, true);
+        if (ds == null || ds.isEmpty()) {
+            themDongBang(p, 1, new String[]{"", "Chưa có chi tiết điều trị.", "", "", "", "", ""}, w, false);
+        } else {
+            for (int i = 0; i < ds.size(); i++) {
+                ChiTietPhieuKham ct = ds.get(i);
+                String nhaSi = ct.getNhaSi() == null ? "—" : ct.getNhaSi().getHoTenNV();
+                String[] row = {
+                    String.valueOf(i + 1),
+                    gach(ct.getTrieuChung()) + " / " + gach(ct.getChanDoan()),
+                    ct.getDichVu() == null ? "—" : ct.getDichVu().getTenDV(),
+                    nhaSi,
+                    money(ct.getDonGia()),
+                    String.valueOf(ct.getSoLuong()),
+                    money(ct.getThanhTien())};
+                themDongBang(p, i + 1, row, w, false);
+            }
+        }
+        return p;
+    }
+
+    private void themDongBang(JPanel p, int y, String[] giaTri, double[] w, boolean header) {
+        for (int i = 0; i < giaTri.length; i++) {
+            int rong = Math.max(34, (int) Math.round(500 * w[i]));
+            JLabel l = new JLabel("<html><div style='width:" + rong + "px'>"
+                    + escape(giaTri[i]) + "</div></html>");
+            l.setFont(header ? bold(9) : font(9));
+            l.setForeground(TEXT);
+            l.setVerticalAlignment(javax.swing.SwingConstants.TOP);
+            l.setHorizontalAlignment(i == 1 || i == 2 || i == 3
+                    ? javax.swing.SwingConstants.LEFT : javax.swing.SwingConstants.CENTER);
+            JPanel cell = new JPanel(new BorderLayout());
+            cell.setBackground(header ? new Color(0xF1F6F7) : Color.WHITE);
+            cell.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(0xB9C5D1)),
+                    new EmptyBorder(5, 3, 5, 3)));
+            cell.add(l, BorderLayout.CENTER);
+            GridBagConstraints c = new GridBagConstraints();
+            c.gridx = i;
+            c.gridy = y;
+            c.weightx = w[i];
+            c.fill = GridBagConstraints.BOTH;
+            c.anchor = GridBagConstraints.NORTHWEST;
+            p.add(cell, c);
+        }
+    }
+
+    private static String escape(String s) {
+        return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\n", "<br>");
+    }
+
+    private static String money(double v) {
+        NumberFormat nf = NumberFormat.getNumberInstance(Locale.of("vi", "VN"));
+        nf.setMaximumFractionDigits(0);
+        return nf.format(BigDecimal.valueOf(v).setScale(0, RoundingMode.HALF_UP)) + " đ";
+    }
+
     private JPanel taoCuoiPhieu() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(16, 0, 0, 0));
-        JLabel note = new JLabel("Thông tin y tế · Chỉ sử dụng cho mục đích khám chữa bệnh.");
+        JLabel note = new JLabel("Thông tin y tế · Chỉ gồm lượt khám đã hoàn tất · Bản in lúc "
+                + LocalDate.now(ZONE).format(NGAY) + ".");
         note.setFont(font(9));
         note.setForeground(MUTED);
         panel.add(note, BorderLayout.WEST);
@@ -318,7 +391,7 @@ public class DlgInHoSo extends JDialog {
         l.setFont(font(10));
         l.setForeground(MUTED);
         l.setAlignmentX(LEFT_ALIGNMENT);
-        JLabel v = new JLabel(giaTri);
+        JLabel v = new JLabel("<html><div style='width:580px'>" + escape(gach(giaTri)) + "</div></html>");
         v.setFont(font(12));
         v.setForeground(TEXT);
         v.setAlignmentX(LEFT_ALIGNMENT);
@@ -346,7 +419,7 @@ public class DlgInHoSo extends JDialog {
         l.setFont(font(10));
         l.setForeground(MUTED);
         l.setAlignmentX(LEFT_ALIGNMENT);
-        JLabel v = new JLabel(giaTri);
+        JLabel v = new JLabel("<html><div style='width:270px'>" + escape(gach(giaTri)) + "</div></html>");
         v.setFont(font(12));
         v.setForeground(TEXT);
         v.setAlignmentX(LEFT_ALIGNMENT);
@@ -357,7 +430,8 @@ public class DlgInHoSo extends JDialog {
     }
 
     private static JLabel dong(String text, java.awt.Font f, Color c, int leftPad) {
-        JLabel l = new JLabel(text);
+        JLabel l = new JLabel("<html><div style='width:" + Math.max(120, 580 - leftPad)
+                + "px'>" + escape(text) + "</div></html>");
         l.setFont(f);
         l.setForeground(c);
         l.setAlignmentX(LEFT_ALIGNMENT);
