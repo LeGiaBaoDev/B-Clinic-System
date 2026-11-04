@@ -49,6 +49,18 @@ public class HoSoBenhAnDAO {
         return JdbcHelper.one(c, SQL_SELECT + " WHERE maKH=?", r -> mapRow(c, r), maKH);
     }
 
+    
+    public HoSoBenhAn layTheoKhachHang(String maKH) {
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.NHASI);
+            if (actor.vaiTro() == VaiTro.NHASI) {
+                yeuCau(JdbcHelper.exists(c, "SELECT 1 FROM LichHen WHERE maKH=? AND maNV=?",
+                        maKH, actor.maNV()), "Bạn không được xem bệnh án này.");
+            }
+            return layTheoMaKhachHang(c, maKH);
+        });
+    }
+
     public boolean them(HoSoBenhAn hs) {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.LETAN);

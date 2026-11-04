@@ -5,7 +5,6 @@ import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.util.SessionManager;
 import java.util.List;
 
-/** UC012: lịch cá nhân cho cả ba vai trò; không nhận mã nhân viên từ giao diện. */
 public class PnlLichCaNhan extends PnlLichLamViec {
     private final javax.swing.JLabel lblCapNhat=new javax.swing.JLabel();
     private final String maTK;

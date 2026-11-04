@@ -8,7 +8,6 @@ import java.sql.*;
 import java.time.*;
 import java.util.List;
 
-/** UC015: nhân viên gửi đơn của mình; Quản lý xử lý đơn đã được lưu. */
 public class DonNghiPhepDAO {
     /** Kết quả truy vấn chỉ đọc, chứa bản chụp ca tại thời điểm gửi đơn. */
     public record Don(String maDon,LichLamViec ca,String lyDo,LocalDateTime ngayGui,

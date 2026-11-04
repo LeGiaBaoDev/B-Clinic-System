@@ -27,6 +27,7 @@ public class PnlQuanLy extends JPanel {
     private PnlNhanVien pnlNhanVien;
     private PnlLichLamViec pnlLichLamViec;
     private PnlLichCaNhan pnlLichCaNhan;
+    private PnlDichVu pnlDichVu;
     private final JLabel lblCaHienTai = label("Đang tải ca làm việc...", font(11), MUTED);
     private final JLabel lblKetNoi = label("● Đang tải dữ liệu", font(10), MUTED);
     private final JLabel lblDongBo = label("Đang tải dữ liệu...", font(10), MUTED);
@@ -342,6 +343,8 @@ public class PnlQuanLy extends JPanel {
             pnlNhanVien.lamMoiDuLieu();
         } else if ("Lịch làm việc".equals(lblTrang.getText()) && pnlLichLamViec != null) {
             pnlLichLamViec.lamMoiDuLieu();
+        } else if ("Dịch vụ".equals(lblTrang.getText()) && pnlDichVu != null) {
+            pnlDichVu.lamMoiDuLieu();
         } else {
             pnlTongQuan.lamMoiDuLieu();
         }
@@ -365,6 +368,13 @@ public class PnlQuanLy extends JPanel {
         }
         if ("Lịch làm việc".equals(name)) {
             pnlLichLamViec.lamMoiDuLieu();
+        }
+        if ("Dịch vụ".equals(name) && pnlDichVu == null) {
+            pnlDichVu = new PnlDichVu();
+            pnlCards.add(pnlDichVu, name);
+        }
+        if ("Dịch vụ".equals(name)) {
+            pnlDichVu.lamMoiDuLieu();
         }
         if (!"Tổng quan".equals(name) && java.util.Arrays.stream(pnlCards.getComponents()).noneMatch(c -> name.equals(c.getName()))) {
             JPanel empty = new JPanel(new GridBagLayout());

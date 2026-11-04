@@ -6,7 +6,6 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 
-/** UC003 theo kế hoạch H1; dùng chung form và kiểm tra nhập liệu với UC002. */
 public class DlgCapNhatNhanVien extends JDialog {
     public DlgCapNhatNhanVien(Window owner, TaiKhoan taiKhoan, Runnable daLuu) {
         super(owner, "Cập nhật nhân viên và tài khoản", ModalityType.APPLICATION_MODAL);

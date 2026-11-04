@@ -52,8 +52,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import javax.swing.AbstractAction;
@@ -149,13 +151,15 @@ public class PnlLichNhaSi extends JPanel {
     private final JLabel lblChiTietMeta = new JLabel(" ");
     private final JLabel lblChiTietTrangThai = new JLabel(" ");
     private final JButton btnXemBenhAn = new JButton("Xem bệnh án");
+    private final CardLayout theTrang = new CardLayout();
+    private final JPanel pnlTrang = new JPanel(theTrang);
+    private final Map<String, JButton> menu = new LinkedHashMap<>();
+    private final JLabel lblTrang = new JLabel("Lịch trực");
+    private PnlKham pnlKham;
+    private PnlTraCuuHoSo pnlTraCuu;
+    private PnlLichCaNhan pnlLichCaNhan;
     private final CardLayout theNoiDung = new CardLayout();
     private final JPanel pnlNoiDung = new JPanel(theNoiDung);
-    private final CardLayout cardsTrang=new CardLayout();
-    private final JPanel pnlTrang=new JPanel(cardsTrang);
-    private final java.util.Map<String,JButton> menuTrang=new java.util.LinkedHashMap<>();
-    private final JLabel lblTrangCaNhan=label("Lịch trực",bold(18),TEXT);
-    private PnlLichCaNhan pnlLichCaNhan;
     private final DefaultTableModel modelLich = new DefaultTableModel(COT, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -188,14 +192,20 @@ public class PnlLichNhaSi extends JPanel {
     }
 
     private void initComponents() {
+        pnlKham = new PnlKham(taiKhoan, dangXuat);
+        pnlTraCuu = new PnlTraCuuHoSo(taiKhoan, this::moKhamTuTraCuu);
+        pnlTrang.setOpaque(false);
+        pnlTrang.add(taoNoiDung(), "Lịch trực");
+        pnlTrang.add(pnlTraCuu, "Bệnh án");
+        pnlTrang.add(pnlKham, "Khám");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
         main.add(taoHeader(), BorderLayout.NORTH);
-        pnlTrang.add(taoNoiDung(),"Lịch trực");
         main.add(pnlTrang, BorderLayout.CENTER);
         main.add(taoThanhTrangThai(), BorderLayout.SOUTH);
         add(main, BorderLayout.CENTER);
+        moTrang("Lịch trực");
     }
 
     private JPanel taoSidebar() {
@@ -227,15 +237,15 @@ public class PnlLichNhaSi extends JPanel {
         brand.add(label("PHÒNG KHÁM NHA KHOA", font(10), new Color(0x608480)));
         top.add(brand);
 
-        top.add(menuItem("Tổng quan", LineIcon.Type.GRID, false, () -> thongBaoChuaCo("Tổng quan nha sĩ")));
+        top.add(menuItem("Tổng quan", LineIcon.Type.GRID, () -> thongBaoChuaCo("Tổng quan nha sĩ")));
         top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Lịch trực", LineIcon.Type.CALENDAR, true, () -> moTrangLich("Lịch trực")));
+        top.add(menuItem("Lịch trực", LineIcon.Type.CALENDAR, () -> moTrang("Lịch trực")));
         top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Lịch của tôi", LineIcon.Type.CALENDAR, false, () -> moTrangLich("Lịch của tôi")));
+        top.add(menuItem("Lịch của tôi", LineIcon.Type.CALENDAR, () -> moTrang("Lịch của tôi")));
         top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Bệnh án", LineIcon.Type.CLIPBOARD, false, () -> thongBaoChuaCo("Hồ sơ bệnh án (UC024)")));
+        top.add(menuItem("Bệnh án", LineIcon.Type.CLIPBOARD, () -> moTrang("Bệnh án")));
         top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, false, () -> thongBaoChuaCo("Cài đặt tài khoản")));
+        top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, () -> thongBaoChuaCo("Cài đặt tài khoản")));
         sidebar.add(top, BorderLayout.NORTH);
 
         JPanel bottom = new JPanel();
@@ -275,26 +285,25 @@ public class PnlLichNhaSi extends JPanel {
         return sidebar;
     }
 
-    private JButton menuItem(String text, LineIcon.Type icon, boolean active, Runnable action) {
+    private JButton menuItem(String text, LineIcon.Type icon, Runnable action) {
         JButton button = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Boolean.TRUE.equals(getClientProperty("menu.active")) ? TEAL_LIGHT : SURFACE);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 5, 5);
-                g2.dispose();
+                if (Boolean.TRUE.equals(getClientProperty("menu.selected"))) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(TEAL_LIGHT);
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 5, 5);
+                    g2.dispose();
+                }
                 super.paintComponent(g);
             }
         };
         button.setLayout(new BorderLayout());
-        button.putClientProperty("menu.active",active);
-        button.putClientProperty("menu.icon",icon);
-        menuTrang.put(text,button);
         button.setHorizontalAlignment(SwingConstants.LEFT);
-        button.setFont(active ? bold(14) : font(14));
-        button.setForeground(active ? TEAL : TEXT);
-        button.setIcon(new LineIcon(icon, active ? TEAL : MUTED, 17));
+        button.setFont(font(14));
+        button.setForeground(TEXT);
+        button.setIcon(new LineIcon(icon, MUTED, 17));
         button.setIconTextGap(13);
         button.setBorder(new EmptyBorder(10, 14, 10, 12));
         button.setContentAreaFilled(false);
@@ -304,33 +313,65 @@ public class PnlLichNhaSi extends JPanel {
         button.setAlignmentX(LEFT_ALIGNMENT);
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         button.setPreferredSize(new Dimension(184, 44));
+        menu.put(text, button);
         if (action != null) {
             button.addActionListener(e -> action.run());
         }
         return button;
     }
 
-    private void moTrangLich(String name) {
-        if("Lịch của tôi".equals(name)) {
-            if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlTrang.add(pnlLichCaNhan,name); }
+    private void moTrang(String trang) {
+        if ("Lịch của tôi".equals(trang)) {
+            if (pnlLichCaNhan == null) {
+                pnlLichCaNhan = new PnlLichCaNhan();
+                pnlTrang.add(pnlLichCaNhan, trang);
+            }
             pnlLichCaNhan.lamMoiDuLieu();
         }
-        cardsTrang.show(pnlTrang,name); lblTrangCaNhan.setText(name);
-        txtTimKiemHeader.setEnabled(!"Lịch của tôi".equals(name));
-        menuTrang.forEach((title,button) -> {
-            boolean selected=title.equals(name); button.putClientProperty("menu.active",selected);
-            button.setForeground(selected?TEAL:TEXT); button.setFont(selected?bold(14):font(14));
-            button.setIcon(new LineIcon((LineIcon.Type)button.getClientProperty("menu.icon"),selected?TEAL:MUTED,17)); button.repaint();
+        theTrang.show(pnlTrang, trang);
+        lblTrang.setText(trang);
+        txtTimKiemHeader.setEnabled("Lịch trực".equals(trang));
+        if ("Bệnh án".equals(trang)) {
+            pnlTraCuu.lamMoi();
+        }
+        menu.forEach((ten, nut) -> {
+            boolean chon = ten.equals(trang);
+            nut.putClientProperty("menu.selected", chon);
+            nut.setFont(chon ? bold(14) : font(14));
+            nut.setForeground(chon ? TEAL : TEXT);
+            nut.setIcon(new LineIcon(iconCua(ten), chon ? TEAL : MUTED, 17));
+            nut.repaint();
         });
     }
 
+    private void moKhamTuTraCuu(String maKH) {
+        pnlKham.moKhamTheoKhachHang(maKH, () -> {
+            theTrang.show(pnlTrang, "Khám");
+            lblTrang.setText("Bệnh án");
+        }, () -> moTrang("Bệnh án"));
+    }
+
+    private static LineIcon.Type iconCua(String ten) {
+        return switch (ten) {
+            case "Tổng quan" ->
+                LineIcon.Type.GRID;
+            case "Lịch trực", "Lịch của tôi" ->
+                LineIcon.Type.CALENDAR;
+            case "Bệnh án" ->
+                LineIcon.Type.CLIPBOARD;
+            default ->
+                LineIcon.Type.SETTINGS;
+        };
+    }
     private JPanel taoHeader() {
         JPanel header = new JPanel(new BorderLayout(20, 0));
         header.setBackground(SURFACE);
         header.setPreferredSize(new Dimension(0, 78));
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER), new EmptyBorder(14, 24, 14, 24)));
-        header.add(lblTrangCaNhan, BorderLayout.WEST);
+        lblTrang.setFont(bold(18));
+        lblTrang.setForeground(TEXT);
+        header.add(lblTrang, BorderLayout.WEST);
 
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 0));
         controls.setOpaque(false);
@@ -433,7 +474,7 @@ public class PnlLichNhaSi extends JPanel {
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel title = label("Lịch trực và lịch hẹn trong ngày", bold(22), TEXT);
+        JLabel title = label("Lịch hẹn trong ngày", bold(22), TEXT);
         JLabel sub = label("Lịch làm việc của " + tenNhaSi() + " · Phòng khám B-Clinic", font(12), MUTED);
         text.add(title);
         text.add(Box.createVerticalStrut(4));
@@ -1108,7 +1149,7 @@ public class PnlLichNhaSi extends JPanel {
         getActionMap().put("lamMoi", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                if("Lịch của tôi".equals(lblTrangCaNhan.getText())&&pnlLichCaNhan!=null) pnlLichCaNhan.lamMoiDuLieu();
+                if ("Lịch của tôi".equals(lblTrang.getText()) && pnlLichCaNhan != null) { pnlLichCaNhan.lamMoiDuLieu(); }
                 else taiDuLieu();
             }
         });

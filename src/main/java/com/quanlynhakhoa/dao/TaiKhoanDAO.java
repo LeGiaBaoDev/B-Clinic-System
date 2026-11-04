@@ -163,7 +163,7 @@ public class TaiKhoanDAO {
         return JdbcHelper.transaction(c -> capNhat(c, tk));
     }
 
-    /** UC003 theo kế hoạch H1: cập nhật nhân viên và quyền/trạng thái nguyên tử. */
+    
     public boolean capNhatNhanVienVaTaiKhoan(NhanVien nv, TaiKhoan tk) {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
@@ -178,7 +178,6 @@ public class TaiKhoanDAO {
             TaiKhoan cu = layTheoMa(c, tk.getMaTK());
             yeuCau(cu != null && cu.getNhanVien().getMaNV().equals(nv.getMaNV()),
                     "Không tìm thấy tài khoản nhân viên.");
-            // UC003 không thay tên đăng nhập hay mật khẩu đã cấp.
             TaiKhoan moi = new TaiKhoan(tk);
             moi.setTenTK(cu.getTenTK());
             yeuCau(capNhat(c, moi), "Không tìm thấy tài khoản nhân viên.");

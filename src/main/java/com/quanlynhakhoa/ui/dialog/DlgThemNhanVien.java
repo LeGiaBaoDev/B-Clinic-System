@@ -18,7 +18,6 @@ import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-/** UC002: tạo nhân viên và tài khoản trong transaction của TaiKhoanDAO. */
 public class DlgThemNhanVien extends JDialog {
 
     public DlgThemNhanVien(Window owner, Consumer<NhanVien> daTao) {
