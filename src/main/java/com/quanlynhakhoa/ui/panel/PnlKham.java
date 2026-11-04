@@ -105,6 +105,7 @@ public class PnlKham extends JPanel {
     private final JButton btnBatDau = PnlTongQuanQuanLy.button("Bắt đầu khám", LineIcon.Type.ARROW, true);
     private PhieuKham dangKham;
     private boolean dangDungBang;
+    private Runnable khiQuayLai;
 
     // --- wizard header ---
     private final JLabel lblTieuDe = new JLabel();
@@ -321,8 +322,54 @@ public class PnlKham extends JPanel {
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        khiQuayLai = null;
         PhieuKham pk = dsPhieu.get(tblPhieu.convertRowIndexToModel(row));
         moKham(pk);
+    }
+
+    /**
+     * Mở thẳng phiếu khám chờ/đang khám hôm nay của một bệnh nhân (gọi từ màn tra cứu UC024).
+     * {@code truocKhiMo} chạy ngay trước khi mở (để màn ngoài chuyển sang thẻ khám);
+     * nếu không có phiếu thì chỉ báo và không chuyển màn.
+     */
+    public void moKhamTheoKhachHang(String maKH, Runnable truocKhiMo, Runnable khiQuayLai) {
+        this.khiQuayLai = khiQuayLai;
+        new SwingWorker<PhieuKham, Void>() {
+            @Override
+            protected PhieuKham doInBackground() {
+                LocalDate today = LocalDate.now(ZONE);
+                for (PhieuKham pk : phieuKhamDAO.timKiem(today, today)) {
+                    if ((pk.getTrangThai() == TrangThaiPhieuKham.CHO_KHAM
+                            || pk.getTrangThai() == TrangThaiPhieuKham.DANG_KHAM)
+                            && pk.getLichHen().getKhachHang().getMaKH().equals(maKH)) {
+                        return pk;
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    PhieuKham pk = get();
+                    if (pk == null) {
+                        JOptionPane.showMessageDialog(PnlKham.this,
+                                "Bệnh nhân chưa có phiếu khám chờ/đang khám hôm nay.",
+                                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                        return;
+                    }
+                    if (truocKhiMo != null) {
+                        truocKhiMo.run();
+                    }
+                    moKham(pk);
+                } catch (CancellationException ignored) {
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException e) {
+                    baoLoi(e.getCause());
+                }
+            }
+        }.execute();
     }
 
     // ---------------------------------------------------------------- wizard
@@ -814,10 +861,35 @@ public class PnlKham extends JPanel {
         chonBuoc(THE1);
         if (dsDichVu.isEmpty()) {
             taiDichVu();
+        } else {
+            chonDichVuGoc();
+        }
+    }
+
+    /** Chọn sẵn dịch vụ ban đầu của lịch hẹn; nha sĩ vẫn có thể bỏ/chọn dịch vụ khác. */
+    private void chonDichVuGoc() {
+        if (dangKham == null || dangKham.getLichHen() == null
+                || dangKham.getLichHen().getDichVu() == null) {
+            return;
+        }
+        String maGoc = dangKham.getLichHen().getDichVu().getMaDV();
+        for (DichVu dv : dsDichVu) {
+            if (maGoc.equals(dv.getMaDV())) {
+                daChon.add(dv);
+                dungBangDichVu();
+                capNhatTomTat();
+                return;
+            }
         }
     }
 
     private void quayLaiDanhSach() {
+        if (khiQuayLai != null) {
+            Runnable callback = khiQuayLai;
+            khiQuayLai = null;
+            callback.run();
+            return;
+        }
         theTrang.show(pnlTrang, THE_DANH_SACH);
         taiDanhSach();
     }
@@ -898,6 +970,7 @@ public class PnlKham extends JPanel {
                     dsDichVu.clear();
                     dsDichVu.addAll(get());
                     napLoaiDichVu();
+                    chonDichVuGoc();
                     dungBangDichVu();
                 } catch (CancellationException ignored) {
                 } catch (InterruptedException e) {
@@ -1060,8 +1133,7 @@ public class PnlKham extends JPanel {
                     JOptionPane.showMessageDialog(PnlKham.this,
                             "Đã hoàn tất khám và tạo hóa đơn chờ thanh toán.",
                             "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                    theTrang.show(pnlTrang, THE_DANH_SACH);
-                    taiDanhSach();
+                    quayLaiDanhSach();
                 } catch (CancellationException ignored) {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
