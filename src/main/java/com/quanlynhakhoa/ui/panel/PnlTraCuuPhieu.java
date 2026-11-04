@@ -10,8 +10,10 @@ import static com.quanlynhakhoa.ui.component.UiConstants.bold;
 import static com.quanlynhakhoa.ui.component.UiConstants.font;
 
 import com.quanlynhakhoa.dao.ChiTietPhieuKhamDAO;
+import com.quanlynhakhoa.dao.HoaDonDAO;
 import com.quanlynhakhoa.dao.PhieuKhamDAO;
 import com.quanlynhakhoa.entity.ChiTietPhieuKham;
+import com.quanlynhakhoa.entity.HoaDon;
 import com.quanlynhakhoa.entity.PhieuKham;
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.TrangThaiPhieuKham;
@@ -20,6 +22,7 @@ import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 import com.quanlynhakhoa.ui.component.LineIcon;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.quanlynhakhoa.ui.dialog.DlgThanhToan;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -60,6 +63,7 @@ public class PnlTraCuuPhieu extends JPanel {
 
     private final PhieuKhamDAO phieuKhamDAO = new PhieuKhamDAO();
     private final ChiTietPhieuKhamDAO chiTietDAO = new ChiTietPhieuKhamDAO();
+    private final HoaDonDAO hoaDonDAO = new HoaDonDAO();
     private final boolean xemDayDu;
     private final List<PhieuKham> dsPhieu = new ArrayList<>();
 
@@ -79,6 +83,7 @@ public class PnlTraCuuPhieu extends JPanel {
     private final PillLabel lblTrangThai = new PillLabel();
     private final JLabel lblLoiDan = new JLabel(" ");
     private final JLabel lblTong = new JLabel("0 đ");
+    private final JButton btnThanhToan = new JButton("Thanh toán");
     private final DefaultTableModel modelDichVu = new DefaultTableModel();
     private final JTable tblDichVu = new JTable(modelDichVu);
     private final JLabel lblKhongCo = new JLabel("Chưa chọn phiếu khám", SwingConstants.CENTER);
@@ -228,7 +233,17 @@ public class PnlTraCuuPhieu extends JPanel {
 
         lblLoiDan.setFont(font(11));
         lblLoiDan.setForeground(MUTED);
-        card.add(lblLoiDan, BorderLayout.SOUTH);
+        JPanel footer = new JPanel(new BorderLayout(8, 0));
+        footer.setOpaque(false);
+        footer.add(lblLoiDan, BorderLayout.CENTER);
+        btnThanhToan.setFont(bold(12));
+        btnThanhToan.setBackground(TEAL);
+        btnThanhToan.setForeground(Color.WHITE);
+        btnThanhToan.setPreferredSize(new Dimension(116, 34));
+        btnThanhToan.setVisible(!xemDayDu);
+        btnThanhToan.setEnabled(false);
+        footer.add(btnThanhToan, BorderLayout.EAST);
+        card.add(footer, BorderLayout.SOUTH);
         lblKhongCo.setFont(font(12));
         lblKhongCo.setForeground(MUTED);
         return card;
@@ -242,6 +257,7 @@ public class PnlTraCuuPhieu extends JPanel {
                 hienChiTiet(phieuDangChon());
             }
         });
+        btnThanhToan.addActionListener(e -> moThanhToan());
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "lamMoi");
         getActionMap().put("lamMoi", new javax.swing.AbstractAction() {
@@ -306,6 +322,7 @@ public class PnlTraCuuPhieu extends JPanel {
             lblLoiDan.setText(" ");
             lblTong.setText("0 đ");
             modelDichVu.setRowCount(0);
+            btnThanhToan.setEnabled(false);
             return;
         }
         lblTen.setText(pk.getLichHen() == null ? "—" : pk.getLichHen().getKhachHang().getTenKH());
@@ -315,6 +332,72 @@ public class PnlTraCuuPhieu extends JPanel {
         lblTrangThai.set(nhanTrangThai(pk.getTrangThai()), TEAL, new Color(0xE7F4F3));
         lblLoiDan.setText(xemDayDu && pk.getLoiDan() != null ? "Lời dặn: " + pk.getLoiDan() : " ");
         taiDongDichVu(pk);
+        capNhatNutThanhToan(pk);
+    }
+
+    private void capNhatNutThanhToan(PhieuKham pk) {
+        if (xemDayDu || pk == null || pk.getTrangThai() != TrangThaiPhieuKham.HOAN_TAT) {
+            btnThanhToan.setEnabled(false);
+            btnThanhToan.setToolTipText(null);
+            return;
+        }
+        btnThanhToan.setEnabled(false);
+        btnThanhToan.setToolTipText("Đang kiểm tra hóa đơn...");
+        String maPK = pk.getMaPK();
+        new SwingWorker<HoaDon, Void>() {
+            @Override
+            protected HoaDon doInBackground() {
+                return hoaDonDAO.layTheoPhieuKham(maPK);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    HoaDon hd = get();
+                    boolean chuaTra = hd != null && !hd.isTrangThai();
+                    btnThanhToan.setEnabled(chuaTra);
+                    btnThanhToan.setToolTipText(hd == null ? "Phiếu khám chưa có hóa đơn."
+                            : chuaTra ? "Thanh toán hóa đơn " + hd.getMaHD()
+                            : "Hóa đơn đã được thanh toán.");
+                } catch (Exception e) {
+                    btnThanhToan.setEnabled(false);
+                    btnThanhToan.setToolTipText(null);
+                }
+            }
+        }.execute();
+    }
+
+    private void moThanhToan() {
+        PhieuKham pk = phieuDangChon();
+        if (pk == null || pk.getTrangThai() != TrangThaiPhieuKham.HOAN_TAT) {
+            return;
+        }
+        btnThanhToan.setEnabled(false);
+        new SwingWorker<HoaDon, Void>() {
+            @Override
+            protected HoaDon doInBackground() {
+                return hoaDonDAO.layTheoPhieuKham(pk.getMaPK());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    HoaDon hd = get();
+                    if (hd == null) {
+                        JOptionPane.showMessageDialog(PnlTraCuuPhieu.this,
+                                "Phiếu khám chưa có hóa đơn.", "Thông báo",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        return;
+                    }
+                    DlgThanhToan.hien(javax.swing.SwingUtilities.getWindowAncestor(PnlTraCuuPhieu.this),
+                            hd, () -> taiDanhSach(txtTimKiem.getText()));
+                } catch (Exception e) {
+                    baoLoi(e.getCause() == null ? e : e.getCause());
+                } finally {
+                    capNhatNutThanhToan(pk);
+                }
+            }
+        }.execute();
     }
 
     private void taiDongDichVu(PhieuKham pk) {
