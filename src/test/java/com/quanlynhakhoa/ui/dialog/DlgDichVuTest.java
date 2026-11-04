@@ -20,6 +20,10 @@ import org.junit.jupiter.api.Test;
  * [x] 5.1: DAO báo tên trùng -> hiện thông báo, giữ form để sửa
  * [x] lỗi DB -> thông báo chung, không lộ chi tiết kỹ thuật
  * [x] 3.1: nút Đóng hủy thao tác
+ * Gợi ý lộ trình
+ * [x] lọc: chứa đoạn đã gõ (không phân biệt hoa thường), giữ thứ tự mới nhất, tối đa 5, bỏ cái trùng y hệt
+ * [x] mở form hiện 5 gợi ý mới nhất; gõ thì lọc; bấm gợi ý điền vào ô
+ * [x] để trống lộ trình -> gửi DAO null (DB lưu NULL)
  */
 class DlgDichVuTest {
 
@@ -143,6 +147,81 @@ class DlgDichVuTest {
         choDen(() -> form.btnLuu.isEnabled());
 
         assertEquals("Không thể lưu dữ liệu, vui lòng thử lại.", form.lblThongBao.getText());
+    }
+
+    // ---- Gợi ý lộ trình ----
+
+    /** 7 lộ trình đã lưu, mới nhất trước (giống thứ tự DAO trả về). */
+    private static final java.util.List<String> DA_LUU = java.util.List.of(
+            "Buổi 1: lấy tủy\nBuổi 2: trám bít sau 7–14 ngày",
+            "Buổi 1: khám\nBuổi 2: cạo vôi",
+            "Buổi 1: lấy dấu\nBuổi 2: gắn sứ",
+            "Buổi 1: tẩy trắng tại ghế",
+            "Buổi 1: nhổ răng\nBuổi 2: cắt chỉ sau 7 ngày",
+            "Buổi 1: chụp phim",
+            "Buổi 1: tư vấn niềng");
+
+    @Test
+    void locGoiY_theoDoanDaGo_toiDa5_giuThuTuMoiNhat() {
+        assertEquals(DA_LUU.subList(0, 5), DlgDichVu.NoiDung.locGoiY(DA_LUU, ""), "Ô trống: 5 cái mới nhất");
+        assertEquals(java.util.List.of(DA_LUU.get(0), DA_LUU.get(1), DA_LUU.get(2), DA_LUU.get(4)),
+                DlgDichVu.NoiDung.locGoiY(DA_LUU, "BUỔI 2"), "Không phân biệt hoa thường, giữ thứ tự mới nhất");
+        assertEquals(java.util.List.of(DA_LUU.get(3)), DlgDichVu.NoiDung.locGoiY(DA_LUU, "tẩy trắng"));
+        assertTrue(DlgDichVu.NoiDung.locGoiY(DA_LUU, DA_LUU.get(5)).isEmpty(), "Đã điền y hệt thì không gợi ý lại");
+        assertTrue(DlgDichVu.NoiDung.locGoiY(DA_LUU, "không có").isEmpty());
+    }
+
+    @Test
+    void moForm_hienGoiY_goThiLoc_bamThiDien() throws Exception {
+        SwingUtilities.invokeAndWait(() -> form = new DlgDichVu.NoiDung(dv -> true, daLuu::set,
+                () -> daDong.set(true), () -> DA_LUU));
+        choDen(() -> demGoiY() == DlgDichVu.NoiDung.SO_GOI_Y);
+
+        SwingUtilities.invokeAndWait(() -> form.txaLoTrinh.setText("cạo"));
+        choDen(() -> demGoiY() == 1);
+
+        SwingUtilities.invokeAndWait(() -> {
+            javax.swing.JLabel khung = (javax.swing.JLabel) timGoiY(0);
+            assertTrue(khung.getText().contains("Buổi 1: khám · Buổi 2: cạo vôi"), "Các buổi nối thành 1 dòng");
+            // Giả lập bấm chuột vào khung gợi ý.
+            for (java.awt.event.MouseListener l : khung.getMouseListeners()) {
+                l.mouseClicked(new java.awt.event.MouseEvent(khung, java.awt.event.MouseEvent.MOUSE_CLICKED,
+                        0, 0, 1, 1, 1, false));
+            }
+            assertEquals(DA_LUU.get(1), form.txaLoTrinh.getText());
+            assertEquals(0, demGoiY(), "Đã điền đúng gợi ý thì gợi ý đó biến mất");
+        });
+    }
+
+    @Test
+    void loTrinhDeTrong_guiNullXuongDao() throws Exception {
+        taoForm(dv -> true);
+        nhapHopLe();
+        SwingUtilities.invokeAndWait(() -> {
+            form.txaLoTrinh.setText("   ");
+            form.luuDichVu();
+        });
+        choDen(() -> daLuu.get() != null);
+        assertNull(daGui.get().getLoTrinhDichVu(), "Lộ trình trống được lưu NULL");
+    }
+
+    private int demGoiY() {
+        int dem = 0;
+        for (java.awt.Component c : form.pnlGoiY.getComponents()) {
+            if (c.getName() != null && c.getName().startsWith("goiY")) {
+                dem++;
+            }
+        }
+        return dem;
+    }
+
+    private java.awt.Component timGoiY(int thuTu) {
+        for (java.awt.Component c : form.pnlGoiY.getComponents()) {
+            if (("goiY" + thuTu).equals(c.getName())) {
+                return c;
+            }
+        }
+        throw new AssertionError("Thiếu khung gợi ý " + thuTu);
     }
 
     @Test
