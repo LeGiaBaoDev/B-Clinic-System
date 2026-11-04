@@ -15,7 +15,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 public class FrmDangNhap extends JFrame {
-
     // Màu sắc
     private static final Color CLR_LEFT_BG = new Color(0x1A3C40);
     private static final Color CLR_TEAL = new Color(0x1A7A7A);

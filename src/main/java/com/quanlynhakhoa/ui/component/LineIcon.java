@@ -7,8 +7,8 @@ import javax.swing.Icon;
 public final class LineIcon implements Icon {
 
     public enum Type {
-        GRID, PEOPLE, CLIPBOARD, CALENDAR, CHART, VOUCHER, SETTINGS, SEARCH,
-        BELL, CHEVRON, CHECK, INVOICE, PLUS, HELP, ARROW, LOGOUT
+        GRID, PEOPLE, CLIPBOARD, CALENDAR, CLOCK, CHART, VOUCHER, SETTINGS, SEARCH,
+        BELL, CHEVRON, CHECK, INVOICE, PRINTER, PLUS, HELP, ARROW, LOGOUT
     }
     private final Type type;
     private final Color color;
@@ -66,6 +66,17 @@ public final class LineIcon implements Icon {
                     g.drawLine(i, 14, i, 14);
                     g.drawLine(i, 17, i, 17);
                 }
+            }
+            case CLOCK -> {
+                g.draw(new Ellipse2D.Double(3, 3, 18, 18));
+                g.drawLine(12, 7, 12, 12);
+                g.drawLine(12, 12, 16, 14);
+            }
+            case PRINTER -> {
+                g.drawRoundRect(4, 9, 16, 9, 1, 1);
+                g.drawRoundRect(6, 3, 12, 6, 1, 1);
+                g.drawRect(7, 14, 10, 6);
+                g.drawLine(17, 12, 19, 12);
             }
             case CHART -> {
                 g.drawLine(4, 21, 4, 14);
