@@ -3,6 +3,9 @@ package com.quanlynhakhoa.entity;
 import java.util.Objects;
 
 public class DichVu {
+    /** Khớp cột DichVu.tenDV NVARCHAR(150). */
+    public static final int TEN_TOI_DA = 150;
+
     private String maDV;
     private String tenDV;
     private double donGia;
@@ -52,6 +55,9 @@ public class DichVu {
     public void setTenDV(String tenDV) {
         if (tenDV == null || tenDV.isBlank()) {
             throw new IllegalArgumentException("Tên dịch vụ không được rỗng");
+        }
+        if (tenDV.trim().length() > TEN_TOI_DA) {
+            throw new IllegalArgumentException("Tên dịch vụ tối đa " + TEN_TOI_DA + " ký tự");
         }
         this.tenDV = tenDV.trim();
     }

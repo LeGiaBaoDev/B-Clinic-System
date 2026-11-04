@@ -58,10 +58,8 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
@@ -84,9 +82,7 @@ public class PnlTiepNhan extends JPanel {
 
     private final LichHenDAO lichHenDAO = new LichHenDAO();
     private final PhieuKhamDAO phieuKhamDAO = new PhieuKhamDAO();
-    private final JTextField txtTimKiem = new JTextField();
     private final JDateChooser dpNgay = new JDateChooser();
-    private final JButton btnTim = PnlTongQuanQuanLy.button("Tìm kiếm", LineIcon.Type.SEARCH, false);
     private final JButton btnLuotMoi = PnlTongQuanQuanLy.button("Tiếp nhận lượt mới",
             LineIcon.Type.PLUS, true);
     private final JButton btnInPhieu = PnlTongQuanQuanLy.button("In phiếu tiếp nhận",
@@ -117,7 +113,6 @@ public class PnlTiepNhan extends JPanel {
     private final JPanel pnlMoi = new JPanel(new BorderLayout(10, 0));
     private final JLabel lblMoi = new JLabel(" ");
     private final JLabel lblMoiPhu = new JLabel(" ");
-    private final JPopupMenu goiY = new JPopupMenu();
 
     private List<LichHen> dsLich = new ArrayList<>();
     private List<LichHen> dsLoc = new ArrayList<>();
@@ -210,29 +205,17 @@ public class PnlTiepNhan extends JPanel {
         SurfacePanel card = new SurfacePanel(new BorderLayout(12, 0));
         card.setBorder(new EmptyBorder(10, 14, 10, 14));
         card.setAlignmentX(LEFT_ALIGNMENT);
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
 
-        JLabel nhan = new JLabel("Tìm lịch hẹn");
+        JLabel nhan = new JLabel("Ngày xem lịch");
         nhan.setFont(bold(12));
         nhan.setForeground(TEXT);
-        nhan.setPreferredSize(new Dimension(100, 22));
-
-        txtTimKiem.setFont(font(12));
-        txtTimKiem.putClientProperty("JTextField.placeholderText",
-                "Nhập mã lịch hẹn, họ tên hoặc số điện thoại...");
-        txtTimKiem.setBorder(null);
-        txtTimKiem.setOpaque(false);
-
-        JPanel oTim = new JPanel(new BorderLayout(8, 0));
-        oTim.setBackground(Color.WHITE);
-        oTim.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER), new EmptyBorder(7, 11, 7, 11)));
-        oTim.add(new JLabel(new LineIcon(LineIcon.Type.SEARCH, MUTED, 15)), BorderLayout.WEST);
-        oTim.add(txtTimKiem, BorderLayout.CENTER);
+        nhan.setPreferredSize(new Dimension(110, 22));
 
         dpNgay.setDateFormatString("dd/MM/yyyy");
-        LocalDate min = LocalDate.now(ZONE);
-        LocalDate max = min.plusMonths(3);
+        LocalDate now = LocalDate.now(ZONE);
+        LocalDate min = LocalDate.of(2000, 1, 1);
+        LocalDate max = now.plusMonths(3);
         dpNgay.setMinSelectableDate(Date.from(min.atStartOfDay(ZONE).toInstant()));
         dpNgay.setMaxSelectableDate(Date.from(max.atTime(23, 59, 59).atZone(ZONE).toInstant()));
         dpNgay.setDate(Date.from(ngay.atStartOfDay(ZONE).toInstant()));
@@ -292,22 +275,14 @@ public class PnlTiepNhan extends JPanel {
         });
         JPanel oNgay = new JPanel(new BorderLayout(8, 0));
         oNgay.setBackground(Color.WHITE);
-        oNgay.setPreferredSize(new Dimension(180, 38));
+        oNgay.setPreferredSize(new Dimension(190, 38));
         oNgay.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER), new EmptyBorder(0, 11, 0, 9)));
         oNgay.add(iconLich, BorderLayout.WEST);
         oNgay.add(dpNgay, BorderLayout.CENTER);
 
-        btnTim.setPreferredSize(new Dimension(130, 38));
-
-        JPanel phai = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        phai.setOpaque(false);
-        phai.add(oNgay);
-        phai.add(btnTim);
-
         card.add(nhan, BorderLayout.WEST);
-        card.add(oTim, BorderLayout.CENTER);
-        card.add(phai, BorderLayout.EAST);
+        card.add(oNgay, BorderLayout.EAST);
         return card;
     }
 
@@ -546,34 +521,9 @@ public class PnlTiepNhan extends JPanel {
 
     // ---------------------------------------------------------------- sự kiện
     private void addEvents() {
-        btnTim.addActionListener(e -> taiDuLieu());
         dpNgay.addPropertyChangeListener("date", e -> {
             if (dpNgay.getDate() != null && !dpNgay.getDate().equals(e.getOldValue())) {
                 taiDuLieu();
-            }
-        });
-        txtTimKiem.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            @Override
-            public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                locLich();
-            }
-
-            @Override
-            public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                locLich();
-            }
-
-            @Override
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                locLich();
-            }
-        });
-        txtTimKiem.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override
-            public void focusGained(java.awt.event.FocusEvent e) {
-                if (dsLoc.size() > 1) {
-                    hienGoiY();
-                }
             }
         });
         chkXacNhan.addActionListener(e -> capNhatNutXacNhan());
@@ -602,9 +552,9 @@ public class PnlTiepNhan extends JPanel {
         }
         LocalDate chon = dpNgay.getDate().toInstant().atZone(ZONE).toLocalDate();
         LocalDate homNay = LocalDate.now(ZONE);
-        if (chon.isBefore(homNay) || chon.isAfter(homNay.plusMonths(3))) {
+        if (chon.isAfter(homNay.plusMonths(3))) {
             JOptionPane.showMessageDialog(this,
-                    "Chỉ được chọn từ hôm nay đến " + homNay.plusMonths(3).format(NGAY_HIEN_THI) + ".",
+                    "Chỉ được chọn tối đa " + homNay.plusMonths(3).format(NGAY_HIEN_THI) + ".",
                     "Cảnh báo", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -612,17 +562,17 @@ public class PnlTiepNhan extends JPanel {
             worker.cancel(true);
         }
         ngay = chon;
-        btnTim.setEnabled(false);
         worker = new SwingWorker<>() {
             @Override
             protected DuLieu doInBackground() {
-                return new DuLieu(lichHenDAO.timKiem(ngay, ngay, TrangThaiLichHen.DA_DAT),
+                TrangThaiLichHen loc = ngay.isBefore(LocalDate.now(ZONE))
+                        ? null : TrangThaiLichHen.DA_DAT;
+                return new DuLieu(lichHenDAO.timKiem(ngay, ngay, loc),
                         phieuKhamDAO.timKiem(ngay, ngay));
             }
 
             @Override
             protected void done() {
-                btnTim.setEnabled(true);
                 try {
                     DuLieu d = get();
                     dsLich = new ArrayList<>(d.lichHen());
@@ -648,10 +598,7 @@ public class PnlTiepNhan extends JPanel {
     }
 
     private void locLich() {
-        String tuKhoa = txtTimKiem.getText() == null ? "" : txtTimKiem.getText()
-                .trim().toLowerCase(Locale.ROOT);
         dsLoc = dsLich.stream()
-                .filter(lh -> khop(lh, tuKhoa))
                 .sorted(Comparator.comparing(LichHen::getNgayGioHen))
                 .toList();
         boolean boQuaChon = vuaTiepNhan;
@@ -659,11 +606,10 @@ public class PnlTiepNhan extends JPanel {
         if (!boQuaChon && (dangChon == null || !dsLoc.contains(dangChon))) {
             chonLich(dsLoc.isEmpty() ? null : dsLoc.getFirst());
         }
-        if (!tuKhoa.isBlank() && dsLoc.size() > 1) {
-            hienGoiY();
-        } else {
-            goiY.setVisible(false);
-        }
+    }
+
+    private void timKiem() {
+        locLich();
     }
 
     static boolean khop(LichHen lh, String tuKhoa) {
@@ -674,36 +620,21 @@ public class PnlTiepNhan extends JPanel {
         return chua(lh.getMaLH(), khoa)
                 || chua(lh.getKhachHang().getMaKH(), khoa)
                 || chua(lh.getKhachHang().getTenKH(), khoa)
-                || chua(lh.getKhachHang().getSdt(), khoa);
+                || chua(lh.getKhachHang().getSdt(), khoa)
+                || chua(lh.getNhaSi() == null ? null : lh.getNhaSi().getHoTenNV(), khoa)
+                || chua(lh.getDichVu() == null ? null : lh.getDichVu().getTenDV(), khoa);
     }
 
     private static boolean chua(String value, String tuKhoa) {
         return value != null && value.toLowerCase(Locale.ROOT).contains(tuKhoa);
     }
 
-    private void hienGoiY() {
-        goiY.removeAll();
-        dsLoc.stream().limit(8).forEach(lh -> {
-            JMenuItem item = new JMenuItem(lh.getNgayGioHen().format(GIO) + " · "
-                    + lh.getKhachHang().getTenKH() + " · " + lh.getDichVu().getTenDV());
-            item.addActionListener(e -> {
-                chonLich(lh);
-                txtTimKiem.setText(lh.getMaLH());
-                goiY.setVisible(false);
-            });
-            goiY.add(item);
-        });
-        if (!goiY.isShowing()) {
-            goiY.show(txtTimKiem, 0, txtTimKiem.getHeight());
-        }
-    }
-
     private void chonLich(LichHen lh) {
         dangChon = lh;
         maPKMoi = null;
-        goiY.setVisible(false);
         gioDen = LocalDateTime.now(ZONE);
         chkXacNhan.setSelected(false);
+        chkXacNhan.setEnabled(lh != null && lh.getTrangThai() == TrangThaiLichHen.DA_DAT);
         btnInPhieu.setEnabled(false);
         if (lh == null) {
             lblTen.setText("Chưa chọn lịch hẹn");
@@ -721,7 +652,14 @@ public class PnlTiepNhan extends JPanel {
             return;
         }
         dienThongTin(lh);
-        datBadge("Chờ tiếp nhận", new Color(0x9A6B00), new Color(0xFFF4DE));
+        if (lh.getTrangThai() == TrangThaiLichHen.DA_DAT) {
+            datBadge("Chờ tiếp nhận", new Color(0x9A6B00), new Color(0xFFF4DE));
+        } else {
+            datBadge(nhanTrangThai(lh), lh.getTrangThai() == TrangThaiLichHen.DA_HUY
+                    || lh.getTrangThai() == TrangThaiLichHen.KHONG_DEN ? new Color(0xC0392B) : GREEN,
+                    lh.getTrangThai() == TrangThaiLichHen.DA_HUY
+                    || lh.getTrangThai() == TrangThaiLichHen.KHONG_DEN ? new Color(0xFDECEA) : new Color(0xE7F7EF));
+        }
         capNhatNutXacNhan();
     }
 
@@ -730,6 +668,7 @@ public class PnlTiepNhan extends JPanel {
         maPKMoi = pk.getMaPK();
         gioDen = pk.getNgayLap();
         chkXacNhan.setSelected(false);
+        chkXacNhan.setEnabled(false);
         btnInPhieu.setEnabled(true);
         dienThongTin(dangChon);
         datBadge("Đã tiếp nhận", GREEN, new Color(0xE7F7EF));
@@ -764,7 +703,9 @@ public class PnlTiepNhan extends JPanel {
     }
 
     private void capNhatNutXacNhan() {
-        btnXacNhan.setEnabled(!dangXuLy && dangChon != null && chkXacNhan.isSelected());
+        btnXacNhan.setEnabled(!dangXuLy && maPKMoi == null
+                && dangChon != null && dangChon.getTrangThai() == TrangThaiLichHen.DA_DAT
+                && chkXacNhan.isSelected());
     }
 
     private void xacNhanTiepNhan() {
@@ -919,6 +860,16 @@ public class PnlTiepNhan extends JPanel {
             JOptionPane.showMessageDialog(this, "Đã xảy ra lỗi, vui lòng thử lại.", "Lỗi",
                     JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private static String nhanTrangThai(LichHen lh) {
+        return switch (lh.getTrangThai()) {
+            case DA_DAT -> "Chờ tiếp nhận";
+            case DA_DEN -> "Đã đến";
+            case HOAN_TAT -> "Hoàn tất";
+            case DA_HUY -> "Đã hủy";
+            case KHONG_DEN -> "Không đến";
+        };
     }
 
     private static String tenNguoiDung() {
