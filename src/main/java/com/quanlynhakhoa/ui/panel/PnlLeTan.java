@@ -17,6 +17,7 @@ import com.quanlynhakhoa.ui.component.LineIcon;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
@@ -28,7 +29,9 @@ import java.awt.event.MouseAdapter;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -54,6 +57,11 @@ public class PnlLeTan extends JPanel {
     private final TaiKhoan taiKhoan;
     private final Runnable dangXuat;
     private final PnlKhachHang pnlKhachHang;
+    private final PnlTiepNhan pnlTiepNhan;
+    private final CardLayout cards = new CardLayout();
+    private final JPanel pnlCards = new JPanel(cards);
+    private final Map<String, JButton> menu = new LinkedHashMap<>();
+    private final JLabel lblTrang = new JLabel("Bệnh nhân");
     private final JTextField txtTimKiemNhanh = new JTextField();
     private final JLabel lblDongHo = new JLabel();
     private final javax.swing.Timer dongHo = new javax.swing.Timer(1000, e -> capNhatDongHo());
@@ -67,15 +75,20 @@ public class PnlLeTan extends JPanel {
         }
         setBackground(BACKGROUND);
         pnlKhachHang = new PnlKhachHang(VaiTro.LETAN);
+        pnlTiepNhan = new PnlTiepNhan();
+        pnlCards.setOpaque(false);
+        pnlCards.add(pnlKhachHang, "Bệnh nhân");
+        pnlCards.add(pnlTiepNhan, "Tiếp nhận");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
         main.add(taoHeader(), BorderLayout.NORTH);
-        main.add(pnlKhachHang, BorderLayout.CENTER);
+        main.add(pnlCards, BorderLayout.CENTER);
         main.add(taoTrangThai(), BorderLayout.SOUTH);
         add(main, BorderLayout.CENTER);
         capNhatDongHo();
         dongHo.start();
+        moTrang("Bệnh nhân");
     }
 
     private JPanel taoSidebar() {
@@ -108,25 +121,19 @@ public class PnlLeTan extends JPanel {
         brand.add(menuLabel("PHÒNG KHÁM NHA KHOA", font(10), new Color(0x608480)));
         top.add(brand);
 
-        top.add(menuItem("Tổng quan", LineIcon.Type.GRID, false,
-                () -> thongBaoChuaCo("Tổng quan lễ tân")));
+        top.add(menuItem("Tổng quan", LineIcon.Type.GRID, () -> thongBaoChuaCo("Tổng quan lễ tân")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Lịch hẹn", LineIcon.Type.CALENDAR, false,
-                () -> thongBaoChuaCo("Lịch hẹn (L2)")));
+        top.add(menuItem("Lịch hẹn", LineIcon.Type.CALENDAR, () -> thongBaoChuaCo("Lịch hẹn (L2)")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Bệnh nhân", LineIcon.Type.PEOPLE, true, null));
+        top.add(menuItem("Bệnh nhân", LineIcon.Type.PEOPLE, () -> moTrang("Bệnh nhân")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Tiếp nhận", LineIcon.Type.CLIPBOARD, false,
-                () -> thongBaoChuaCo("Tiếp nhận bệnh nhân (B1/UC021)")));
+        top.add(menuItem("Tiếp nhận", LineIcon.Type.CLIPBOARD, () -> moTrang("Tiếp nhận")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Hóa đơn", LineIcon.Type.INVOICE, false,
-                () -> thongBaoChuaCo("Hóa đơn (UC025/UC026)")));
+        top.add(menuItem("Hóa đơn", LineIcon.Type.INVOICE, () -> thongBaoChuaCo("Hóa đơn (UC025/UC026)")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Báo cáo", LineIcon.Type.CHART, false,
-                () -> thongBaoChuaCo("Báo cáo")));
+        top.add(menuItem("Báo cáo", LineIcon.Type.CHART, () -> thongBaoChuaCo("Báo cáo")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, false,
-                () -> thongBaoChuaCo("Cài đặt tài khoản")));
+        top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, () -> thongBaoChuaCo("Cài đặt tài khoản")));
         sidebar.add(top, BorderLayout.NORTH);
 
         JPanel bottom = new JPanel();
@@ -162,11 +169,11 @@ public class PnlLeTan extends JPanel {
         return sidebar;
     }
 
-    private JButton menuItem(String text, LineIcon.Type icon, boolean active, Runnable action) {
+    private JButton menuItem(String text, LineIcon.Type icon, Runnable action) {
         JButton button = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
-                if (active) {
+                if (Boolean.TRUE.equals(getClientProperty("menu.selected"))) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     g2.setColor(TEAL_LIGHT);
@@ -176,9 +183,9 @@ public class PnlLeTan extends JPanel {
                 super.paintComponent(g);
             }
         };
-        button.setFont(active ? bold(14) : font(14));
-        button.setForeground(active ? TEAL : TEXT);
-        button.setIcon(new LineIcon(icon, active ? TEAL : MUTED, 17));
+        button.setFont(font(14));
+        button.setForeground(TEXT);
+        button.setIcon(new LineIcon(icon, MUTED, 17));
         button.setIconTextGap(13);
         button.setBorder(new EmptyBorder(10, 14, 10, 12));
         button.setContentAreaFilled(false);
@@ -189,10 +196,41 @@ public class PnlLeTan extends JPanel {
         button.setAlignmentX(LEFT_ALIGNMENT);
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         button.setPreferredSize(new Dimension(184, 44));
+        menu.put(text, button);
         if (action != null) {
             button.addActionListener(e -> action.run());
         }
         return button;
+    }
+
+    private void moTrang(String trang) {
+        cards.show(pnlCards, trang);
+        lblTrang.setText(trang);
+        txtTimKiemNhanh.setEnabled("Bệnh nhân".equals(trang));
+        if ("Tiếp nhận".equals(trang)) {
+            txtTimKiemNhanh.setText("");
+            pnlTiepNhan.lamMoi();
+        }
+        menu.forEach((ten, nut) -> {
+            boolean chon = ten.equals(trang);
+            nut.putClientProperty("menu.selected", chon);
+            nut.setFont(chon ? bold(14) : font(14));
+            nut.setForeground(chon ? TEAL : TEXT);
+            nut.setIcon(new LineIcon(iconCua(ten), chon ? TEAL : MUTED, 17));
+            nut.repaint();
+        });
+    }
+
+    private static LineIcon.Type iconCua(String ten) {
+        return switch (ten) {
+            case "Tổng quan" -> LineIcon.Type.GRID;
+            case "Lịch hẹn" -> LineIcon.Type.CALENDAR;
+            case "Bệnh nhân" -> LineIcon.Type.PEOPLE;
+            case "Tiếp nhận" -> LineIcon.Type.CLIPBOARD;
+            case "Hóa đơn" -> LineIcon.Type.INVOICE;
+            case "Báo cáo" -> LineIcon.Type.CHART;
+            default -> LineIcon.Type.SETTINGS;
+        };
     }
 
     private JPanel taoHeader() {
@@ -201,7 +239,9 @@ public class PnlLeTan extends JPanel {
         header.setPreferredSize(new Dimension(0, 78));
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER), new EmptyBorder(14, 24, 14, 24)));
-        header.add(menuLabel("Bệnh nhân", bold(18), TEXT), BorderLayout.WEST);
+        lblTrang.setFont(bold(18));
+        lblTrang.setForeground(TEXT);
+        header.add(lblTrang, BorderLayout.WEST);
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 0));
         right.setOpaque(false);
