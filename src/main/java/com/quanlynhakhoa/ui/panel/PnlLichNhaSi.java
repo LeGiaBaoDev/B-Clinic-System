@@ -333,10 +333,14 @@ public class PnlLichNhaSi extends JPanel {
 
     private static LineIcon.Type iconCua(String ten) {
         return switch (ten) {
-            case "Tổng quan" -> LineIcon.Type.GRID;
-            case "Lịch trực" -> LineIcon.Type.CALENDAR;
-            case "Bệnh án" -> LineIcon.Type.CLIPBOARD;
-            default -> LineIcon.Type.SETTINGS;
+            case "Tổng quan" ->
+                LineIcon.Type.GRID;
+            case "Lịch trực" ->
+                LineIcon.Type.CALENDAR;
+            case "Bệnh án" ->
+                LineIcon.Type.CLIPBOARD;
+            default ->
+                LineIcon.Type.SETTINGS;
         };
     }
 
@@ -451,7 +455,7 @@ public class PnlLichNhaSi extends JPanel {
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel title = label("Lịch trực và lịch hẹn trong ngày", bold(22), TEXT);
+        JLabel title = label("Lịch hẹn trong ngày", bold(22), TEXT);
         JLabel sub = label("Lịch làm việc của " + tenNhaSi() + " · Phòng khám B-Clinic", font(12), MUTED);
         text.add(title);
         text.add(Box.createVerticalStrut(4));
