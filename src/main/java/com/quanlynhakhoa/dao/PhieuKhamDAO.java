@@ -39,6 +39,38 @@ public class PhieuKhamDAO {
         });
     }
 
+    /** UC027: tra cứu phiếu theo mã phiếu, tên hoặc SĐT khách hàng. */
+    public List<PhieuKham> timKiem(String tuKhoa) {
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c);
+            return JdbcHelper.query(c, """
+                    SELECT pk.maPK,pk.ngayLap,pk.trangThai,pk.loiDan,pk.maHSBA,pk.maLH,
+                           pk.maNV_LapPhieu
+                    FROM PhieuKham pk
+                    LEFT JOIN LichHen lh ON lh.maLH=pk.maLH
+                    LEFT JOIN HoSoBenhAn hs ON hs.maHSBA=pk.maHSBA
+                    LEFT JOIN KhachHang kh ON kh.maKH=hs.maKH
+                    WHERE (pk.maPK LIKE ? OR kh.tenKH LIKE ? OR kh.sdt LIKE ?)
+                      AND (?=1 OR lh.maNV=?)
+                    ORDER BY pk.ngayLap DESC
+                    """, r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    JdbcHelper.tuKhoa(tuKhoa), JdbcHelper.tuKhoa(tuKhoa),
+                    JdbcHelper.tuKhoa(tuKhoa), actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+        });
+    }
+
+    /** UC024: lịch sử phiếu khám của một bệnh nhân (mới nhất trước). */
+    public List<PhieuKham> timTheoKhachHang(String maKH) {
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c);
+            return JdbcHelper.query(c, SQL_SELECT
+                    + " WHERE maLH IN (SELECT maLH FROM LichHen WHERE maKH=?"
+                    + " AND (?=1 OR maNV=?)) ORDER BY ngayLap DESC",
+                    r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    maKH, actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+        });
+    }
+
     public PhieuKham layTheoMa(String ma) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
