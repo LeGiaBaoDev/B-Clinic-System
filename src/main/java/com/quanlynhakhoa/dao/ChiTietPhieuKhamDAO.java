@@ -82,13 +82,20 @@ public class ChiTietPhieuKhamDAO {
 
         DichVu dv = new DichVuDAO().layTheoMa(c, ct.getDichVu().getMaDV());
         yeuCau(dv != null && dv.isTrangThai(), "Dịch vụ không hoạt động.");
+
+        NhanVien nhaSi = ct.getNhaSi() == null
+                ? new NhanVienDAO().layTheoMa(c, actor.maNV())
+                : ct.getNhaSi();
+        yeuCau(nhaSi != null && JdbcHelper.exists(c,
+                "SELECT 1 FROM TaiKhoan WHERE maNV=? AND vaiTro='NHASI' AND trangThai=1",
+                nhaSi.getMaNV()), "Nha sĩ thực hiện không hợp lệ hoặc đã ngừng hoạt động.");
         int thue = LoaiDichVuDAO.thue(dv.getLoaiDichVu().getMucThueGTGT());
 
         try (PreparedStatement ps = c.prepareStatement(
                 "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,"
                 + "ketQuaDieuTri,donViTinh,soLuong,donGia,mucThueGTGT)"
                 + " VALUES(?,?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
-            JdbcHelper.bind(ps, pk.getMaPK(), dv.getMaDV(), actor.maNV(), ct.getTrieuChung(),
+            JdbcHelper.bind(ps, pk.getMaPK(), dv.getMaDV(), nhaSi.getMaNV(), ct.getTrieuChung(),
                     ct.getChanDoan(), ct.getKetQuaDieuTri(), ct.getDonViTinh(), ct.getSoLuong(),
                     BigDecimal.valueOf(dv.getDonGia()), thue);
             ps.executeUpdate();
@@ -98,6 +105,7 @@ public class ChiTietPhieuKhamDAO {
                 }
             }
         }
+        ct.setNhaSi(nhaSi);
         ct.setDonGia(dv.getDonGia());
         ct.setMucThueGTGT(thue);
     }
