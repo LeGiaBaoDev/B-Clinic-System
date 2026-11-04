@@ -4,7 +4,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.quanlynhakhoa.entity.DichVu;
 import com.quanlynhakhoa.entity.LoaiDichVu;
+import com.quanlynhakhoa.entity.NhanVien;
+import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.MucThue;
+import com.quanlynhakhoa.entity.enums.VaiTro;
+import com.quanlynhakhoa.util.SessionManager;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 import java.awt.Component;
@@ -25,6 +29,7 @@ import org.junit.jupiter.api.Test;
  * [x] chọn dòng sau khi sắp xếp hiện đúng lộ trình, escape HTML
  * [x] lỗi nghiệp vụ hiện thông báo DAO; lỗi DB hiện thông báo chung
  * [x] "Làm mới" đưa bộ lọc về mặc định
+ * UC005: nút "Thêm dịch vụ" chỉ hiện với Quản lý
  */
 class PnlDichVuTest {
 
@@ -163,6 +168,26 @@ class PnlDichVuTest {
             assertEquals(0, ((JComboBox<?>) tim("locTrangThai")).getSelectedIndex());
             assertEquals(0, ((JComboBox<?>) tim("locPhanLoaiThue")).getSelectedIndex());
         });
+    }
+
+    @Test
+    void nutThemDichVu_chiHienVoiQuanLy() throws Exception {
+        NhanVien nv = new NhanVien("NV001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
+        try {
+            for (VaiTro vaiTro : VaiTro.values()) {
+                SessionManager.getInstance().login(new TaiKhoan("TK001", "tk.kiemthu", "x", vaiTro, true, nv));
+                taoPanel((k, t, m) -> List.of(caoVoi));
+                SwingUtilities.invokeAndWait(panel::lamMoiDuLieu);
+                choKetQua("Tìm thấy 1");
+                SwingUtilities.invokeAndWait(() -> assertEquals(vaiTro == VaiTro.QUANLY,
+                        tim("themDichVu").isVisible(), "Vai trò " + vaiTro));
+            }
+            SessionManager.getInstance().logout();
+            taoPanel((k, t, m) -> List.of());
+            SwingUtilities.invokeAndWait(() -> assertFalse(tim("themDichVu").isVisible()));
+        } finally {
+            SessionManager.getInstance().logout();
+        }
     }
 
     @Test

@@ -32,6 +32,32 @@ public class LoaiDichVuDAO {
         });
     }
 
+    /**
+     * UC005/UC007: trả loại dịch vụ đã lưu, dùng trong transaction của DichVuDAO (không commit).
+     * Có mã thì loại phải tồn tại; chưa có mã thì tìm theo tên, chưa có trong DB thì tạo
+     * (chỉ 3 loại cố định, entity đã kiểm tra tên khớp mức thuế). Bên gọi đã kiểm tra quyền.
+     */
+    LoaiDichVu layHoacTao(Connection c, LoaiDichVu loai) throws SQLException {
+        new LoaiDichVu(loai.getMaLoaiDV(), loai.getTenLoaiDV(), loai.getMucThueGTGT());
+        if (loai.getMaLoaiDV() != null) {
+            LoaiDichVu daLuu = JdbcHelper.one(c, SQL_SELECT + " WHERE maLoaiDV=?", this::mapRow,
+                    loai.getMaLoaiDV());
+            yeuCau(daLuu != null, "Loại dịch vụ không tồn tại.");
+            return daLuu;
+        }
+        MaSinh.khoa(c, "BClinic:loai-dich-vu");
+        LoaiDichVu daLuu = JdbcHelper.one(c, SQL_SELECT + " WITH(UPDLOCK,HOLDLOCK) WHERE tenLoaiDV=?",
+                this::mapRow, loai.getTenLoaiDV());
+        if (daLuu != null) {
+            return daLuu;
+        }
+        String ma = MaSinh.maMoi(c, MaSinh.Bang.LOAI_DICH_VU, null);
+        JdbcHelper.update(c, "INSERT INTO LoaiDichVu(maLoaiDV,tenLoaiDV,mucThueGTGT) VALUES(?,?,?)",
+                ma, loai.getTenLoaiDV(), thue(loai.getMucThueGTGT()));
+        NhatKy.ghi(c, "THEM_LOAI_DICH_VU", ma);
+        return new LoaiDichVu(ma, loai.getTenLoaiDV(), loai.getMucThueGTGT());
+    }
+
     public boolean them(LoaiDichVu loai) {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);

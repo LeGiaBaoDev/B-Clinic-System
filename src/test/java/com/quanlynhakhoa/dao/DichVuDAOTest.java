@@ -34,6 +34,12 @@ import org.junit.jupiter.api.Test;
  * [x] hàm cũ timKiem(ten, true) vẫn chỉ trả dịch vụ đang cung cấp (Long, Bảo đang dùng)
  * [x] Lễ tân, Nha sĩ được xem; chưa đăng nhập bị chặn
  * [x] layTheoMa trả đúng loại và mức thuế
+ * UC005 thêm dịch vụ mới:
+ * [x] sinh mã DV###, trạng thái đang cung cấp, loại gán theo tên, ghi nhật ký
+ * [x] tên trùng dịch vụ đang hoạt động (không phân biệt hoa thường) -> chặn, không lưu
+ * [x] tên trùng dịch vụ đã ngừng -> được thêm
+ * [x] luôn lưu "Đang cung cấp" dù đối tượng truyền vào trangThai=false
+ * [x] Lễ tân, Nha sĩ bị chặn; mã loại không tồn tại bị chặn
  */
 class DichVuDAOTest {
 
@@ -176,6 +182,82 @@ class DichVuDAOTest {
         DaoTestSupport.dangXuat();
         BusinessException loi = assertThrows(BusinessException.class, () -> dao.timKiem("", null, null));
         assertEquals("Vui lòng đăng nhập.", loi.getMessage());
+    }
+
+    // ---- UC005 thêm dịch vụ mới ----
+
+    @Test
+    void them_hopLe_sinhMaDV_dangCungCap_vaGanLoaiTheoTen() {
+        // Form chỉ biết tên loại (mã null): DAO tự tìm hoặc tạo loại tương ứng.
+        DichVu dv = new DichVu(null, ma + " Bọc răng sứ", 3_500_000, 90,
+                "Buổi 1: mài răng\nBuổi 2: gắn sứ sau 5 ngày", true,
+                new LoaiDichVu(null, LoaiDichVu.THAM_MY, MucThue.THUE_10));
+        String demNhatKy = "SELECT COUNT(*) FROM NhatKyHeThong WHERE hanhDong=?";
+        int nhatKyTruoc = DaoTestSupport.dem(demNhatKy, "THEM_DICH_VU");
+        assertTrue(dao.them(dv));
+        daTao.add(dv.getMaDV());
+
+        assertTrue(dv.getMaDV().matches("DV\\d{3}"));
+        assertTrue(dv.getLoaiDichVu().getMaLoaiDV().matches("LDV\\d{2}"));
+        DichVu doc = dao.layTheoMa(dv.getMaDV());
+        assertTrue(doc.isTrangThai());
+        assertEquals(3_500_000, doc.getDonGia());
+        assertEquals(90, doc.getThoiLuong());
+        assertEquals(MucThue.THUE_10, doc.getLoaiDichVu().getMucThueGTGT());
+        assertEquals("Buổi 1: mài răng\nBuổi 2: gắn sứ sau 5 ngày", doc.getLoTrinhDichVu());
+        // Mã DV### được dùng lại sau khi test dọn dữ liệu, nên đếm chênh lệch thay vì theo mã.
+        assertEquals(nhatKyTruoc + 1, DaoTestSupport.dem(demNhatKy, "THEM_DICH_VU"),
+                "Ghi đúng một dòng nhật ký khi thêm");
+    }
+
+    @Test
+    void them_tenTrungDichVuDangHoatDong_khongPhanBietHoaThuong_biChanVaKhongLuu() {
+        themDichVu(ma + " Hàn răng", MucThue.THUE_0);
+        DichVu trung = new DichVu(null, (ma + " HÀN RĂNG").toLowerCase(), 200_000, 30, null, true,
+                loai(MucThue.THUE_0));
+
+        BusinessException loi = assertThrows(BusinessException.class, () -> dao.them(trung));
+        assertTrue(loi.getMessage().startsWith("Dịch vụ đã tồn tại"));
+        assertEquals(null, trung.getMaDV());
+        assertEquals(1, dao.timKiem(ma, null, null).size());
+    }
+
+    @Test
+    void them_tenTrungDichVuDaNgung_vanDuocThem() {
+        DichVu cu = themDichVu(ma + " Gói tẩy trắng", MucThue.THUE_10);
+        assertTrue(dao.ngungCungCap(cu.getMaDV()));
+
+        DichVu moi = themDichVu(ma + " Gói tẩy trắng", MucThue.THUE_10);
+        assertTrue(moi.isTrangThai());
+        assertEquals(List.of(moi.getMaDV()), maCua(dao.timKiem(ma, true, null)));
+    }
+
+    @Test
+    void them_truyenTrangThaiNgung_vanLuuDangCungCap() {
+        DichVu dv = new DichVu(null, ma + " Chỉnh khớp cắn", 500_000, 45, null, false, loai(MucThue.THUE_0));
+        assertTrue(dao.them(dv));
+        daTao.add(dv.getMaDV());
+
+        assertTrue(dao.layTheoMa(dv.getMaDV()).isTrangThai());
+    }
+
+    @Test
+    void them_leTanHoacNhaSi_biChan() {
+        for (VaiTro vaiTro : new VaiTro[]{VaiTro.LETAN, VaiTro.NHASI}) {
+            DaoTestSupport.dangNhap(vaiTro);
+            DichVu dv = new DichVu(null, ma + " Không được thêm", 100_000, 15, null, true, loai(MucThue.THUE_0));
+            assertThrows(BusinessException.class, () -> dao.them(dv));
+        }
+        DaoTestSupport.dangNhap(VaiTro.QUANLY);
+        assertTrue(dao.timKiem(ma, null, null).isEmpty());
+    }
+
+    @Test
+    void them_maLoaiKhongTonTai_biChan() {
+        DichVu dv = new DichVu(null, ma + " Loại sai", 100_000, 15, null, true,
+                new LoaiDichVu("LDV99", LoaiDichVu.DIEU_TRI, MucThue.THUE_0));
+        BusinessException loi = assertThrows(BusinessException.class, () -> dao.them(dv));
+        assertEquals("Loại dịch vụ không tồn tại.", loi.getMessage());
     }
 
     @Test

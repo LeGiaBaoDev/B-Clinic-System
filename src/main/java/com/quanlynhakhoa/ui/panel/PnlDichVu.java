@@ -2,9 +2,13 @@ package com.quanlynhakhoa.ui.panel;
 
 import com.quanlynhakhoa.dao.DichVuDAO;
 import com.quanlynhakhoa.entity.DichVu;
+import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.MucThue;
+import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.quanlynhakhoa.ui.dialog.DlgDichVu;
+import com.quanlynhakhoa.util.SessionManager;
 import static com.quanlynhakhoa.ui.component.UiConstants.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -23,8 +27,8 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 
 /**
- * UC006: xem và tra cứu danh mục dịch vụ kèm bảng giá, mức thuế GTGT.
- * Mọi vai trò được xem; chỉ đọc dữ liệu qua DichVuDAO.
+ * UC006: xem và tra cứu danh mục dịch vụ kèm bảng giá, mức thuế GTGT (mọi vai trò được xem).
+ * UC005: Quản lý thêm dịch vụ mới qua DlgDichVu. Dữ liệu chỉ đi qua DichVuDAO.
  */
 public class PnlDichVu extends JPanel {
 
@@ -50,6 +54,7 @@ public class PnlDichVu extends JPanel {
     private final JComboBox<String> cboPhanLoaiThue = new JComboBox<>(TEN_PHAN_LOAI);
     private final JButton btnTimKiem = new JButton("Tìm kiếm");
     private final JButton btnLamMoi = new JButton("Làm mới");
+    private final JButton btnThem = new JButton("Thêm dịch vụ");
     private final JLabel lblKetQua = new JLabel("Chưa tải danh mục dịch vụ.");
     private final JLabel lblChiTiet = new JLabel("Chọn một dịch vụ để xem lộ trình điều trị.");
     private final DefaultTableModel modelDichVu = new DefaultTableModel(new String[]{
@@ -89,6 +94,8 @@ public class PnlDichVu extends JPanel {
         cboTrangThai.addActionListener(e -> locThayDoi());
         cboPhanLoaiThue.addActionListener(e -> locThayDoi());
         btnLamMoi.addActionListener(e -> datLaiBoLoc());
+        btnThem.addActionListener(e -> moThemDichVu());
+        btnThem.setVisible(laQuanLy());
         tblDichVu.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 hienChiTiet();
@@ -140,6 +147,13 @@ public class PnlDichVu extends JPanel {
         }
         btnTimKiem.setBackground(TEAL);
         btnTimKiem.setForeground(Color.WHITE);
+        // UC005: chỉ Quản lý thấy nút thêm; DAO vẫn kiểm tra quyền từ DB.
+        btnThem.setName("themDichVu");
+        btnThem.setFont(bold(12));
+        btnThem.setPreferredSize(new Dimension(130, 40));
+        btnThem.setBackground(TEAL);
+        btnThem.setForeground(Color.WHITE);
+        boLoc.add(btnThem);
         search.add(boLoc, BorderLayout.EAST);
         header.add(search, BorderLayout.CENTER);
         return header;
@@ -311,6 +325,35 @@ public class PnlDichVu extends JPanel {
     private void datDangTai(boolean dangTai) {
         btnTimKiem.setEnabled(!dangTai);
         btnLamMoi.setEnabled(!dangTai);
+        btnThem.setVisible(laQuanLy());
+    }
+
+    private static boolean laQuanLy() {
+        TaiKhoan actor = SessionManager.getInstance().getCurrentUser();
+        return actor != null && actor.getVaiTro() == VaiTro.QUANLY;
+    }
+
+    /** UC005 bước 1: mở form thêm; lưu xong báo thành công và hiện dịch vụ mới trong danh sách. */
+    private void moThemDichVu() {
+        if (!laQuanLy()) {
+            lblKetQua.setText("Chỉ Quản lý được thêm dịch vụ.");
+            return;
+        }
+        new DlgDichVu(SwingUtilities.getWindowAncestor(this), this::daThemDichVu).setVisible(true);
+    }
+
+    void daThemDichVu(DichVu dv) {
+        dangDatLaiBoLoc = true;
+        try {
+            txtTimKiem.setText(dv.getMaDV());
+            cboTrangThai.setSelectedIndex(0);
+            cboPhanLoaiThue.setSelectedIndex(0);
+        } finally {
+            dangDatLaiBoLoc = false;
+        }
+        lamMoiDuLieu();
+        JOptionPane.showMessageDialog(this, "Thêm dịch vụ thành công: " + dv.getMaDV() + " – " + dv.getTenDV(),
+                "Thành công", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void xoaKetQua() {
