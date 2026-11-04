@@ -156,12 +156,84 @@ class H2DaoIntegrationTest {
                         assertEquals(1, success);
                         assertEquals(1, DAO.layTheoNhanVien("NV002", DAY.plusDays(3), DAY.plusDays(3)).size());
                     } finally { pool.shutdownNow(); }
+                    var leave=shift(DAY.plusDays(5),"NV002",7,17);
+                    leave.setCaTruc(CaTruc.CA_NGAY); leave.nghiPhep("Nghỉ việc gia đình");
+                    assertTrue(DAO.them(leave));
+                    var blocked=shift(DAY.plusDays(5),"NV002",8,12);
+                    assertTrue(assertThrows(BusinessException.class,()->DAO.them(blocked)).getMessage().contains("nghỉ phép"));
+                    assertNull(blocked.getMaLLV());
+                    var blockedAfternoon=shift(DAY.plusDays(5),"NV002",14,17); blockedAfternoon.setCaTruc(CaTruc.CA_CHIEU);
+                    assertTrue(assertThrows(BusinessException.class,()->DAO.them(blockedAfternoon)).getMessage().contains("nghỉ phép"));
+                    assertEquals(1,DAO.layTheoNhanVien("NV002",DAY.plusDays(5),DAY.plusDays(5)).size());
+                    phanCongQuaGiaoDien();
                     System.out.println("H2_DAO_INTEGRATION_OK");
                 } finally {
                     SessionManager.getInstance().logout();
                     DatabaseConnection.getInstance().getDataSource().close();
                 }
             }
+        }
+
+        private static void phanCongQuaGiaoDien() throws Exception {
+            var ref = new java.util.concurrent.atomic.AtomicReference<com.quanlynhakhoa.ui.panel.PnlLichLamViec>();
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                var panel = new com.quanlynhakhoa.ui.panel.PnlLichLamViec();
+                ref.set(panel); panel.lamMoiDuLieu();
+            });
+            var panel = ref.get();
+            choGiaoDien(() -> ((javax.swing.JComboBox<?>)tim(panel,"nhanVienPhanCong")).isEnabled());
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                ((javax.swing.JComboBox<?>)tim(panel,"viTri")).setSelectedItem("Nha sĩ");
+                ((javax.swing.JComboBox<?>)tim(panel,"caPhanCong")).setSelectedIndex(1);
+                ((com.toedter.calendar.JDateChooser)tim(panel,"ngayPhanCong")).setDate(java.util.Date.from(
+                        DAY.plusDays(4).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                ((javax.swing.JButton)tim(panel,"luuPhanCong")).doClick();
+            });
+            choGiaoDien(() -> ((javax.swing.JComboBox<?>)tim(panel,"nhanVienPhanCong")).isEnabled()
+                    && ((javax.swing.JLabel)tim(panel,"thongBaoPhanCong")).getText().contains("thành công"));
+            var rows = DAO.layTheoNhanVien("NV002",DAY.plusDays(4),DAY.plusDays(4));
+            assertEquals(1,rows.size()); assertEquals(LocalTime.of(13,30),rows.getFirst().getGioBatDau());
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                var table=(javax.swing.JTable)tim(panel,"bangLichLamViec");
+                String day=DAY.plusDays(4).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                assertTrue(java.util.stream.IntStream.range(0,table.getRowCount())
+                        .anyMatch(i -> day.equals(table.getValueAt(i,0))&&table.getValueAt(i,4).toString().contains("13:30")));
+                assertFalse(((javax.swing.JButton)tim(panel,"luuPhanCong")).isEnabled());
+            });
+            var duplicate=shift(DAY.plusDays(4),"NV002",14,17); duplicate.setCaTruc(CaTruc.CA_CHIEU);
+            assertThrows(BusinessException.class,()->DAO.them(duplicate));
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                ((com.toedter.calendar.JDateChooser)tim(panel,"ngayPhanCong")).setDate(java.util.Date.from(
+                        DAY.plusDays(5).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                assertFalse(((javax.swing.JButton)tim(panel,"luuPhanCong")).isEnabled());
+                assertTrue(((javax.swing.JLabel)tim(panel,"thongBaoPhanCong")).getText().contains("nghỉ phép"));
+                ((javax.swing.JComboBox<?>)tim(panel,"caPhanCong")).setSelectedIndex(0);
+                assertFalse(((javax.swing.JButton)tim(panel,"luuPhanCong")).isEnabled());
+                ((com.toedter.calendar.JDateChooser)tim(panel,"ngayPhanCong")).setDate(java.util.Date.from(
+                        DAY.plusDays(6).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                assertTrue(((javax.swing.JButton)tim(panel,"luuPhanCong")).isEnabled());
+            });
+            assertEquals(1,DAO.layTheoNhanVien("NV002",DAY.plusDays(4),DAY.plusDays(4)).size());
+            System.out.println("H2_UC013_UI_SAVE_AND_DUPLICATE_OK");
+            System.out.println("H2_LEAVE_BLOCKED_UI_AND_DAO_OK");
+        }
+
+        private static java.awt.Component tim(java.awt.Container root,String name) {
+            for(var child:root.getComponents()) {
+                if(name.equals(child.getName())) return child;
+                if(child instanceof java.awt.Container c) { var found=tim(c,name); if(found!=null)return found; }
+            }
+            return null;
+        }
+
+        private static void choGiaoDien(java.util.function.BooleanSupplier condition) throws Exception {
+            for(int i=0;i<200;i++) {
+                var ok=new java.util.concurrent.atomic.AtomicBoolean();
+                javax.swing.SwingUtilities.invokeAndWait(() -> ok.set(condition.getAsBoolean()));
+                if(ok.get())return;
+                Thread.sleep(50);
+            }
+            fail("Giao diện phân công chưa hoàn tất xử lý.");
         }
 
         private static void login(VaiTro role) {
@@ -180,4 +252,3 @@ class H2DaoIntegrationTest {
         }
     }
 }
-

@@ -77,3 +77,51 @@ mvn '-Dbclinic.integration=true' '-Dtest=H2DaoIntegrationTest' test
 Kịch bản: sinh mã LLV#####, đọc lại dữ liệu; trùng loại ca dù không chồng giờ; ca cả ngày chồng ca sáng/chiều; cho phép khác nhân viên hoặc sáng/chiều tách biệt; cập nhật không tự trùng, cập nhật gây trùng rollback, mã không tồn tại; ngày quá khứ, giờ ngoài ca, khoảng ngày ngược; phân quyền ba vai trò, chưa đăng nhập, tài khoản nhân viên bị khóa; ép lỗi ghi nhật ký để kiểm tra rollback cả dòng lịch và mã đối tượng; hai yêu cầu đồng thời chỉ một yêu cầu tạo cùng ca thành công.
 
 Đây là kiểm chứng kỹ thuật T601. UI phân công/xem/đổi ca/nghỉ phép và kiểm thử chéo H2 còn thuộc T602/T603.
+
+## H2 — UC013: phân công lịch làm việc
+
+Quản lý mở **Lịch làm việc**, chọn nhân viên đang hoạt động, ngày và ca rồi nhấn **Lưu phân công**. Giờ theo ca: sáng 08:00–12:00, chiều 13:30–17:30, cả ngày 08:00–17:30. Bảng có chế độ tuần/tháng, chuyển kỳ, Hôm nay và Làm mới/F5. Sau lưu thành công, bảng chuyển về kỳ của ngày vừa phân công và tải lại dữ liệu.
+
+```powershell
+mvn '-Dtest=PnlLichLamViecTest' test
+mvn '-Dbclinic.integration=true' '-Dtest=H2DaoIntegrationTest' test
+```
+
+Bài tích hợp H2 bổ sung thao tác trên panel thật: chọn nha sĩ/ngày/ca chiều, lưu qua DAO và đọc lại SQL Server, xác nhận dòng lịch được hiển thị; lưu trùng lần hai và kiểm tra không sinh thêm ca. Chạy trên database UUID riêng như T601.
+
+Checklist kiểm thử chéo UC013 (chưa nghiệm thu thủ công):
+
+| Mã | Thao tác | Kết quả mong đợi |
+|---|---|---|
+| H2-M01 | Quản lý mở Lịch làm việc, chuyển tuần/tháng và Làm mới/F5 | Hiển thị đúng khoảng ngày và ca đã có; không đứng giao diện |
+| H2-M02 | Lọc vị trí, chọn nhân viên và tạo ca mới | Chỉ nhân viên có tài khoản hoạt động được chọn; giờ đúng ca; báo thành công, bảng có ca mới |
+| H2-M03 | Lưu lại cùng nhân viên/ngày/ca | Báo trùng ca, giữ lựa chọn để sửa; không tạo ca thứ hai |
+| H2-M04 | Chọn ngày quá khứ hoặc nhập 31/02 | Báo lỗi ngày, không gửi lưu |
+| H2-M05 | Nhấn Lưu nhiều lần khi đang xử lý | Chỉ một yêu cầu; không sửa nhân viên/ngày/ca trong lúc lưu |
+| H2-M06 | Đăng nhập Nha sĩ/Lễ tân | Không có chức năng phân công trong menu; DAO vẫn kiểm tra quyền |
+| H2-M07 | Thu nhỏ cửa sổ về 1366×768 hoặc kích thước tối thiểu | Các nút dùng được, form cuộn dọc, bảng cuộn ngang khi cần |
+
+UC012 xem lịch cá nhân, UC014 đổi ca và UC015 nghỉ phép chưa thuộc phần UI đã triển khai ở lượt này.
+
+### Cập nhật giao diện lịch theo ảnh tham chiếu
+
+- Mặc định mở bảng tuần: cột thứ Hai–Chủ nhật, hàng ca sáng/chiều; ngày hiện tại được tô nền nhẹ. Mỗi thẻ ghi tên, chức vụ từ vai trò tài khoản và trạng thái ca. Không có thông tin ghế.
+- Bộ lọc nhân viên, chức vụ, trạng thái áp dụng lên lịch. Ca cả ngày xuất hiện ở cả hai buổi; ca nghỉ phép giữ nhãn riêng.
+- Nút + Phân ca mở/đóng form bên cạnh, giữ luồng lưu nền hiện có. Chế độ Tháng giữ danh sách ca trong tháng.
+- Đã qua ca/Đang trực/Đã phân ca là nhãn hiển thị dựa trên giờ ca; không ghi thêm trạng thái vào DB. Chủ nhật không có ca hiển thị Chưa phân ca, không tự giả định nghỉ cố định.
+
+Ngày phân công dùng calendar (nút lịch): chỉ chọn từ hôm nay trở đi, ô ngày không nhập tay. Ngày trống hoặc quá khứ vẫn bị kiểm tra lại khi Lưu. Khi mở lại form, giới hạn ngày được cập nhật theo hôm nay.
+
+### Chặn ca đã có lịch/nghỉ phép ngay trên form
+
+Khi chọn nhân viên, ngày hoặc ca, form đối chiếu lịch đã tải bằng mã nhân viên. Nếu cùng loại ca hoặc chồng giờ với ca đã phân công/nghỉ phép, hiện lý do và khóa Lưu. Đổi sang ca còn trống hoặc nhân viên khác sẽ cho lưu lại. Nghỉ ca sáng không tự chặn ca chiều; nghỉ cả ngày chặn cả hai buổi. Thẻ nghỉ phép có nền và nhãn riêng.
+
+DAO vẫn kiểm tra trong transaction để chặn dữ liệu mới phát sinh ở máy khác sau lúc tải. Thông báo nghỉ phép được ưu tiên thay cho thông báo trùng ca chung. Bài H2DaoIntegrationTest kiểm tra chặn cả giao diện và DAO trên DB UUID riêng.
+
+### Luồng chọn ca trước ngày
+
+Form tạo ca: nhân viên → chọn ca làm việc → chọn ngày còn trống trên calendar. Ban đầu chưa chọn ca nên calendar chưa bật. Các ngày có ca trùng hoặc nghỉ phép của đúng nhân viên/ca được vô hiệu hóa trực tiếp trong popup; đổi nhân viên hoặc ca sẽ cập nhật lại. Ngày quá khứ vẫn bị khóa. Kiểm tra ở nút Lưu và transaction DAO tiếp tục bảo vệ trường hợp dữ liệu thay đổi sau lúc tải.
+
+Lịch tuần chỉ hiển thị tên và chức vụ trên thẻ: nghỉ phép nền vàng, đang trực nền xanh, ca còn lại trung tính. Đã bỏ dòng trạng thái dưới ô và thanh chú thích. Có thể xem chi tiết trạng thái khi rê chuột hoặc dùng bộ lọc.
+
+Màu đang trực ở lịch tuần tính theo từng buổi, kể cả ca cả ngày: sáng kết thúc lúc 12:00, chiều bắt đầu 13:30 và kết thúc tối đa 17:30. Màu tự cập nhật mỗi phút khi màn hình đang hiển thị. Sau buổi sáng, thẻ sáng trở về trung tính; nghỉ phép luôn nhấn vàng.
