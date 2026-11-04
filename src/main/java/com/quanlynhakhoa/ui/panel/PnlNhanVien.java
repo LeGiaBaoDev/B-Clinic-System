@@ -6,18 +6,18 @@ import com.quanlynhakhoa.entity.NhanVien;
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.exception.BusinessException;
-import com.quanlynhakhoa.ui.dialog.DlgThemNhanVien;
-import com.quanlynhakhoa.ui.dialog.DlgCapNhatNhanVien;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
 import static com.quanlynhakhoa.ui.component.UiConstants.*;
+import com.quanlynhakhoa.ui.dialog.DlgCapNhatNhanVien;
+import com.quanlynhakhoa.ui.dialog.DlgThemNhanVien;
 import com.quanlynhakhoa.util.SessionManager;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -29,7 +29,6 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 
-/** UC004: Quản lý tra cứu nhân viên; chỉ đọc dữ liệu qua DAO. */
 public class PnlNhanVien extends JPanel {
 
     private static final Logger LOG = Logger.getLogger(PnlNhanVien.class.getName());
@@ -77,7 +76,9 @@ public class PnlNhanVien extends JPanel {
     private Map<String, TaiKhoan> taiKhoanTheoNhanVien = Map.of();
     private SwingWorker<DuLieu, Void> worker;
 
-    private record DuLieu(List<NhanVien> nhanVien, List<TaiKhoan> taiKhoan) { }
+    private record DuLieu(List<NhanVien> nhanVien, List<TaiKhoan> taiKhoan) {
+
+    }
 
     public PnlNhanVien() {
         this(new NhanVienDAO()::timKiem, new TaiKhoanDAO()::layTatCa);
@@ -100,7 +101,10 @@ public class PnlNhanVien extends JPanel {
         btnLamMoi.addActionListener(e -> lamMoiDuLieu());
         txtTimKiem.addActionListener(e -> lamMoiDuLieu());
         tblNhanVien.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) { hienChiTiet(); capNhatNutSua(); }
+            if (!e.getValueIsAdjusting()) {
+                hienChiTiet();
+                capNhatNutSua();
+            }
         });
         tblNhanVien.addMouseListener(new MouseAdapter() {
             @Override
@@ -119,7 +123,9 @@ public class PnlNhanVien extends JPanel {
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "lamMoi");
         getActionMap().put("lamMoi", new AbstractAction() {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) { lamMoiDuLieu(); }
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                lamMoiDuLieu();
+            }
         });
     }
 
@@ -313,7 +319,9 @@ public class PnlNhanVien extends JPanel {
     public void addNotify() {
         super.addNotify();
         SwingUtilities.invokeLater(() -> {
-            if (isDisplayable()) { lamMoiDuLieu(); }
+            if (isDisplayable()) {
+                lamMoiDuLieu();
+            }
         });
     }
 
@@ -326,7 +334,10 @@ public class PnlNhanVien extends JPanel {
         super.removeNotify();
     }
 
-    /** Tải lại theo từ khóa; DAO kiểm tra quyền Quản lý từ DB trước khi trả dữ liệu. */
+    /**
+     * Tải lại theo từ khóa; DAO kiểm tra quyền Quản lý từ DB trước khi trả dữ
+     * liệu.
+     */
     public void lamMoiDuLieu() {
         if (!SwingUtilities.isEventDispatchThread()) {
             SwingUtilities.invokeLater(this::lamMoiDuLieu);
@@ -334,13 +345,18 @@ public class PnlNhanVien extends JPanel {
         }
         TaiKhoan actor = SessionManager.getInstance().getCurrentUser();
         if (actor == null || actor.getVaiTro() != VaiTro.QUANLY) {
-            if (worker != null) { worker.cancel(true); worker = null; }
+            if (worker != null) {
+                worker.cancel(true);
+                worker = null;
+            }
             xoaKetQua();
             lblKetQua.setText("Chỉ Quản lý được tra cứu nhân viên và tài khoản.");
             datDangTai(false);
             return;
         }
-        if (worker != null) { worker.cancel(true); }
+        if (worker != null) {
+            worker.cancel(true);
+        }
         String tuKhoa = txtTimKiem.getText().trim();
         datDangTai(true);
         lblKetQua.setForeground(MUTED);
@@ -355,7 +371,9 @@ public class PnlNhanVien extends JPanel {
 
             @Override
             protected void done() {
-                if (this != worker || isCancelled()) { return; }
+                if (this != worker || isCancelled()) {
+                    return;
+                }
                 try {
                     DuLieu data = get();
                     xoaKetQua();
@@ -417,10 +435,14 @@ public class PnlNhanVien extends JPanel {
             return;
         }
         int row = tblNhanVien.getSelectedRow();
-        if (dangTai || row < 0) { return; }
+        if (dangTai || row < 0) {
+            return;
+        }
         NhanVien nv = nhanVien.get(tblNhanVien.convertRowIndexToModel(row));
         TaiKhoan tk = taiKhoanTheoNhanVien.get(nv.getMaNV());
-        if (tk == null) { return; }
+        if (tk == null) {
+            return;
+        }
         new DlgCapNhatNhanVien(SwingUtilities.getWindowAncestor(this), tk, () -> {
             txtTimKiem.setText(nv.getMaNV());
             lamMoiDuLieu();
@@ -540,9 +562,12 @@ public class PnlNhanVien extends JPanel {
 
     private static String tenVaiTro(VaiTro vaiTro) {
         return switch (vaiTro) {
-            case QUANLY -> "Quản lý";
-            case NHASI -> "Nha sĩ";
-            case LETAN -> "Lễ tân";
+            case QUANLY ->
+                "Quản lý";
+            case NHASI ->
+                "Nha sĩ";
+            case LETAN ->
+                "Lễ tân";
         };
     }
 }
