@@ -36,6 +36,6 @@ public class App {
         SwingUtilities.invokeLater(() -> {
             FrmDangNhap frm = new FrmDangNhap();
             frm.setVisible(true);
-        });
+        }); 
     }
 }

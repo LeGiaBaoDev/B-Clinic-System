@@ -10,6 +10,17 @@ public final class KiemTraXacThuc {
     private KiemTraXacThuc() {
     }
 
+    public static String loiDoiMatKhauLanDau(String matKhauMoi, String nhapLai) {
+        if (matKhauMoi == null || matKhauMoi.isBlank() || matKhauMoi.length() < DO_DAI_MAT_KHAU_TOI_THIEU) {
+            return "Mật khẩu mới phải có ít nhất " + DO_DAI_MAT_KHAU_TOI_THIEU + " ký tự, không chỉ gồm khoảng trắng.";
+        }
+        if (QuyTacTaiKhoan.MAT_KHAU_MAC_DINH.equals(matKhauMoi)) {
+            return "Mật khẩu mới phải khác mật khẩu mặc định.";
+        }
+        if (!matKhauMoi.equals(nhapLai)) { return "Xác nhận mật khẩu không khớp."; }
+        return null;
+    }
+
     /**
      * @return câu lỗi, hoặc null nếu dữ liệu đăng nhập hợp lệ.
      */

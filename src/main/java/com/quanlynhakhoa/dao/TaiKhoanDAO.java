@@ -6,6 +6,7 @@ import com.quanlynhakhoa.entity.*;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.util.PasswordHasher;
+import com.quanlynhakhoa.util.QuyTacTaiKhoan;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -81,6 +82,24 @@ public class TaiKhoanDAO {
         XAC_MINH.remove(maTK);
     }
 
+    /** Đổi mật khẩu mặc định trước khi cấp session; luôn kiểm tra lại thông tin xác thực trong transaction. */
+    public TaiKhoan doiMatKhauLanDau(String maTK, String matKhauHienTai, String matKhauMoi) {
+        String loi = com.quanlynhakhoa.util.KiemTraXacThuc.loiDoiMatKhauLanDau(matKhauMoi, matKhauMoi);
+        yeuCau(loi == null, loi);
+        yeuCau(QuyTacTaiKhoan.MAT_KHAU_MAC_DINH.equals(matKhauHienTai), "Mật khẩu hiện tại không hợp lệ.");
+        return JdbcHelper.transaction(c -> {
+            String hash = JdbcHelper.one(c,
+                    "SELECT matKhau FROM TaiKhoan WITH(UPDLOCK,HOLDLOCK) WHERE maTK=? AND trangThai=1",
+                    r -> r.getString(1), maTK);
+            yeuCau(PasswordHasher.xacMinh(matKhauHienTai, hash),
+                    "Tài khoản đã bị khóa hoặc mật khẩu đã thay đổi. Vui lòng đăng nhập lại.");
+            JdbcHelper.update(c, "UPDATE TaiKhoan SET matKhau=? WHERE maTK=?",
+                    PasswordHasher.bam(matKhauMoi), maTK);
+            NhatKy.ghi(c, maTK, "DOI_MAT_KHAU_LAN_DAU", "Đã đổi mật khẩu mặc định; không ghi nội dung mật khẩu.");
+            return layTheoMa(c, maTK);
+        });
+    }
+
     public List<TaiKhoan> layTatCa() {
         return JdbcHelper.doc(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
@@ -141,7 +160,38 @@ public class TaiKhoanDAO {
     }
 
     public boolean capNhat(TaiKhoan tk) {
+        return JdbcHelper.transaction(c -> capNhat(c, tk));
+    }
+
+    /** UC003 theo kế hoạch H1: cập nhật nhân viên và quyền/trạng thái nguyên tử. */
+    public boolean capNhatNhanVienVaTaiKhoan(NhanVien nv, TaiKhoan tk) {
         return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY);
+            new NhanVien(nv.getMaNV(), nv.getHoTenNV(), nv.isGioiTinh(), nv.getSdt(), nv.getEmail(), nv.getChuyenMon());
+            VaiTro role = switch (nv.getChuyenMon()) {
+                case "Nha sĩ" -> VaiTro.NHASI;
+                case "Lễ tân" -> VaiTro.LETAN;
+                case "Quản lý" -> VaiTro.QUANLY;
+                default -> throw new BusinessException("Vui lòng chọn chuyên môn hợp lệ.");
+            };
+            yeuCau(tk.getVaiTro() == role, "Vai trò không khớp chuyên môn.");
+            TaiKhoan cu = layTheoMa(c, tk.getMaTK());
+            yeuCau(cu != null && cu.getNhanVien().getMaNV().equals(nv.getMaNV()),
+                    "Không tìm thấy tài khoản nhân viên.");
+            // UC003 không thay tên đăng nhập hay mật khẩu đã cấp.
+            TaiKhoan moi = new TaiKhoan(tk);
+            moi.setTenTK(cu.getTenTK());
+            yeuCau(capNhat(c, moi), "Không tìm thấy tài khoản nhân viên.");
+            yeuCau(JdbcHelper.update(c,
+                    "UPDATE NhanVien SET hoTenNV=?,gioiTinh=?,sdt=?,email=?,chuyenMon=? WHERE maNV=?",
+                    nv.getHoTenNV(), nv.isGioiTinh(), nv.getSdt(), nv.getEmail(), nv.getChuyenMon(), nv.getMaNV()) == 1,
+                    "Không tìm thấy nhân viên.");
+            NhatKy.ghi(c, "CAP_NHAT_NHAN_VIEN_TAI_KHOAN", nv.getMaNV() + " / " + tk.getMaTK());
+            return true;
+        });
+    }
+
+    private boolean capNhat(Connection c, TaiKhoan tk) throws SQLException {
             Actor actor = PhanQuyen.quyen(c, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:lich");
             MaSinh.khoa(c, "BClinic:tai-khoan");
@@ -159,7 +209,6 @@ public class TaiKhoanDAO {
                     tk.getTenTK(), tk.getVaiTro(), tk.isTrangThai(), tk.getMaTK()) == 1;
             if (ok) { NhatKy.ghi(c, "CAP_NHAT_TAI_KHOAN", tk.getMaTK()); }
             return ok;
-        });
     }
 
     public boolean khoaTaiKhoan(String ma) {
@@ -172,15 +221,21 @@ public class TaiKhoanDAO {
     public boolean xoa(String ma) { return khoaTaiKhoan(ma); }
 
     private void them(Connection c, TaiKhoan tk) throws SQLException {
-        new TaiKhoan(null, tk.getTenTK(), tk.getMatKhau(), tk.getVaiTro(),
-                tk.isTrangThai(), tk.getNhanVien());
-        TaiKhoan.kiemTraMatKhauGoc(tk.getMatKhau());
+        yeuCau(tk.getNhanVien() != null, "Thiếu nhân viên để tạo tài khoản.");
+        NhanVien nv = new NhanVienDAO().layTheoMa(c, tk.getNhanVien().getMaNV());
+        yeuCau(nv != null, "Nhân viên không tồn tại.");
+        // Giữ khóa tới khi commit để hai lần tạo đồng thời không chọn cùng tên trống.
+        List<String> daDung = JdbcHelper.query(c,
+                "SELECT tenTK FROM TaiKhoan WITH(TABLOCKX,HOLDLOCK)", r -> r.getString(1));
+        String ten = QuyTacTaiKhoan.tenDangNhap(nv.getHoTenNV(), tk.getVaiTro(), daDung);
+        new TaiKhoan(null, ten, QuyTacTaiKhoan.MAT_KHAU_MAC_DINH, tk.getVaiTro(), tk.isTrangThai(), nv);
 
         String ma = MaSinh.maMoi(c, MaSinh.Bang.TAI_KHOAN, null);
         JdbcHelper.update(c, "INSERT INTO TaiKhoan(maTK,tenTK,matKhau,vaiTro,trangThai,maNV)"
                         + " VALUES(?,?,?,?,?,?)",
-                ma, tk.getTenTK(), PasswordHasher.bam(tk.getMatKhau()), tk.getVaiTro(),
+                ma, ten, PasswordHasher.bam(QuyTacTaiKhoan.MAT_KHAU_MAC_DINH), tk.getVaiTro(),
                 tk.isTrangThai(), tk.getNhanVien().getMaNV());
+        tk.setTenTK(ten);
         tk.setMaTK(ma);
     }
 
