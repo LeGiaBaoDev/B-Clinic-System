@@ -86,6 +86,10 @@ public class DichVuDAO {
         return JdbcHelper.one(c, SQL_SELECT + " WHERE dv.maDV=?", this::mapRow, ma);
     }
 
+    /**
+     * UC005: thêm dịch vụ mới, sinh mã DV###, trạng thái "Đang cung cấp". Loại chỉ cần đúng tên
+     * (mã có thể null): DB chưa có loại thì tạo theo 3 loại cố định của Bảng 4.5. Chỉ Quản lý.
+     */
     public boolean them(DichVu dv) {
         return luu(dv, true);
     }
@@ -111,28 +115,32 @@ public class DichVuDAO {
                             "Cần xử lý các lịch hẹn hiện có trước khi đổi thời lượng hoặc ngừng dịch vụ.");
                 }
             }
-            yeuCau(!dv.isTrangThai() || !JdbcHelper.exists(c,
-                    "SELECT 1 FROM DichVu WHERE trangThai=1 AND tenDV=? AND maDV<>?",
+            // UC005 hậu điều kiện: dịch vụ mới luôn ở trạng thái "Đang cung cấp".
+            boolean dangCungCap = themMoi || dv.isTrangThai();
+            // UC005 5.1 / UC007 5.2: tên không trùng dịch vụ khác đang hoạt động (collation không phân biệt hoa thường).
+            yeuCau(!dangCungCap || !JdbcHelper.exists(c,
+                    "SELECT 1 FROM DichVu WITH(UPDLOCK,HOLDLOCK) WHERE trangThai=1 AND tenDV=? AND maDV<>?",
                     dv.getTenDV(), themMoi ? "" : dv.getMaDV()),
-                    "Tên dịch vụ đang hoạt động đã tồn tại.");
-            yeuCau(JdbcHelper.exists(c, "SELECT 1 FROM LoaiDichVu WHERE maLoaiDV=?",
-                    dv.getLoaiDichVu().getMaLoaiDV()),
-                    "Loại dịch vụ không tồn tại.");
+                    themMoi ? "Dịch vụ đã tồn tại. Vui lòng đổi tên dịch vụ." : "Tên dịch vụ đã tồn tại.");
+            // UC005 bước 6: mức thuế đi theo phân loại đã chọn.
+            LoaiDichVu loai = new LoaiDichVuDAO().layHoacTao(c, dv.getLoaiDichVu());
 
             String ma = themMoi ? MaSinh.maMoi(c, MaSinh.Bang.DICH_VU, null) : dv.getMaDV();
             int rows = themMoi
                     ? JdbcHelper.update(c, "INSERT INTO DichVu(maDV,tenDV,maLoaiDV,donGia,thoiLuong,"
                             + "loTrinhDichVu,trangThai) VALUES(?,?,?,?,?,?,?)",
-                            ma, dv.getTenDV(), dv.getLoaiDichVu().getMaLoaiDV(),
+                            ma, dv.getTenDV(), loai.getMaLoaiDV(),
                             BigDecimal.valueOf(dv.getDonGia()), dv.getThoiLuong(),
-                            dv.getLoTrinhDichVu(), dv.isTrangThai())
+                            dv.getLoTrinhDichVu(), dangCungCap)
                     : JdbcHelper.update(c, "UPDATE DichVu SET tenDV=?,maLoaiDV=?,donGia=?,thoiLuong=?,"
                             + "loTrinhDichVu=?,trangThai=? WHERE maDV=?",
-                            dv.getTenDV(), dv.getLoaiDichVu().getMaLoaiDV(),
+                            dv.getTenDV(), loai.getMaLoaiDV(),
                             BigDecimal.valueOf(dv.getDonGia()), dv.getThoiLuong(),
-                            dv.getLoTrinhDichVu(), dv.isTrangThai(), ma);
+                            dv.getLoTrinhDichVu(), dangCungCap, ma);
             if (rows == 1) {
                 dv.setMaDV(ma);
+                dv.setTrangThai(dangCungCap);
+                dv.setLoaiDichVu(loai);
                 NhatKy.ghi(c, themMoi ? "THEM_DICH_VU" : "CAP_NHAT_DICH_VU", ma);
             }
             return rows == 1;
