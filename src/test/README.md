@@ -63,3 +63,17 @@ Các hàng dưới dành cho một thành viên khác thao tác trên ứng dụ
 | H1-M13 | Đăng nhập bằng Clinic@123; hủy/đóng form đổi lần đầu, rồi đăng nhập lại và đổi thành công | Hủy quay lại đăng nhập; chưa đổi không vào màn chính; mật khẩu mới khác mặc định, ít nhất 6 ký tự và xác nhận khớp; đăng nhập bằng mật khẩu mới không hiện form lần nữa | Chờ |
 
 Sau kiểm thử chéo, thành viên tự commit/push và làm PR theo quy trình nhóm. Bộ test không tự commit, push hoặc xác nhận review.
+
+## H2 — T601: DAO lịch làm việc
+
+Chạy riêng (SQL Server, không cần mở giao diện Swing):
+
+```powershell
+mvn '-Dbclinic.integration=true' '-Dtest=H2DaoIntegrationTest' test
+```
+
+`H2DaoIntegrationTest` tạo database UUID riêng, chạy Flyway, cấu hình JVM con và xác nhận `DB_NAME()` trước khi gọi DAO; xóa database/config trong finally. Log tại `target/h2-dao-*/result.log`.
+
+Kịch bản: sinh mã LLV#####, đọc lại dữ liệu; trùng loại ca dù không chồng giờ; ca cả ngày chồng ca sáng/chiều; cho phép khác nhân viên hoặc sáng/chiều tách biệt; cập nhật không tự trùng, cập nhật gây trùng rollback, mã không tồn tại; ngày quá khứ, giờ ngoài ca, khoảng ngày ngược; phân quyền ba vai trò, chưa đăng nhập, tài khoản nhân viên bị khóa; ép lỗi ghi nhật ký để kiểm tra rollback cả dòng lịch và mã đối tượng; hai yêu cầu đồng thời chỉ một yêu cầu tạo cùng ca thành công.
+
+Đây là kiểm chứng kỹ thuật T601. UI phân công/xem/đổi ca/nghỉ phép và kiểm thử chéo H2 còn thuộc T602/T603.
