@@ -49,7 +49,7 @@ public class HoSoBenhAnDAO {
         return JdbcHelper.one(c, SQL_SELECT + " WHERE maKH=?", r -> mapRow(c, r), maKH);
     }
 
-    /** UC024: hồ sơ bệnh án (tiền sử/dị ứng) theo mã bệnh nhân. */
+    
     public HoSoBenhAn layTheoKhachHang(String maKH) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.NHASI);

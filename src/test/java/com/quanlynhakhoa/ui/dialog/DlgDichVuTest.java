@@ -12,19 +12,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
-/*
- * UC005 – form thêm dịch vụ (không cần DB)
- * [x] 5.2: thiếu tên, đơn giá <= 0 / sai, thời lượng <= 0, chưa chọn phân loại -> cảnh báo, không gọi lưu
- * [x] bước 6: chọn phân loại hiện mức thuế tương ứng
- * [x] hợp lệ: gửi đúng dữ liệu cho DAO, lưu ngoài EDT, báo thành công
- * [x] 5.1: DAO báo tên trùng -> hiện thông báo, giữ form để sửa
- * [x] lỗi DB -> thông báo chung, không lộ chi tiết kỹ thuật
- * [x] 3.1: nút Đóng hủy thao tác
- * Gợi ý lộ trình
- * [x] lọc: chứa đoạn đã gõ (không phân biệt hoa thường), giữ thứ tự mới nhất, tối đa 5, bỏ cái trùng y hệt
- * [x] mở form hiện 5 gợi ý mới nhất; gõ thì lọc; bấm gợi ý điền vào ô
- * [x] để trống lộ trình -> gửi DAO null (DB lưu NULL)
- */
 class DlgDichVuTest {
 
     private DlgDichVu.NoiDung form;

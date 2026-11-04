@@ -65,7 +65,6 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
-/** UC024 — Nha sĩ tra cứu hồ sơ bệnh án điện tử và lịch sử khám/hẹn của bệnh nhân. */
 public class PnlTraCuuHoSo extends JPanel {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -758,7 +757,7 @@ public class PnlTraCuuHoSo extends JPanel {
         return s == null ? "" : s.replaceAll("\\s+", " ").trim();
     }
 
-    /** Giá trị sau nhãn (vd "Triệu chứng:") trong chuỗi nhiều dòng do UC023 lưu; null nếu không có nhãn. */
+    
     private static String dong(String blob, String nhan) {
         if (blob == null) {
             return null;

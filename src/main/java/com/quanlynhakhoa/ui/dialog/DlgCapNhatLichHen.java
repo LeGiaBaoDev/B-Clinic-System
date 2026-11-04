@@ -39,10 +39,6 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
-/**
- * UC018 cập nhật lịch hẹn: chỉ sửa dịch vụ và ghi chú của lịch đang ở trạng thái đã đặt.
- * Bệnh nhân, nha sĩ và ngày giờ chỉ hiển thị; muốn đổi thì dùng chức năng dời lịch (UC019).
- */
 public class DlgCapNhatLichHen extends JDialog {
 
     private final LichHen lich;

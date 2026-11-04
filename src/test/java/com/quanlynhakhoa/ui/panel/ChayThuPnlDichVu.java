@@ -17,13 +17,6 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
-/**
- * Chạy thử màn hình dịch vụ (UC005–UC008) khi chưa gắn vào FrmMain. Không phải test tự động.
- *
- * <p>Dùng {@code src/test/resources/database.properties} (database có tên chứa "_Test"), bỏ qua
- * màn hình đăng nhập: vào thẳng bằng tài khoản mẫu TK001 (Quản lý). Truyền tham số
- * {@code LETAN} hoặc {@code NHASI} để thử vai trò chỉ xem. DB test trống thì nạp vài dịch vụ mẫu.</p>
- */
 public final class ChayThuPnlDichVu {
 
     private ChayThuPnlDichVu() {

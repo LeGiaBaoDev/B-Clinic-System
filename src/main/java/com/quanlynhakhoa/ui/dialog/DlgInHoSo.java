@@ -54,7 +54,6 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
-/** UC024 — Xem trước hồ sơ bệnh án điện tử và lưu ra PDF. */
 public class DlgInHoSo extends JDialog {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");

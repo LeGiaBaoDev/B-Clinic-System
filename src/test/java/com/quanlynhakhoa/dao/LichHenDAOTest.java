@@ -34,21 +34,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/*
- * T701 – LichHenDAO (UC016 đặt, UC018 cập nhật, UC019 hủy/dời, UC020 tra cứu) – cần database test
- * Quy định: R-LH-1 (trùng lịch bệnh nhân), R-LH-2 (cách nha sĩ >= 15 phút), R-LH-3 (hủy >= 3 lần),
- * R-LH-4 (quá giờ -> KHONG_DEN), R-LH-5 (hủy cần lý do), R-LH-6 (chỉ ca DA_PHAN_CONG)
- * [x] đặt hợp lệ: sinh mã LH+yyMMdd+###, trạng thái DA_DAT
- * [x] đặt lỗi: quá khứ, ngoài ca, ca nghỉ phép, dịch vụ ngừng, trùng bệnh nhân, cách nha sĩ < 15 phút
- * [x] cách đúng 15 phút hợp lệ; đặt đồng thời cùng khung chỉ một người thành công
- * [x] hủy >= 3 lần/tháng chỉ cho khung đầu/cuối ngày; KHONG_DEN không tính vào số lần hủy
- * [x] hủy cần lý do, chỉ hủy lịch DA_DAT; quá giờ -> KHONG_DEN
- * [x] dời lịch (capNhat): giữ nguyên bệnh nhân, kiểm tra lại khung giờ
- * [x] UC018 capNhatThongTin: chỉ đổi dịch vụ/ghi chú, không đổi ngày giờ/nha sĩ
- * [x] tìm kiếm theo từ khóa (mã lịch, mã KH, SĐT, họ tên); phân quyền
- * [x] gợi ý khung trống (cách 15 phút, giới hạn khung, bỏ qua lịch đang dời)
- * [x] T022: danhDauDaDen / danhDauHoanTat dùng chung Connection, không tự commit
- */
 class LichHenDAOTest {
 
     private static final LocalDate NGAY = LocalDate.now().plusDays(10);
@@ -111,8 +96,6 @@ class LichHenDAOTest {
         maLLV.clear();
         DaoTestSupport.dangXuat();
     }
-
-    // ------------------------------------------------------------------ UC016 đặt lịch
 
     @Test
     void them_hopLe_sinhMaDungDinhDangVaLuuDaDat() throws SQLException {
@@ -293,8 +276,6 @@ class LichHenDAOTest {
         assertEquals(1, dao.demSoLanHuyTrongThang(maKH1, NGAY));
     }
 
-    // ------------------------------------------------------------------ UC019 hủy
-
     @Test
     void huy_coLyDo_chuyenDaHuyVaLuuLyDo() throws SQLException {
         LichHen lh = lich(maKH1, gio(9, 0), "DV998");
@@ -354,8 +335,6 @@ class LichHenDAOTest {
         assertThrows(BusinessException.class, dao::capNhatKhongDen);
     }
 
-    // ------------------------------------------------------------------ UC019 dời lịch
-
     @Test
     void doiLich_sangKhungTrong_capNhatNgayGio() throws SQLException {
         LichHen lh = lich(maKH1, gio(9, 0), "DV998");
@@ -413,8 +392,6 @@ class LichHenDAOTest {
 
         assertEquals("Không được đổi bệnh nhân của lịch hẹn.", ex.getMessage());
     }
-
-    // ------------------------------------------------------------------ UC018 cập nhật thông tin
 
     @Test
     void capNhatThongTin_doiGhiChu_luuDuoc() {
@@ -485,8 +462,6 @@ class LichHenDAOTest {
 
         assertThrows(BusinessException.class, () -> dao.capNhatThongTin(cu));
     }
-
-    // ------------------------------------------------------------------ UC020 tra cứu
 
     @Test
     void timKiem_theoMaLich_timThay() {

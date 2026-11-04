@@ -36,9 +36,6 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
-/**
- * Hồ sơ khách hàng chỉ đọc, mở từ danh sách bệnh nhân (UC010).
- */
 public class DlgHoSoKhachHang extends JDialog {
 
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
