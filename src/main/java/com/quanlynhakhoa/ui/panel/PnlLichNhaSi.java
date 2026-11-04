@@ -334,7 +334,7 @@ public class PnlLichNhaSi extends JPanel {
         });
     }
 
-    /** Từ màn tra cứu hồ sơ (UC024) mở thẳng phiếu khám của bệnh nhân; vẫn thuộc mục "Bệnh án". */
+    
     private void moKhamTuTraCuu(String maKH) {
         pnlKham.moKhamTheoKhachHang(maKH, () -> {
             theTrang.show(pnlTrang, "Khám");

@@ -21,15 +21,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/*
- * T401 – KhachHangDAO (UC009 thêm, UC010 tra cứu, UC011 cập nhật) – cần database test
- * [x] thêm: sinh mã KH#####, tạo kèm hồ sơ 1–1 trong cùng transaction
- * [x] thêm: SĐT trùng -> BusinessException, không để lại dữ liệu, không giữ mã
- * [x] thêm: chỉ Lễ tân/Quản lý; chưa đăng nhập bị chặn
- * [x] gợi ý trùng (R-KH-1): theo SĐT, theo tên + ngày sinh
- * [x] tra cứu theo mã / tên / SĐT; nha sĩ chỉ thấy bệnh nhân được phân công
- * [x] cập nhật: đổi SĐT, địa chỉ, email; khóa sửa ngày sinh; khách không tồn tại; SĐT trùng
- */
 class KhachHangDAOTest {
 
     private final KhachHangDAO dao = new KhachHangDAO();
@@ -66,8 +57,6 @@ class KhachHangDAOTest {
         daTao.add(kh.getMaKH());
         return kh;
     }
-
-    // ---- UC009 thêm khách hàng ----
 
     @Test
     void them_khachMoi_sinhMaDungDinhDangVaGanVaoDoiTuong() {
@@ -184,8 +173,6 @@ class KhachHangDAOTest {
         assertThrows(BusinessException.class, () -> dao.timTrung("A", null, sdtMoi()));
     }
 
-    // ---- UC010 tra cứu ----
-
     @Test
     void timKiem_theoSdt_timThayKhach() {
         String sdt = sdtMoi();
@@ -234,8 +221,6 @@ class KhachHangDAOTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> dao.layTheoMa(kh.getMaKH()));
         assertEquals("Bệnh nhân chưa được phân công cho bạn.", ex.getMessage());
     }
-
-    // ---- UC011 cập nhật ----
 
     @Test
     void capNhat_doiSdtDiaChiEmail_luuDuocVaDocLaiDung() {

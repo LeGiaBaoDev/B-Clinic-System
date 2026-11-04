@@ -85,14 +85,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-/**
- * UC020 tra cứu lịch hẹn; mở các chức năng UC016 đặt lịch, UC018 cập nhật, UC019 hủy/dời.
- *
- * <p>Giao diện cùng phong cách với danh sách bệnh nhân ({@link PnlKhachHang}): thẻ trắng, bảng
- * toàn chiều rộng, chip trạng thái màu, cột thao tác mở menu, phân trang và xuất Excel. Dành cho
- * Lễ tân. Mỗi lần tải danh sách, lịch đã quá giờ mà chưa đến được chuyển thành "Không đến" (R-LH-4).
- * Gắn vào menu "Lịch hẹn" của {@code PnlLeTan}: {@code new PnlLichHen()}.</p>
- */
 public class PnlLichHen extends JPanel {
 
     private static final DateTimeFormatter NGAY =

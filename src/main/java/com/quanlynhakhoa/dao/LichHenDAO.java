@@ -41,10 +41,7 @@ public class LichHenDAO {
         return timKiem("", tu, den, trangThai);
     }
 
-    /**
-     * UC020/UC018/UC019: tra cứu theo mã lịch, mã bệnh nhân, họ tên hoặc số điện thoại
-     * (từ khóa rỗng = tất cả), trong khoảng ngày và trạng thái tùy chọn. Nha sĩ chỉ thấy lịch của mình.
-     */
+    
     public List<LichHen> timKiem(String tuKhoa, LocalDate tu, LocalDate den, TrangThaiLichHen trangThai) {
         khoangNgay(tu, den);
         String mau = JdbcHelper.tuKhoa(tuKhoa);
@@ -65,7 +62,7 @@ public class LichHenDAO {
         });
     }
 
-    /** UC024: lịch sử hẹn của một bệnh nhân (mới nhất trước). */
+    
     public List<LichHen> timTheoKhachHang(String maKH) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
@@ -91,20 +88,17 @@ public class LichHenDAO {
         return JdbcHelper.one(c, SQL_SELECT + " WHERE maLH=?", r -> mapRow(c, r, napNguon), ma);
     }
 
-    /** UC016: đặt lịch hẹn mới, trạng thái đã đặt. */
+    
     public boolean them(LichHen lh) {
         return luu(lh, true);
     }
 
-    /** UC019: dời lịch (đổi ngày giờ/nha sĩ/dịch vụ). Không được đổi bệnh nhân. */
+    
     public boolean capNhat(LichHen lh) {
         return luu(lh, false);
     }
 
-    /**
-     * UC018: cập nhật dịch vụ và ghi chú của lịch đã đặt; giữ nguyên bệnh nhân, ngày giờ và nha sĩ
-     * (muốn đổi thì dời lịch ở UC019). Kiểm tra lại trùng lịch vì thời lượng dịch vụ có thể khác.
-     */
+    
     public boolean capNhatThongTin(LichHen lh) {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
@@ -130,23 +124,13 @@ public class LichHenDAO {
         });
     }
 
-    /**
-     * Dùng chung Connection với bên gọi (UC021 lập phiếu): DA_DAT -> DA_DEN. Không mở transaction,
-     * không commit, không kiểm tra quyền; bên gọi phải giữ khóa {@code BClinic:lich}.
-     *
-     * @return true nếu đổi được đúng một lịch; false nếu lịch không còn ở trạng thái đã đặt
-     */
+    
     boolean danhDauDaDen(Connection c, String maLH) throws SQLException {
         return JdbcHelper.update(c, "UPDATE LichHen SET trangThai='DA_DEN'"
                 + " WHERE maLH=? AND trangThai='DA_DAT'", maLH) == 1;
     }
 
-    /**
-     * Dùng chung Connection với bên gọi (UC025 thanh toán): DA_DEN -> HOAN_TAT. Quy tắc như
-     * {@link #danhDauDaDen(Connection, String)}.
-     *
-     * @return true nếu đổi được đúng một lịch; false nếu lịch không còn ở trạng thái đã đến
-     */
+    
     boolean danhDauHoanTat(Connection c, String maLH) throws SQLException {
         return JdbcHelper.update(c, "UPDATE LichHen SET trangThai='HOAN_TAT'"
                 + " WHERE maLH=? AND trangThai='DA_DEN'", maLH) == 1;

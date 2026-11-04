@@ -22,7 +22,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/* T803 – UC021: tiếp nhận lịch hẹn, tạo phiếu khám và chuyển lịch DA_DEN. */
 class PhieuKhamDAOTest {
 
     private final PhieuKhamDAO dao = new PhieuKhamDAO();

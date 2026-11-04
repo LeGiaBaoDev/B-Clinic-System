@@ -20,26 +20,6 @@ import javax.swing.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-/*
- * UC006 – PnlDichVu (không cần DB, nguồn dữ liệu giả)
- * [x] tải lần đầu chạy ngoài EDT, lấy mọi trạng thái; tab mặc định "Đang cung cấp"; số đếm trên 3 tab
- * [x] định dạng cột: đơn giá #,##0 ₫, thời lượng "phút", thuế KCT/5%/10%, trạng thái
- * [x] đổi tab chỉ lọc lại trên máy, không gọi DB; dropdown "Tất cả trạng thái" đồng bộ hai chiều với tab
- * [x] tìm theo từ khóa (Enter) và lọc danh mục gửi đúng điều kiện cho DAO
- * [x] không có kết quả -> "Không tìm thấy dịch vụ phù hợp."
- * [x] phân trang 10 dòng/trang, nút trang trước/sau
- * [x] chọn dòng hiện khung lộ trình (escape HTML); bỏ chọn thì ẩn khung
- * [x] lỗi nghiệp vụ hiện thông báo DAO; lỗi DB hiện thông báo chung
- * [x] "Xóa lọc" đưa về mặc định và chỉ tải 1 lần
- * UC005: nút "Thêm dịch vụ" (góc phải tiêu đề) chỉ hiện với Quản lý
- * UC007: nhấn đúp dịch vụ đang cung cấp (Quản lý) -> mở trang Chỉnh sửa; dịch vụ đã ngừng -> báo,
- *        không mở; Lễ tân nhấn đúp không mở; Hủy trên trang -> về danh sách
- * UC008: cột THAO TÁC chỉ Quản lý thấy (Lễ tân: rộng 0); dịch vụ đang cung cấp có "Sửa · Ngừng cung cấp",
- *        đã ngừng có "Mở lại cung cấp"; bấm link tìm đúng link dưới con trỏ
- * [x] Ngừng: xác nhận Có -> gọi DAO đúng mã, tải lại, báo thành công; Hủy -> không gọi DAO (4.1)
- * [x] Mở lại: xác nhận Có -> gọi DAO, dịch vụ về Đang cung cấp
- * [x] DAO báo lỗi nghiệp vụ (còn lịch hẹn) -> hiện đúng thông báo, trạng thái giữ nguyên
- */
 class PnlDichVuTest {
 
     private record DieuKien(String tuKhoa, Boolean trangThai, MucThue mucThue) { }
@@ -307,8 +287,6 @@ class PnlDichVuTest {
                 java.awt.event.MouseEvent.BUTTON1));
     }
 
-    // ---- UC008 ngừng / mở lại cung cấp ----
-
     /** Dữ liệu "DB giả" có thể đổi trạng thái, để kiểm tra danh sách được tải lại sau thao tác. */
     private final List<DichVu> dbGia = new ArrayList<>();
     private final List<String> daNgung = new ArrayList<>();
@@ -404,7 +382,7 @@ class PnlDichVuTest {
             taoPanelThaoTac();
             taiVaCho("1 dịch vụ");
 
-            traLoiXacNhan = false; // UC008 luồng 4.1: Hủy
+            traLoiXacNhan = false;
             SwingUtilities.invokeAndWait(() -> panel.chayThaoTac(PnlDichVu.LINK_NGUNG, dbGia.get(0)));
             assertTrue(daNgung.isEmpty(), "Hủy xác nhận thì không gọi DAO");
 
