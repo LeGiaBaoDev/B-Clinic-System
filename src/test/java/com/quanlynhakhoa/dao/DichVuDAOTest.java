@@ -40,6 +40,7 @@ import org.junit.jupiter.api.Test;
  * [x] tên trùng dịch vụ đã ngừng -> được thêm
  * [x] luôn lưu "Đang cung cấp" dù đối tượng truyền vào trangThai=false
  * [x] Lễ tân, Nha sĩ bị chặn; mã loại không tồn tại bị chặn
+ * [x] gợi ý lộ trình: không trùng, bỏ lộ trình rỗng, lộ trình gắn với dịch vụ mới nhất đứng trước
  */
 class DichVuDAOTest {
 
@@ -259,6 +260,30 @@ class DichVuDAOTest {
                 new LoaiDichVu("LDV99", LoaiDichVu.DIEU_TRI, MucThue.THUE_0));
         BusinessException loi = assertThrows(BusinessException.class, () -> dao.them(dv));
         assertEquals("Loại dịch vụ không tồn tại.", loi.getMessage());
+    }
+
+    // ---- Gợi ý lộ trình (UC005) ----
+
+    @Test
+    void layLoTrinhDaLuu_khongTrung_boRong_moiNhatTruoc() {
+        String a = ma + " Buổi 1: khám\nBuổi 2: điều trị";
+        String b = ma + " Buổi 1: lấy dấu\nBuổi 2: gắn sứ";
+        themDichVuCoLoTrinh(ma + " DV cũ dùng A", a);
+        themDichVuCoLoTrinh(ma + " DV dùng B", b);
+        themDichVuCoLoTrinh(ma + " DV không lộ trình", "   "); // toàn khoảng trắng -> entity lưu NULL
+        themDichVuCoLoTrinh(ma + " DV mới dùng lại A", a);  // A được dùng lại ở dịch vụ mới nhất
+
+        List<String> goiY = dao.layLoTrinhDaLuu();
+        assertEquals(1, goiY.stream().filter(a::equals).count(), "Lộ trình trùng chỉ xuất hiện 1 lần");
+        assertEquals(1, goiY.stream().filter(b::equals).count());
+        assertTrue(goiY.indexOf(a) < goiY.indexOf(b), "A gắn với dịch vụ mới nhất nên đứng trước B");
+        assertTrue(goiY.stream().noneMatch(s -> s == null || s.isBlank()), "Không gợi ý lộ trình rỗng");
+    }
+
+    private void themDichVuCoLoTrinh(String ten, String loTrinh) {
+        DichVu dv = new DichVu(null, ten, 200_000, 30, loTrinh, true, loai(MucThue.THUE_0));
+        assertTrue(dao.them(dv));
+        daTao.add(dv.getMaDV());
     }
 
     @Test

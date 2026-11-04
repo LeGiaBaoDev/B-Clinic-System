@@ -76,6 +76,29 @@ public class DichVuDAO {
                 .replace("_", "\\_").replace("[", "\\[") + "%";
     }
 
+    /** Số lộ trình tối đa nạp lên để gợi ý; form lọc trên máy và chỉ hiện 5 cái đầu. */
+    static final int SO_LO_TRINH_GOI_Y_TOI_DA = 200;
+
+    /**
+     * UC005/UC007: các lộ trình dịch vụ khác nhau đã lưu (kể cả của dịch vụ đã ngừng), mới nhất trước,
+     * để form gợi ý khi nhập "Lộ trình dịch vụ".
+     *
+     * <p>Bảng DichVu không có cột thời gian tạo. Mã DV### được sinh tăng dần khi thêm và dịch vụ không
+     * bao giờ bị xóa cứng, nên mã lớn hơn = tạo sau (quyết định của Dương 04/11). Một lộ trình dùng cho
+     * nhiều dịch vụ thì lấy mã lớn nhất của nó để xếp hạng. Lộ trình rỗng/toàn khoảng trắng bị bỏ qua.</p>
+     *
+     * @return danh sách lộ trình (không trùng), mới nhất trước, tối đa {@value #SO_LO_TRINH_GOI_Y_TOI_DA}
+     */
+    public List<String> layLoTrinhDaLuu() {
+        return JdbcHelper.doc(c -> {
+            PhanQuyen.quyen(c);
+            return JdbcHelper.query(c, "SELECT TOP (" + SO_LO_TRINH_GOI_Y_TOI_DA + ") loTrinhDichVu FROM DichVu"
+                    + " WHERE loTrinhDichVu IS NOT NULL AND LEN(LTRIM(RTRIM(loTrinhDichVu))) > 0"
+                    + " GROUP BY loTrinhDichVu ORDER BY MAX(maDV) DESC",
+                    r -> r.getString(1));
+        });
+    }
+
     public DichVu layTheoMa(String ma) {
         return JdbcHelper.doc(c -> {
             PhanQuyen.quyen(c);
