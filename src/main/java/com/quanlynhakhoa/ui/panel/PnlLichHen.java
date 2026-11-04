@@ -19,6 +19,7 @@ import com.quanlynhakhoa.ui.dialog.DlgCapNhatLichHen;
 import com.quanlynhakhoa.ui.dialog.DlgChiTietLichHen;
 import com.quanlynhakhoa.ui.dialog.DlgDatLich;
 import com.quanlynhakhoa.ui.dialog.HopThoaiLoi;
+import com.toedter.calendar.JDateChooser;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -39,10 +40,10 @@ import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.format.ResolverStyle;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TreeSet;
@@ -87,8 +88,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class PnlLichHen extends JPanel {
 
-    private static final DateTimeFormatter NGAY =
-            DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
     private static final DateTimeFormatter NGAY_GIO = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final String THE_BANG = "bang";
     private static final String THE_TRONG = "trong";
@@ -108,8 +107,8 @@ public class PnlLichHen extends JPanel {
     private final LichHenDAO lichHenDAO = new LichHenDAO();
 
     private final JTextField txtTimKiem = new JTextField();
-    private final JTextField txtTuNgay = new JTextField(8);
-    private final JTextField txtDenNgay = new JTextField(8);
+    private final JDateChooser dpTuNgay = new JDateChooser();
+    private final JDateChooser dpDenNgay = new JDateChooser();
     private final JButton btnTimKiem = PnlTongQuanQuanLy.button("Tìm kiếm", LineIcon.Type.SEARCH, true);
     private final JButton btnHomNay = PnlTongQuanQuanLy.button("Hôm nay", null, false);
     private final JButton btnTuanNay = PnlTongQuanQuanLy.button("7 ngày tới", null, false);
@@ -212,19 +211,21 @@ public class PnlLichHen extends JPanel {
 
         cboTrangThai.setFont(font(12));
         cboTrangThai.setPreferredSize(new Dimension(160, 36));
-        for (JTextField tf : new JTextField[] {txtTuNgay, txtDenNgay}) {
-            tf.setFont(font(12));
-            tf.setPreferredSize(new Dimension(98, 36));
-            tf.putClientProperty("JTextField.placeholderText", "dd/MM/yyyy");
+        for (JDateChooser chooser : new JDateChooser[] {dpTuNgay, dpDenNgay}) {
+            chooser.setDateFormatString("dd/MM/yyyy");
+            chooser.setFont(font(12));
+            chooser.setPreferredSize(new Dimension(126, 36));
+            chooser.getDateEditor().getUiComponent().setFont(font(12));
+            ((JTextField) chooser.getDateEditor().getUiComponent()).setEditable(false);
         }
         btnXuat.setFont(bold(12));
 
         JPanel phai = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         phai.setOpaque(false);
         phai.add(nhan("Từ"));
-        phai.add(txtTuNgay);
+        phai.add(dpTuNgay);
         phai.add(nhan("đến"));
-        phai.add(txtDenNgay);
+        phai.add(dpDenNgay);
         phai.add(cboTrangThai);
         phai.add(btnTimKiem);
         phai.add(btnHomNay);
@@ -371,8 +372,8 @@ public class PnlLichHen extends JPanel {
             }
         });
         txtTimKiem.addActionListener(e -> taiDuLieu());
-        txtTuNgay.addActionListener(e -> taiDuLieu());
-        txtDenNgay.addActionListener(e -> taiDuLieu());
+        dpTuNgay.addPropertyChangeListener("date", e -> taiDuLieu());
+        dpDenNgay.addPropertyChangeListener("date", e -> taiDuLieu());
         cboTrangThai.addActionListener(e -> taiDuLieu());
         btnTimKiem.addActionListener(e -> taiDuLieu());
         btnHomNay.addActionListener(e -> {
@@ -541,23 +542,24 @@ public class PnlLichHen extends JPanel {
     // ---------------------------------------------------------------- dữ liệu
 
     private void datKhoang(LocalDate tu, LocalDate den) {
-        txtTuNgay.setText(tu.format(NGAY));
-        txtDenNgay.setText(den.format(NGAY));
+        dpTuNgay.setDate(Date.from(tu.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        dpDenNgay.setDate(Date.from(den.atStartOfDay(ZoneId.systemDefault()).toInstant()));
     }
 
     private LocalDate[] khoangNgay() {
-        try {
-            return new LocalDate[] {LocalDate.parse(txtTuNgay.getText().trim(), NGAY),
-                LocalDate.parse(txtDenNgay.getText().trim(), NGAY)};
-        } catch (DateTimeParseException e) {
+        if (dpTuNgay.getDate() == null || dpDenNgay.getDate() == null) {
             return null;
         }
+        return new LocalDate[] {
+            dpTuNgay.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
+            dpDenNgay.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+        };
     }
 
     private void taiDuLieu() {
         LocalDate[] khoang = khoangNgay();
         if (khoang == null) {
-            lblHienThi.setText("Ngày phải theo định dạng dd/MM/yyyy.");
+            lblHienThi.setText("Vui lòng chọn đầy đủ từ ngày và đến ngày.");
             return;
         }
         if (khoang[1].isBefore(khoang[0])) {
