@@ -40,7 +40,7 @@ public class PnlHoaDon extends JPanel {
         JLabel tieuDe = new JLabel("Hóa đơn chờ thanh toán");
         tieuDe.setFont(bold(24));
         tieuDe.setForeground(TEXT);
-        JLabel phuDe = new JLabel("Theo dõi công nợ trong ngày và thu tiền sau điều trị.");
+        JLabel phuDe = new JLabel("Theo dõi công nợ trong ngày và thanh toán sau điều trị.");
         phuDe.setFont(font(13));
         phuDe.setForeground(MUTED);
         chu.add(tieuDe);

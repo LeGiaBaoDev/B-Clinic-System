@@ -2,9 +2,11 @@ package com.quanlynhakhoa.ui.panel;
 
 import com.quanlynhakhoa.config.QuyDinhLichHen;
 import com.quanlynhakhoa.dao.DichVuDAO;
+import com.quanlynhakhoa.dao.KhachHangDAO;
 import com.quanlynhakhoa.dao.PhieuKhamDAO;
 import com.quanlynhakhoa.entity.ChiTietPhieuKham;
 import com.quanlynhakhoa.entity.DichVu;
+import com.quanlynhakhoa.entity.KhachHang;
 import com.quanlynhakhoa.entity.PhieuKham;
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.TrangThaiPhieuKham;
@@ -12,6 +14,8 @@ import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 import com.quanlynhakhoa.ui.component.LineIcon;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.quanlynhakhoa.ui.dialog.DlgHoSoKhachHang;
+import com.quanlynhakhoa.ui.dialog.HopThoaiLoi;
 import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
 import static com.quanlynhakhoa.ui.component.UiConstants.MUTED;
@@ -41,11 +45,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -95,7 +97,7 @@ public class PnlKham extends JPanel {
     private final List<DichVu> dsHienThi = new ArrayList<>();
     private final Set<DichVu> daChon = new LinkedHashSet<>();
     private final DefaultTableModel modelPhieu = new DefaultTableModel(new String[]{
-        "Mã phiếu", "Bệnh nhân", "Ngày sinh", "Lịch hẹn", "Dịch vụ", "Trạng thái", "Thao tác"
+        "STT", "Mã phiếu", "Bệnh nhân", "Ngày sinh", "Lịch hẹn", "Dịch vụ", "Trạng thái", "Thao tác"
     }, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -111,7 +113,7 @@ public class PnlKham extends JPanel {
     // --- wizard header ---
     private final JLabel lblTieuDe = new JLabel();
     private final JLabel lblPhuDe = new JLabel();
-    private final JButton btnHeaderBack = PnlTongQuanQuanLy.button("Quay lại hồ sơ", null, false);
+    private final JButton btnHeaderBack = PnlTongQuanQuanLy.button("Quay lại", null, false);
 
     // --- step indicator ---
     private final StepDot dot1 = new StepDot(1);
@@ -140,12 +142,14 @@ public class PnlKham extends JPanel {
     private final JCheckBox chkXacNhan = new JCheckBox(
             "Xác minh tiền sử, dị ứng và thuốc đang dùng trước khi điều trị.");
     private final JTextField txtChanDoan = new JTextField();
-    private final JTextField txtViTri = new JTextField();
+    private final JComboBox<String> cboViTri = new JComboBox<>(new String[]{
+        "Không xác định", "Toàn hàm", "Cung hàm trên", "Cung hàm dưới",
+        "Răng cửa", "Răng nanh", "Răng tiền hàm", "Răng hàm", "Răng khôn"});
     private final JTextField txtKemTheo = new JTextField();
     private final TruongChon tcLyDo = new TruongChon("Lý do khám *", txtLyDo, null);
-    private final TruongChon tcTrieuChung = new TruongChon("Triệu chứng cơ năng *", txtTrieuChung, null);
+    private final TruongChon tcTrieuChung = new TruongChon("Triệu chứng *", txtTrieuChung, null);
     private final TruongChon tcDauHieu = new TruongChon("Dấu hiệu lâm sàng *", txtDauHieu, null);
-    private final TruongChon tcChanDoan = new TruongChon("Chẩn đoán chính *", txtChanDoan, null);
+    private final TruongChon tcChanDoan = new TruongChon("Chẩn đoán *", txtChanDoan, null);
 
     // --- bước 2 ---
     private final JTextField txtTimDichVu = new JTextField();
@@ -255,12 +259,13 @@ public class PnlKham extends JPanel {
             }
         });
         tblPhieu.setRowSorter(new javax.swing.table.TableRowSorter<>(modelPhieu));
-        int[] rong = {110, 190, 95, 145, 190, 100, 80};
+        int[] rong = {42, 110, 190, 95, 145, 190, 100, 80};
         for (int i = 0; i < rong.length; i++) {
             tblPhieu.getColumnModel().getColumn(i).setPreferredWidth(rong[i]);
         }
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
+        tblPhieu.getColumnModel().getColumn(0).setCellRenderer(center);
         tblPhieu.getColumnModel().getColumn(6).setCellRenderer(center);
         tblPhieu.addMouseListener(new MouseAdapter() {
             @Override
@@ -302,9 +307,13 @@ public class PnlKham extends JPanel {
     }
 
     private void hienDanhSach() {
+        dsPhieu.sort(java.util.Comparator.comparing(PhieuKham::getNgayLap)
+                .thenComparing(PhieuKham::getMaPK));
         modelPhieu.setRowCount(0);
-        for (PhieuKham pk : dsPhieu) {
+        for (int i = 0; i < dsPhieu.size(); i++) {
+            PhieuKham pk = dsPhieu.get(i);
             modelPhieu.addRow(new Object[]{
+                i + 1,
                 pk.getMaPK(),
                 pk.getLichHen().getKhachHang().getTenKH(),
                 pk.getLichHen().getKhachHang().getNgaySinh() == null ? ""
@@ -488,7 +497,7 @@ public class PnlKham extends JPanel {
         link.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                thongBaoChuaHoTro("Xem hồ sơ bệnh án");
+                moHoSoBenhNhan();
             }
         });
         phai.add(lblTrangThai);
@@ -537,7 +546,9 @@ public class PnlKham extends JPanel {
         form2.setOpaque(false);
         form2.setLayout(new BoxLayout(form2, BoxLayout.Y_AXIS));
         form2.add(tcChanDoan);
-        form2.add(oNhap("Vị trí / Răng liên quan", txtViTri));
+        cboViTri.setEditable(true);
+        cboViTri.setFont(font(11));
+        form2.add(oNhap("Vị trí / Răng liên quan", cboViTri));
         form2.add(oNhap("Chẩn đoán kèm theo", txtKemTheo));
         JPanel holderPhai = new JPanel(new BorderLayout());
         holderPhai.setOpaque(false);
@@ -546,7 +557,14 @@ public class PnlKham extends JPanel {
         cards.add(phai);
 
         JButton huy = PnlTongQuanQuanLy.button("Hủy thay đổi", null, false);
-        huy.addActionListener(e -> xoaForm());
+        huy.addActionListener(e -> {
+            int chon = JOptionPane.showConfirmDialog(this,
+                    "Hủy các thay đổi chưa lưu của phiếu khám?", "Xác nhận hủy",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (chon == JOptionPane.YES_OPTION) {
+                xoaForm();
+            }
+        });
         JButton tiep = PnlTongQuanQuanLy.button("Tiếp tục: Chỉ định dịch vụ", LineIcon.Type.ARROW, true);
         tiep.addActionListener(e -> {
             if (kiemTraBuoc1()) {
@@ -871,6 +889,43 @@ public class PnlKham extends JPanel {
         }
     }
 
+    private void moHoSoBenhNhan() {
+        if (dangKham == null || dangKham.getLichHen() == null) {
+            JOptionPane.showMessageDialog(this, "Chưa có phiếu khám để xem hồ sơ.",
+                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        KhachHang kh = dangKham.getLichHen().getKhachHang();
+        new javax.swing.SwingWorker<KhachHangDAO.TomTat, Void>() {
+            @Override
+            protected KhachHangDAO.TomTat doInBackground() {
+                return new KhachHangDAO().timKiemTomTat(kh.getMaKH()).stream()
+                        .filter(t -> t.khachHang().getMaKH().equals(kh.getMaKH()))
+                        .findFirst().orElse(null);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    KhachHangDAO.TomTat tt = get();
+                    if (tt == null) {
+                        JOptionPane.showMessageDialog(PnlKham.this,
+                                "Không tìm thấy hồ sơ bệnh nhân.", "Thông báo",
+                                JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                    DlgHoSoKhachHang.hien(javax.swing.SwingUtilities.getWindowAncestor(PnlKham.this),
+                            tt, () -> {
+                            });
+                } catch (java.util.concurrent.ExecutionException e) {
+                    HopThoaiLoi.hien(PnlKham.this, e.getCause(), "Không thể mở hồ sơ bệnh nhân.");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }.execute();
+    }
+
     private void quayLaiDanhSach() {
         if (khiQuayLai != null) {
             Runnable callback = khiQuayLai;
@@ -888,10 +943,10 @@ public class PnlKham extends JPanel {
         tcDauHieu.reset();
         tcChanDoan.reset();
         txtLoiDan.setText("");
-        for (JTextField f : new JTextField[]{txtThoiGian, txtViTri,
-            txtKemTheo, txtNoiDungTaiKham}) {
+        for (JTextField f : new JTextField[]{txtThoiGian, txtKemTheo, txtNoiDungTaiKham}) {
             f.setText("");
         }
+        cboViTri.setSelectedIndex(0);
         dpTaiKham.setDate(null);
         cboMucDo.setSelectedIndex(0);
         cboGioTaiKham.setSelectedIndex(0);
@@ -899,6 +954,12 @@ public class PnlKham extends JPanel {
         daChon.clear();
         dungBangDichVu();
         capNhatTomTat();
+    }
+
+    private String giaTriViTri() {
+        Object item = cboViTri.isEditable() ? cboViTri.getEditor().getItem() : cboViTri.getSelectedItem();
+        String s = item == null ? "" : item.toString().trim();
+        return "Không xác định".equals(s) ? "" : s;
     }
 
     private boolean kiemTraBuoc1() {
@@ -920,7 +981,7 @@ public class PnlKham extends JPanel {
                     ? "BS. " + taiKhoan.getNhanVien().getHoTenNV() + " · Phòng khám B-Clinic"
                     : "Bước cuối: kiểm tra chỉ định, lời dặn và lịch tái khám");
         }
-        btnHeaderBack.setText(b1 ? "Quay lại hồ sơ" : "Quay lại khám");
+        btnHeaderBack.setText("Quay lại");
         setAction(btnHeaderBack, b1 ? this::quayLaiDanhSach : () -> chonBuoc(THE1));
         dot1.set(b1 ? StepDot.ACTIVE : StepDot.DONE);
         dot2.set(b1 ? StepDot.IDLE : StepDot.ACTIVE);
@@ -1070,8 +1131,8 @@ public class PnlKham extends JPanel {
                 + (nhieuBuoi ? " · cần hẹn buổi kế tiếp" : ""));
         lblTong.setText(money(tong));
         String cd = tcChanDoan.giaTri().isBlank() ? "Chưa có chẩn đoán" : tcChanDoan.giaTri().trim();
-        if (!txtViTri.getText().isBlank()) {
-            cd += " · " + txtViTri.getText().trim();
+        if (!giaTriViTri().isBlank()) {
+            cd += " · " + giaTriViTri();
         }
         lblChanDoanTomTat.setText(cd);
         pnlDongTomTat.revalidate();
@@ -1122,7 +1183,7 @@ public class PnlKham extends JPanel {
                 + "\nMức độ: " + cboMucDo.getSelectedItem()
                 + "\nDấu hiệu: " + tcDauHieu.giaTri());
         String chanDoan = cat(500, "Chẩn đoán: " + tcChanDoan.giaTri()
-                + "\nVị trí: " + txtViTri.getText()
+                + "\nVị trí: " + giaTriViTri()
                 + "\nKèm theo: " + txtKemTheo.getText());
         String ketQua = null;
         String ngayTK = ngayTaiKham();

@@ -13,6 +13,8 @@ import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
 import static com.quanlynhakhoa.ui.component.UiConstants.GREEN;
 import static com.quanlynhakhoa.ui.component.UiConstants.MUTED;
+import static com.quanlynhakhoa.ui.component.UiConstants.RED;
+import static com.quanlynhakhoa.ui.component.UiConstants.RED_LIGHT;
 import static com.quanlynhakhoa.ui.component.UiConstants.SURFACE;
 import static com.quanlynhakhoa.ui.component.UiConstants.TEAL;
 import static com.quanlynhakhoa.ui.component.UiConstants.TEAL_LIGHT;
@@ -42,10 +44,8 @@ import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
@@ -62,6 +62,7 @@ public class PnlLeTan extends JPanel {
 
     private final TaiKhoan taiKhoan;
     private final Runnable dangXuat;
+    private final PnlTongQuanLeTan pnlTongQuan;
     private final PnlKhachHang pnlKhachHang;
     private final PnlTiepNhan pnlTiepNhan;
     private PnlLichCaNhan pnlLichCaNhan;
@@ -86,12 +87,14 @@ public class PnlLeTan extends JPanel {
             throw new IllegalArgumentException("Màn hình này chỉ dành cho lễ tân.");
         }
         setBackground(BACKGROUND);
+        pnlTongQuan = new PnlTongQuanLeTan(taiKhoan, this::moTrang);
         pnlKhachHang = new PnlKhachHang(VaiTro.LETAN);
         pnlTiepNhan = new PnlTiepNhan();
         pnlPhieuKham = new PnlTraCuuPhieu(taiKhoan);
         pnlLichHen = new PnlLichHen();
         pnlHoaDon = new PnlHoaDon(); // trang Hóa đơn: tra cứu + thu tiền (thu tiền vẫn dùng DlgThanhToan)
         pnlCards.setOpaque(false);
+        pnlCards.add(pnlTongQuan, "Tổng quan");
         pnlCards.add(pnlKhachHang, "Bệnh nhân");
         pnlCards.add(pnlTiepNhan, "Tiếp nhận");
         pnlCards.add(pnlPhieuKham, "Phiếu khám");
@@ -106,7 +109,7 @@ public class PnlLeTan extends JPanel {
         add(main, BorderLayout.CENTER);
         capNhatDongHo();
         dongHo.start();
-        moTrang("Bệnh nhân");
+        moTrang("Tổng quan");
     }
 
     private JPanel taoSidebar() {
@@ -139,7 +142,7 @@ public class PnlLeTan extends JPanel {
         brand.add(menuLabel("PHÒNG KHÁM NHA KHOA", font(10), new Color(0x608480)));
         top.add(brand);
 
-        top.add(menuItem("Tổng quan", LineIcon.Type.GRID, () -> thongBaoChuaCo("Tổng quan lễ tân")));
+        top.add(menuItem("Tổng quan", LineIcon.Type.GRID, () -> moTrang("Tổng quan")));
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Lịch hẹn", LineIcon.Type.CALENDAR, () -> moTrang("Lịch hẹn")));
         top.add(Box.createVerticalStrut(5));
@@ -192,6 +195,8 @@ public class PnlLeTan extends JPanel {
                 "Tra cứu, thêm và cập nhật khách hàng tại màn hình Khách hàng.\nF5: làm mới danh sách.",
                 "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE));
         bottom.add(help);
+        bottom.add(Box.createVerticalStrut(8));
+        bottom.add(taoNutDangXuat());
         sidebar.add(bottom, BorderLayout.SOUTH);
         return sidebar;
     }
@@ -231,6 +236,9 @@ public class PnlLeTan extends JPanel {
     }
 
     private void moTrang(String trang) {
+        if ("Tổng quan".equals(trang) && pnlTongQuan != null) {
+            pnlTongQuan.lamMoi();
+        }
         if("Lịch của tôi".equals(trang)) {
             if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlCards.add(pnlLichCaNhan,trang); }
             pnlLichCaNhan.lamMoiDuLieu();
@@ -282,6 +290,27 @@ public class PnlLeTan extends JPanel {
             default ->
                 LineIcon.Type.SETTINGS;
         };
+    }
+
+    private JButton taoNutDangXuat() {
+        JButton logout = new JButton("Đăng xuất");
+        logout.setLayout(new BorderLayout());
+        logout.setHorizontalAlignment(SwingConstants.LEFT);
+        logout.setFont(bold(13));
+        logout.setForeground(RED);
+        logout.setIcon(new LineIcon(LineIcon.Type.LOGOUT, RED, 16));
+        logout.setIconTextGap(11);
+        logout.setBorder(new EmptyBorder(10, 13, 10, 12));
+        logout.setBackground(RED_LIGHT);
+        logout.setContentAreaFilled(true);
+        logout.setOpaque(true);
+        logout.setBorderPainted(false);
+        logout.setFocusPainted(false);
+        logout.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        logout.setAlignmentX(LEFT_ALIGNMENT);
+        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        logout.addActionListener(e -> dangXuat.run());
+        return logout;
     }
 
     private JPanel taoHeader() {
@@ -395,18 +424,7 @@ public class PnlLeTan extends JPanel {
 
         profile.add(avatar, BorderLayout.WEST);
         profile.add(info, BorderLayout.CENTER);
-        profile.add(new JLabel(new LineIcon(LineIcon.Type.CHEVRON, MUTED, 14)), BorderLayout.EAST);
-        profile.addActionListener(e -> {
-            JPopupMenu popup = new JPopupMenu();
-            JMenuItem user = new JMenuItem(tenDayDu() + " · Lễ tân");
-            user.setEnabled(false);
-            popup.add(user);
-            popup.addSeparator();
-            JMenuItem logout = new JMenuItem("Đăng xuất", new LineIcon(LineIcon.Type.LOGOUT, TEXT, 16));
-            logout.addActionListener(a -> dangXuat.run());
-            popup.add(logout);
-            popup.show(profile, 0, profile.getHeight());
-        });
+        profile.setCursor(Cursor.getDefaultCursor());
         return profile;
     }
 
@@ -426,11 +444,6 @@ public class PnlLeTan extends JPanel {
 
     private void capNhatDongHo() {
         lblDongHo.setText(LocalDateTime.now(ZONE).format(DONG_HO));
-    }
-
-    private void thongBaoChuaCo(String tinhNang) {
-        JOptionPane.showMessageDialog(this, tinhNang + " sẽ được bổ sung ở giai đoạn tiếp theo.",
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private String tenDayDu() {

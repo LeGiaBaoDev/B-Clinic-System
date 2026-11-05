@@ -12,6 +12,9 @@ import com.quanlynhakhoa.ui.panel.TraCuuHoaDon;
 import static com.quanlynhakhoa.ui.component.UiConstants.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -27,6 +30,12 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
 /**
  * Hộp thoại "Chi tiết hóa đơn" (chỉ đọc), mở khi bấm "Xem" trên danh sách hóa đơn.
@@ -94,6 +103,7 @@ public class DlgChiTietHoaDon extends JDialog {
         final JLabel lblTienGiam = giaTri();
         final JLabel lblTongCong = new JLabel("—");
         final JLabel lblThongBao = new JLabel(" ");
+        final JButton btnIn = new JButton("In hóa đơn PDF");
         final JButton btnDong = new JButton("Đóng");
         final DefaultTableModel modelDong = new DefaultTableModel(new String[]{
             "DỊCH VỤ", "ĐVT", "SL", "ĐƠN GIÁ", "THÀNH TIỀN", "THUẾ GTGT", "TIỀN THUẾ"}, 0) {
@@ -255,12 +265,70 @@ public class DlgChiTietHoaDon extends JDialog {
             lblThongBao.setFont(font(12));
             lblThongBao.setForeground(MUTED);
             chan.add(lblThongBao, BorderLayout.CENTER);
+            btnIn.setName("inHoaDon");
+            btnIn.setFont(bold(12));
+            btnIn.setPreferredSize(new Dimension(150, 38));
+            btnIn.setBackground(TEAL);
+            btnIn.setForeground(Color.WHITE);
+            btnIn.addActionListener(e -> xuatPdf());
             btnDong.setName("dongChiTiet");
             btnDong.setFont(bold(12));
             btnDong.setPreferredSize(new Dimension(100, 38));
             btnDong.addActionListener(e -> dong.run());
-            chan.add(btnDong, BorderLayout.EAST);
+            JPanel nut = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+            nut.setOpaque(false);
+            nut.add(btnIn);
+            nut.add(btnDong);
+            chan.add(nut, BorderLayout.EAST);
             return chan;
+        }
+
+        private void xuatPdf() {
+            JFileChooser chon = new JFileChooser();
+            chon.setSelectedFile(new File("hoa-don-" + maHD + ".pdf"));
+            if (chon.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+            File file = chon.getSelectedFile();
+            if (!file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+                file = new File(file.getParentFile(), file.getName() + ".pdf");
+            }
+            Dimension kichThuoc = getPreferredSize();
+            setSize(new Dimension(720, kichThuoc.height));
+            doLayout();
+            try {
+                BufferedImage image = new BufferedImage(getWidth() * 2, getHeight() * 2,
+                        BufferedImage.TYPE_INT_RGB);
+                Graphics2D g2 = image.createGraphics();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.WHITE);
+                g2.fillRect(0, 0, image.getWidth(), image.getHeight());
+                g2.scale(2, 2);
+                printAll(g2);
+                g2.dispose();
+
+                try (PDDocument doc = new PDDocument()) {
+                    PDPage page = new PDPage(PDRectangle.A4);
+                    doc.addPage(page);
+                    PDImageXObject pdfImage = LosslessFactory.createFromImage(doc, image);
+                    float margin = 28;
+                    float rong = page.getMediaBox().getWidth() - margin * 2;
+                    float cao = page.getMediaBox().getHeight() - margin * 2;
+                    float tiLe = Math.min(rong / image.getWidth(), cao / image.getHeight());
+                    float veRong = image.getWidth() * tiLe;
+                    float veCao = image.getHeight() * tiLe;
+                    try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
+                        cs.drawImage(pdfImage, margin + (rong - veRong) / 2,
+                                page.getMediaBox().getHeight() - margin - veCao, veRong, veCao);
+                    }
+                    doc.save(file);
+                }
+                lblThongBao.setForeground(GREEN);
+                lblThongBao.setText("Đã lưu hóa đơn: " + file.getAbsolutePath());
+            } catch (IOException | SecurityException e) {
+                lblThongBao.setForeground(DO);
+                lblThongBao.setText("Không thể lưu PDF: " + e.getMessage());
+            }
         }
 
         /** Thẻ trắng có tiêu đề nhỏ màu xám và nội dung bên dưới. */

@@ -215,14 +215,14 @@ public class PnlTongQuanNhaSi extends JPanel {
         JPanel p = new JPanel(new GridLayout(1, 4, 14, 0));
         p.setOpaque(false);
         p.setPreferredSize(new Dimension(0, 104));
-        p.add(the("Lịch hẹn hôm nay", lblLichHen, lblLichHenSub, LineIcon.Type.CALENDAR));
-        p.add(the("Bệnh nhân đã đến", lblDaDen, lblDaDenSub, LineIcon.Type.CHECK));
-        p.add(the("Lịch hẹn sắp tới", lblSapToi, lblSapToiSub, LineIcon.Type.CLOCK));
-        p.add(the("Đã hoàn tất", lblHoanTat, lblHoanTatSub, LineIcon.Type.CLOSE));
+        p.add(the("Lịch hẹn hôm nay", lblLichHen, lblLichHenSub, LineIcon.Type.CALENDAR, moLich));
+        p.add(the("Bệnh nhân đã đến", lblDaDen, lblDaDenSub, LineIcon.Type.CHECK, null));
+        p.add(the("Lịch hẹn sắp tới", lblSapToi, lblSapToiSub, LineIcon.Type.CLOCK, moLich));
+        p.add(the("Đã hoàn tất", lblHoanTat, lblHoanTatSub, LineIcon.Type.CLOSE, null));
         return p;
     }
 
-    private JPanel the(String title, JLabel value, JLabel sub, LineIcon.Type icon) {
+    private JPanel the(String title, JLabel value, JLabel sub, LineIcon.Type icon, Runnable khiBam) {
         SurfacePanel card = new SurfacePanel(new BorderLayout(0, 4));
         card.setBorder(new EmptyBorder(13, 16, 12, 16));
         JPanel header = new JPanel(new BorderLayout(8, 0));
@@ -236,7 +236,27 @@ public class PnlTongQuanNhaSi extends JPanel {
         sub.setFont(font(9));
         sub.setForeground(MUTED);
         card.add(sub, BorderLayout.SOUTH);
+        if (khiBam != null) {
+            card.setToolTipText("Xem lịch trực");
+            ganBam(card, khiBam);
+        }
         return card;
+    }
+
+    /** Gắn click cho cả thẻ lẫn các nhãn con vì Swing gửi sự kiện cho component sâu nhất. */
+    private static void ganBam(Component c, Runnable khiBam) {
+        c.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        c.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                khiBam.run();
+            }
+        });
+        if (c instanceof java.awt.Container cont) {
+            for (Component con : cont.getComponents()) {
+                ganBam(con, khiBam);
+            }
+        }
     }
 
     private JPanel taoNoiDung() {

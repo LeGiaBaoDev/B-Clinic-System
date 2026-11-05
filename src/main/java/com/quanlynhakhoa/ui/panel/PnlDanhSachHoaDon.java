@@ -67,6 +67,7 @@ public class PnlDanhSachHoaDon extends JPanel {
             COT_TRANG_THAI = 5, COT_THAO_TAC = 6;
     static final String LINK_XEM = "linkXem";
     static final String LINK_THU_TIEN = "linkThuTien";
+    static final String LINK_IN = "linkIn";
 
     private static final Logger LOG = Logger.getLogger(PnlDanhSachHoaDon.class.getName());
     private static final DateTimeFormatter NGAY_GIO = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -447,7 +448,7 @@ public class PnlDanhSachHoaDon extends JPanel {
             KhachHang kh = d.khachHang();
             model.addRow(new Object[]{hd.getMaHD(), kh == null ? "—" : kh.getTenKH(), kh == null ? "—" : kh.getMaKH(),
                 hd.getNgayLap() == null ? "—" : hd.getNgayLap().format(NGAY_GIO), tien(d.tongThanhToan()),
-                TraCuuHoaDon.tenTrangThai(hd), hd.isTrangThai() ? "Xem" : "Xem · Thu tiền"});
+                TraCuuHoaDon.tenTrangThai(hd), hd.isTrangThai() ? "Xem · In hóa đơn" : "Xem · Thanh toán"});
         }
         veTab();
         lblHienThi.setForeground(MUTED);
@@ -517,7 +518,7 @@ public class PnlDanhSachHoaDon extends JPanel {
         ve.doLayout();
         Component con = SwingUtilities.getDeepestComponentAt(ve, diem.x - o.x, diem.y - o.y);
         String ten = con == null || !con.isVisible() ? null : con.getName();
-        return LINK_XEM.equals(ten) || LINK_THU_TIEN.equals(ten) ? ten : null;
+        return LINK_XEM.equals(ten) || LINK_THU_TIEN.equals(ten) || LINK_IN.equals(ten) ? ten : null;
     }
 
     /** "Xem" mở chi tiết; "Thu tiền" (chỉ hóa đơn chưa thanh toán) mở hộp thanh toán, thu xong tải lại. */
@@ -526,6 +527,8 @@ public class PnlDanhSachHoaDon extends JPanel {
             return;
         }
         if (LINK_XEM.equals(link)) {
+            moChiTiet(hd);
+        } else if (LINK_IN.equals(link) && hd.isTrangThai()) {
             moChiTiet(hd);
         } else if (LINK_THU_TIEN.equals(link) && !hd.isTrangThai() && thuTien != null) {
             thuTien.thu(this, hd, this::lamMoiDuLieu);
@@ -592,13 +595,15 @@ public class PnlDanhSachHoaDon extends JPanel {
     /** Ô thao tác: link "Xem" và (khi chưa thanh toán, có quyền thu) link "Thu tiền". */
     private final class ThaoTac extends JPanel implements TableCellRenderer {
         private final JLabel lblXem = new JLabel("Xem");
-        private final JLabel lblThu = new JLabel("Thu tiền");
+        private final JLabel lblIn = new JLabel("In hóa đơn");
+        private final JLabel lblThu = new JLabel("Thanh toán");
 
         ThaoTac() {
-            super(new FlowLayout(FlowLayout.LEFT, 12, 15));
+            super(new FlowLayout(FlowLayout.LEFT, 10, 15));
             lblXem.setName(LINK_XEM);
+            lblIn.setName(LINK_IN);
             lblThu.setName(LINK_THU_TIEN);
-            for (JLabel l : new JLabel[]{lblXem, lblThu}) {
+            for (JLabel l : new JLabel[]{lblXem, lblIn, lblThu}) {
                 l.setFont(bold(12));
                 l.setForeground(TEAL);
                 add(l);
@@ -609,6 +614,7 @@ public class PnlDanhSachHoaDon extends JPanel {
         public Component getTableCellRendererComponent(JTable table, Object value, boolean selected,
                 boolean focus, int row, int column) {
             HoaDon hd = row < dangHien.size() ? dangHien.get(row).hoaDon() : null;
+            lblIn.setVisible(hd != null && hd.isTrangThai());
             lblThu.setVisible(hd != null && !hd.isTrangThai() && thuTien != null);
             setBackground(selected ? table.getSelectionBackground() : table.getBackground());
             return this;

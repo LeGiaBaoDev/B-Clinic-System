@@ -114,7 +114,7 @@ class PnlDanhSachHoaDonTest {
             assertEquals("16/10/2026 10:08", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_NGAY_LAP));
             assertEquals("1.250.000 ₫", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_TONG));
             assertEquals("Chờ thanh toán", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_TRANG_THAI));
-            assertEquals("Xem · Thu tiền", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_THAO_TAC));
+            assertEquals("Xem · Thanh toán", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_THAO_TAC));
             assertEquals("Hiển thị 2/2 hóa đơn · Đơn vị: VNĐ", panel.lblHienThi.getText());
             assertEquals("Tổng cần thanh toán", panel.lblTenTong.getText());
             assertEquals("3.650.000 ₫", panel.lblTong.getText());
@@ -130,7 +130,7 @@ class PnlDanhSachHoaDonTest {
             assertEquals(1, panel.model.getRowCount());
             assertEquals("HD261016039", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_MA));
             assertEquals("Đã thanh toán", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_TRANG_THAI));
-            assertEquals("Xem", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_THAO_TAC));
+            assertEquals("Xem · In hóa đơn", panel.model.getValueAt(0, PnlDanhSachHoaDon.COT_THAO_TAC));
             assertEquals("Tổng đã thu", panel.lblTenTong.getText());
             assertEquals(TraCuuHoaDon.TrangThai.DA_THANH_TOAN, panel.cboTrangThai.getSelectedItem(), "Dropdown theo tab");
 

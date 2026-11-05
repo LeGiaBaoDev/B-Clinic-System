@@ -129,8 +129,10 @@ public class PnlQuanLy extends JPanel {
         help.setFont(font(12));
         help.setAlignmentX(LEFT_ALIGNMENT);
         help.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "F5: tải lại dữ liệu tổng quan. Dữ liệu tự làm mới mỗi phút.\nChọn tài khoản ở góc phải để đăng xuất.", "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE));
+                "F5: tải lại dữ liệu tổng quan. Dữ liệu tự làm mới mỗi phút.\nDùng nút Đăng xuất ở cuối thanh bên.", "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE));
         bottom.add(help);
+        bottom.add(Box.createVerticalStrut(8));
+        bottom.add(taoNutDangXuat());
         sidebar.add(bottom, BorderLayout.SOUTH);
         return sidebar;
     }
@@ -146,6 +148,27 @@ public class PnlQuanLy extends JPanel {
         menu.put(text, button);
         parent.add(button);
         parent.add(Box.createVerticalStrut(5));
+    }
+
+    private JButton taoNutDangXuat() {
+        JButton logout = new JButton("Đăng xuất");
+        logout.setLayout(new BorderLayout());
+        logout.setHorizontalAlignment(SwingConstants.LEFT);
+        logout.setFont(bold(13));
+        logout.setForeground(RED);
+        logout.setIcon(new LineIcon(LineIcon.Type.LOGOUT, RED, 16));
+        logout.setIconTextGap(11);
+        logout.setBorder(new EmptyBorder(10, 13, 10, 12));
+        logout.setBackground(RED_LIGHT);
+        logout.setContentAreaFilled(true);
+        logout.setOpaque(true);
+        logout.setBorderPainted(false);
+        logout.setFocusPainted(false);
+        logout.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        logout.setAlignmentX(LEFT_ALIGNMENT);
+        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        logout.addActionListener(e -> dangXuat.run());
+        return logout;
     }
 
     private JPanel taoHeader() {
@@ -230,19 +253,8 @@ public class PnlQuanLy extends JPanel {
         text.add(label("Quản lý", font(10), MUTED));
         profile.add(avatar, BorderLayout.WEST);
         profile.add(text, BorderLayout.CENTER);
-        profile.add(new JLabel(new LineIcon(LineIcon.Type.CHEVRON, MUTED, 14)), BorderLayout.EAST);
+        profile.setCursor(Cursor.getDefaultCursor());
         profile.setToolTipText("Tài khoản " + taiKhoan.getTenTK());
-        profile.addActionListener(e -> {
-            JPopupMenu popup = new JPopupMenu();
-            JMenuItem user = new JMenuItem(tenDayDu() + " · Quản lý");
-            user.setEnabled(false);
-            popup.add(user);
-            popup.addSeparator();
-            JMenuItem logout = new JMenuItem("Đăng xuất", new LineIcon(LineIcon.Type.LOGOUT, TEXT, 16));
-            logout.addActionListener(a -> dangXuat.run());
-            popup.add(logout);
-            popup.show(profile, 0, profile.getHeight());
-        });
         return profile;
     }
 
