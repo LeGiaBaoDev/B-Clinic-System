@@ -164,6 +164,19 @@ class ThongKeBenhNhanDAOTest {
     }
 
     @Test
+    void danhSachBenhNhan_locQuyenVaCoChanDoan() {
+        DaoTestSupport.dangNhap(VaiTro.NHASI);
+
+        List<ThongKeBenhNhanDAO.BenhNhanTrongKy> ds = dao.danhSachBenhNhan(homQua, homNay);
+
+        assertEquals(2, ds.size());
+        assertTrue(ds.stream().allMatch(bn -> bn.chanDoan() != null));
+
+        DaoTestSupport.dangNhap(VaiTro.QUANLY);
+        assertEquals(3, dao.danhSachBenhNhan(homQua, homNay).size());
+    }
+
+    @Test
     void khoangNgaySai_nemLoi() {
         DaoTestSupport.dangNhap(VaiTro.QUANLY);
 
