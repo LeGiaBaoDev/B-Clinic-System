@@ -14,18 +14,6 @@ import java.util.function.BooleanSupplier;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
-/*
- * UC007 – PnlCapNhatDichVu, trang "Chỉnh sửa dịch vụ" (không cần DB, nguồn dữ liệu giả)
- * [x] bước 2: điền sẵn dữ liệu hiện tại; mã + trạng thái chỉ hiển thị; giá dự kiến tính đúng
- * [x] 4.1: chưa sửa gì -> nút Lưu tắt; sửa rồi trả lại như cũ -> báo "Không có thay đổi để lưu."
- * [x] kiểm tra khi gõ: thời lượng sai -> dòng lỗi + hộp cảnh báo nhắc giá trị đã lưu; nút Lưu tắt
- * [x] đổi danh mục -> thuế và giá sau thuế đổi theo
- * [x] lưu: gửi đúng mã + dữ liệu mới, chạy ngoài EDT, không sửa đối tượng gốc của bảng
- * [x] lỗi nghiệp vụ (tên trùng 5.2, còn lịch hẹn) hiện thông báo của DAO, giữ trang
- * [x] lỗi DB -> thông báo chung
- * [x] Hủy: chưa sửa -> đóng ngay; đã sửa -> hỏi xác nhận, chọn không thì ở lại
- * [x] lộ trình có gợi ý như form Thêm
- */
 class PnlCapNhatDichVuTest {
 
     private final DichVu caoVoi = new DichVu("DV001", "Cạo vôi răng", 300_000, 30,
@@ -90,7 +78,7 @@ class PnlCapNhatDichVuTest {
         taoTrang(dv -> true);
         SwingUtilities.invokeAndWait(() -> {
             trang.txtThoiLuong.setText("-15");
-            assertEquals("Thời lượng phải lớn hơn 0 phút.", trang.lblLoiThoiLuong.getText());
+            assertEquals("Thời lượng phải là số phút (số nguyên).", trang.lblLoiThoiLuong.getText());
             assertTrue(trang.pnlCanhBao.isVisible());
             assertTrue(trang.lblCanhBao.getText().contains("Giá trị đã lưu vẫn là 30 phút"));
             assertFalse(trang.btnLuu.isEnabled());

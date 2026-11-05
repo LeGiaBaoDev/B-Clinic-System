@@ -82,7 +82,7 @@ public class PnlDichVu extends JPanel {
     // --- Thanh tiêu đề ---
     /** Chỗ đặt nút hành động ở góc phải tiêu đề. */
     final JPanel pnlHanhDong = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-    /** UC005: chỉ Quản lý thấy; DAO vẫn kiểm tra quyền lại từ DB. */
+    
     private final JButton btnThem = PnlTongQuanQuanLy.button("Thêm dịch vụ", LineIcon.Type.PLUS, true);
 
     // --- Tab, bộ lọc ---
@@ -121,16 +121,13 @@ public class PnlDichVu extends JPanel {
     private List<DichVu> tatCa = List.of();
     /** Các dịch vụ đang hiển thị trên trang hiện tại, cùng thứ tự với các dòng của bảng. */
     private List<DichVu> trangHienTai = List.of();
-    private Tab tabDangChon = Tab.DANG_CUNG_CAP; // UC006 bước 2: mặc định "Đang cung cấp"
+    private Tab tabDangChon = Tab.DANG_CUNG_CAP;
     private int trang = 0;                      // trang hiện tại, đếm từ 0
     private SwingWorker<List<DichVu>, Void> worker;
     /** Đặt true khi panel tự đổi bộ lọc bằng code, để không kích hoạt tải lại nhiều lần. */
     private boolean dangDatLaiBoLoc;
 
-    /*
-     * Màn Dịch vụ có 2 "thẻ" xếp chồng (CardLayout): danh sách và trang Chỉnh sửa (UC007).
-     * Nhấn đúp một dịch vụ thì chuyển sang thẻ chỉnh sửa; lưu xong hoặc Hủy thì quay lại danh sách.
-     */
+    
     private static final String THE_DANH_SACH = "danhSach";
     private static final String THE_CAP_NHAT = "capNhat";
     private final CardLayout the = new CardLayout();
@@ -141,7 +138,7 @@ public class PnlDichVu extends JPanel {
     private final PnlCapNhatDichVu.LuuDichVu capNhatDichVu;
     private final Supplier<List<String>> layLoTrinh;
 
-    /** UC008: ngừng / mở lại cung cấp theo mã dịch vụ (DichVuDAO); tách ra để test không cần DB. */
+    
     @FunctionalInterface
     interface DoiTrangThai {
         boolean thucHien(String maDV);
@@ -413,12 +410,7 @@ public class PnlDichVu extends JPanel {
                 hienChiTiet();
             }
         });
-        /*
-         * Chuột trên bảng:
-         *  - bấm 1 lần vào link ở cột THAO TÁC: Sửa (UC007) / Ngừng cung cấp / Mở lại cung cấp (UC008);
-         *  - nhấn đúp ở các cột khác: mở trang chỉnh sửa (UC007 bước 1). Nhấn đúp ở cột THAO TÁC bị bỏ
-         *    qua vì lần bấm đầu đã chạy thao tác của link rồi.
-         */
+        
         tblDichVu.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -483,7 +475,7 @@ public class PnlDichVu extends JPanel {
 
     // ===================== Tải dữ liệu =====================
 
-    /** UC006 bước 3–4: tải danh sách theo từ khóa + phân loại (chạy nền, không chặn giao diện). */
+    
     public void lamMoiDuLieu() {
         if (!SwingUtilities.isEventDispatchThread()) {
             SwingUtilities.invokeLater(this::lamMoiDuLieu);
@@ -554,7 +546,6 @@ public class PnlDichVu extends JPanel {
         veTab();
 
         lblKetQua.setForeground(MUTED);
-        // UC006 luồng 4.1
         lblKetQua.setText(theoTab.isEmpty() ? "Không tìm thấy dịch vụ phù hợp."
                 : theoTab.size() + " dịch vụ · Bảng giá tháng "
                 + LocalDate.now().format(DateTimeFormatter.ofPattern("MM/yyyy")));
@@ -643,7 +634,7 @@ public class PnlDichVu extends JPanel {
         hienThiTrang();
     }
 
-    /** Nút "Xóa lọc": về điều kiện mặc định của UC006 bước 2 (Đang cung cấp, mọi danh mục). */
+    
     private void datLaiBoLoc() {
         dangDatLaiBoLoc = true;
         try {
@@ -664,16 +655,13 @@ public class PnlDichVu extends JPanel {
         hienCotThaoTac(laQuanLy());
     }
 
-    /**
-     * Cột THAO TÁC chỉ dành cho Quản lý (UC007, UC008). Lễ tân / Nha sĩ chỉ xem (UC006) nên thu cột
-     * về rộng 0 thay vì xóa cột, để chỉ số cột của bảng không đổi.
-     */
+    
     private void hienCotThaoTac(boolean hien) {
         javax.swing.table.TableColumn cot = tblDichVu.getColumnModel().getColumn(COT_THAO_TAC);
         if (hien) {
             cot.setMaxWidth(Integer.MAX_VALUE); // nới giới hạn trên trước rồi mới đặt giới hạn dưới
-            cot.setMinWidth(170);
-            cot.setPreferredWidth(200);
+            cot.setMinWidth(230);
+            cot.setPreferredWidth(240);
         } else {
             cot.setMinWidth(0);
             cot.setMaxWidth(0);
@@ -686,9 +674,7 @@ public class PnlDichVu extends JPanel {
         return actor != null && actor.getVaiTro() == VaiTro.QUANLY;
     }
 
-    // ===================== UC005 thêm dịch vụ =====================
-
-    /** UC005 bước 1: mở form thêm dịch vụ. */
+    
     private void moThemDichVu() {
         if (!laQuanLy()) {
             lblKetQua.setText("Chỉ Quản lý được thêm dịch vụ.");
@@ -697,7 +683,7 @@ public class PnlDichVu extends JPanel {
         new DlgDichVu(SwingUtilities.getWindowAncestor(this), this::daThemDichVu).setVisible(true);
     }
 
-    /** UC005 bước 8: báo thành công và hiện dịch vụ mới trong danh sách. */
+    
     void daThemDichVu(DichVu dv) {
         hienDichVuVuaLuu(dv);
         thongBao("Thêm dịch vụ thành công: " + dv.getMaDV() + " – " + dv.getTenDV());
@@ -716,15 +702,10 @@ public class PnlDichVu extends JPanel {
         lamMoiDuLieu();
     }
 
-    // ===================== UC007 cập nhật dịch vụ =====================
-
-    /**
-     * UC007 bước 1–2: mở trang chỉnh sửa cho dịch vụ vừa nhấn đúp.
-     * Chỉ Quản lý; dịch vụ đã ngừng thì báo (UC007 tiền điều kiện: chỉ sửa dịch vụ đang cung cấp).
-     */
+    
     void moCapNhatDichVu(DichVu dv) {
         if (dv == null || !laQuanLy()) {
-            return; // Lễ tân, Nha sĩ chỉ xem (UC006); nhấn đúp không làm gì
+            return;
         }
         if (!dv.isTrangThai()) {
             lblKetQua.setForeground(DO);
@@ -748,7 +729,7 @@ public class PnlDichVu extends JPanel {
         repaint();
     }
 
-    /** UC007 bước 7: lưu xong -> về danh sách, hiện dịch vụ vừa sửa và báo thành công. */
+    
     void daCapNhatDichVu(DichVu dv) {
         dongTrangCapNhat();
         hienDichVuVuaLuu(dv);
@@ -759,8 +740,6 @@ public class PnlDichVu extends JPanel {
     PnlCapNhatDichVu trangCapNhat() {
         return trangCapNhat;
     }
-
-    // ===================== Cột THAO TÁC + UC008 ngừng / mở lại cung cấp =====================
 
     static final String LINK_SUA = "linkSua";
     static final String LINK_NGUNG = "linkNgung";
@@ -796,18 +775,16 @@ public class PnlDichVu extends JPanel {
             return;
         }
         switch (link) {
-            case LINK_SUA -> moCapNhatDichVu(dv); // UC007; dịch vụ đã ngừng sẽ được báo trong hàm này
+            case LINK_SUA -> moCapNhatDichVu(dv);
             case LINK_NGUNG -> {
-                // UC008 bước 3: cảnh báo xác nhận đúng nội dung báo cáo.
                 if (xacNhan("Ngừng cung cấp dịch vụ",
                         "Ngừng cung cấp " + dv.getMaDV() + " – " + dv.getTenDV() + "?\n\n"
                         + "Dịch vụ sẽ không còn hiển thị khi Nha sĩ chỉ định điều trị cho lượt khám mới.\n"
                         + "Các phiếu khám/hóa đơn cũ không bị ảnh hưởng.", "Ngừng cung cấp")) {
                     doiTrangThai(dv, ngungCungCap, "Đã ngừng cung cấp dịch vụ " + dv.getMaDV() + " – " + dv.getTenDV() + ".");
-                } // UC008 luồng 4.1–4.2: Hủy -> giữ nguyên "Đang cung cấp"
+                }
             }
             case LINK_MO_LAI -> {
-                // UC008 luồng 2.1–2.2: xác nhận rồi chuyển về "Đang cung cấp".
                 if (xacNhan("Mở lại cung cấp dịch vụ",
                         "Mở lại cung cấp " + dv.getMaDV() + " – " + dv.getTenDV() + "?\n\n"
                         + "Dịch vụ sẽ hiển thị lại khi đặt lịch hẹn và khi Nha sĩ chỉ định điều trị.",
@@ -821,10 +798,7 @@ public class PnlDichVu extends JPanel {
         }
     }
 
-    /**
-     * UC008 bước 5: gọi DAO chạy nền; thành công thì báo và tải lại danh sách (giữ nguyên bộ lọc, tab).
-     * Lỗi nghiệp vụ (còn lịch hẹn, trùng tên khi mở lại…) hiện đúng thông báo của DAO.
-     */
+    
     private void doiTrangThai(DichVu dv, DoiTrangThai hanhDong, String thongBaoThanhCong) {
         datDangTai(true);
         lblKetQua.setForeground(MUTED);
@@ -938,21 +912,21 @@ public class PnlDichVu extends JPanel {
         }
     }
 
-    /**
-     * Ô THAO TÁC: các link chữ teal như thiết kế. Dịch vụ đang cung cấp: "Sửa" + "Ngừng cung cấp";
-     * đã ngừng: "Sửa" (xám, vì UC007 chỉ sửa dịch vụ đang cung cấp) + "Mở lại cung cấp".
-     * Mỗi link có tên riêng để {@link #linkTaiDiem} biết người dùng bấm vào link nào.
-     */
+    
     private final class ThaoTacRenderer extends JPanel implements TableCellRenderer {
         private final JLabel lblSua = new JLabel("Sửa");
         private final JLabel lblDoi = new JLabel();
 
         ThaoTacRenderer() {
-            super(new FlowLayout(FlowLayout.LEFT, 12, 13));
+            super(new FlowLayout(FlowLayout.LEFT, 8, 7));
             lblSua.setName(LINK_SUA);
             lblSua.setFont(bold(12));
             lblDoi.setFont(bold(12));
             lblDoi.setForeground(TEAL);
+            for (JLabel nut : new JLabel[]{lblSua, lblDoi}) {
+                nut.setOpaque(true);
+                nut.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            }
             add(lblSua);
             add(lblDoi);
         }
@@ -963,7 +937,15 @@ public class PnlDichVu extends JPanel {
             DichVu dv = row < trangHienTai.size() ? trangHienTai.get(table.convertRowIndexToModel(row)) : null;
             boolean dang = dv != null && dv.isTrangThai();
             lblSua.setForeground(dang ? TEAL : MUTED);
+            lblSua.setBackground(dang ? TEAL_LIGHT : XAM_NHAT);
+            lblSua.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(dang ? TEAL : BORDER), new EmptyBorder(6, 10, 6, 10)));
             lblDoi.setText(dang ? "Ngừng cung cấp" : "Mở lại cung cấp");
+            Color mauThaoTac = dang ? new Color(0xB42318) : TEAL;
+            lblDoi.setForeground(mauThaoTac);
+            lblDoi.setBackground(dang ? new Color(0xFEE4E2) : TEAL_LIGHT);
+            lblDoi.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(mauThaoTac), new EmptyBorder(6, 10, 6, 10)));
             lblDoi.setName(dang ? LINK_NGUNG : LINK_MO_LAI);
             setBackground(selected ? table.getSelectionBackground() : table.getBackground());
             return this;

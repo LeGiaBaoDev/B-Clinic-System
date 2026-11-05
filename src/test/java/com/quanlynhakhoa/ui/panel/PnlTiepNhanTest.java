@@ -14,7 +14,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
-/* T803 – UC021: kiểm tra phần lọc tìm lịch hẹn, không cần database. */
 class PnlTiepNhanTest {
 
     @Test

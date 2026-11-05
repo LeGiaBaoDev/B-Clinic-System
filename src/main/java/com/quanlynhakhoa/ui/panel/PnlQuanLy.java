@@ -1,6 +1,7 @@
 package com.quanlynhakhoa.ui.panel;
 
 import com.quanlynhakhoa.entity.TaiKhoan;
+import com.quanlynhakhoa.entity.enums.TrangThaiLichHen;
 import com.quanlynhakhoa.ui.component.*;
 import static com.quanlynhakhoa.ui.component.UiConstants.*;
 import java.awt.*;
@@ -16,16 +17,23 @@ import javax.swing.event.*;
 
 public class PnlQuanLy extends JPanel {
 
+    private static final DateTimeFormatter GIO = DateTimeFormatter.ofPattern("HH:mm");
+    private static final Color AMBER = new Color(0xB26B00);
+    private static final Color AMBER_LIGHT = new Color(0xFFF4DE);
+
     private final TaiKhoan taiKhoan;
     private final Runnable dangXuat;
     private final CardLayout cards = new CardLayout();
     private final JPanel pnlCards = new JPanel(cards);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
     private final JLabel lblTrang = label("Tổng quan", bold(18), TEXT);
-    private final JTextField txtTimKiem = new JTextField();
     private final PnlTongQuanQuanLy pnlTongQuan;
     private PnlNhanVien pnlNhanVien;
+    private PnlLichLamViec pnlLichLamViec;
+    private PnlLichCaNhan pnlLichCaNhan;
     private PnlDichVu pnlDichVu;
+    private PnlVoucher pnlVoucher;
+    private PnlBaoCao pnlBaoCao;
     private final JLabel lblCaHienTai = label("Đang tải ca làm việc...", font(11), MUTED);
     private final JLabel lblKetNoi = label("● Đang tải dữ liệu", font(10), MUTED);
     private final JLabel lblDongBo = label("Đang tải dữ liệu...", font(10), MUTED);
@@ -50,12 +58,6 @@ public class PnlQuanLy extends JPanel {
         pnlTongQuan.langNgheTaiDuLieu(this::capNhatTrangThaiTai);
         capNhatDongHo();
         moTrang("Tổng quan");
-        getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK), "search");
-        getActionMap().put("search", new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                txtTimKiem.requestFocusInWindow();
-            }
-        });
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "refresh");
         getActionMap().put("refresh", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
@@ -94,10 +96,15 @@ public class PnlQuanLy extends JPanel {
         addMenu(top, "Nhân viên", LineIcon.Type.PEOPLE);
         addMenu(top, "Dịch vụ", LineIcon.Type.CLIPBOARD);
         addMenu(top, "Lịch làm việc", LineIcon.Type.CALENDAR);
+        addMenu(top, "Lịch của tôi", LineIcon.Type.CALENDAR);
         addMenu(top, "Báo cáo", LineIcon.Type.CHART);
         addMenu(top, "Voucher", LineIcon.Type.VOUCHER);
-        addMenu(top, "Cài đặt", LineIcon.Type.SETTINGS);
-        sidebar.add(top, BorderLayout.NORTH);
+        JScrollPane scrollMenu=new JScrollPane(top);
+        scrollMenu.setBorder(BorderFactory.createEmptyBorder());
+        scrollMenu.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollMenu.getViewport().setBackground(SURFACE);
+        scrollMenu.getVerticalScrollBar().setUnitIncrement(16);
+        sidebar.add(scrollMenu,BorderLayout.CENTER);
 
         JPanel bottom = new JPanel();
         bottom.setOpaque(false);
@@ -122,8 +129,10 @@ public class PnlQuanLy extends JPanel {
         help.setFont(font(12));
         help.setAlignmentX(LEFT_ALIGNMENT);
         help.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "Ctrl + K: tìm nhanh lịch hẹn trong ngày.\nF5: tải lại dữ liệu tổng quan. Dữ liệu tự làm mới mỗi phút.\nChọn tài khoản ở góc phải để đăng xuất.", "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE));
+                "F5: tải lại dữ liệu tổng quan. Dữ liệu tự làm mới mỗi phút.\nDùng nút Đăng xuất ở cuối thanh bên.", "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE));
         bottom.add(help);
+        bottom.add(Box.createVerticalStrut(8));
+        bottom.add(taoNutDangXuat());
         sidebar.add(bottom, BorderLayout.SOUTH);
         return sidebar;
     }
@@ -141,6 +150,27 @@ public class PnlQuanLy extends JPanel {
         parent.add(Box.createVerticalStrut(5));
     }
 
+    private JButton taoNutDangXuat() {
+        JButton logout = new JButton("Đăng xuất");
+        logout.setLayout(new BorderLayout());
+        logout.setHorizontalAlignment(SwingConstants.LEFT);
+        logout.setFont(bold(13));
+        logout.setForeground(RED);
+        logout.setIcon(new LineIcon(LineIcon.Type.LOGOUT, RED, 16));
+        logout.setIconTextGap(11);
+        logout.setBorder(new EmptyBorder(10, 13, 10, 12));
+        logout.setBackground(RED_LIGHT);
+        logout.setContentAreaFilled(true);
+        logout.setOpaque(true);
+        logout.setBorderPainted(false);
+        logout.setFocusPainted(false);
+        logout.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        logout.setAlignmentX(LEFT_ALIGNMENT);
+        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        logout.addActionListener(e -> dangXuat.run());
+        return logout;
+    }
+
     private JPanel taoHeader() {
         JPanel header = new JPanel(new BorderLayout(20, 0));
         header.setBackground(SURFACE);
@@ -150,35 +180,6 @@ public class PnlQuanLy extends JPanel {
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 0));
         controls.setOpaque(false);
 
-        SurfacePanel search = new SurfacePanel(new BorderLayout(10, 0));
-        search.setPreferredSize(new Dimension(290, 38));
-        search.setBorder(new EmptyBorder(4, 12, 4, 10));
-        search.add(new JLabel(new LineIcon(LineIcon.Type.SEARCH, MUTED, 17)), BorderLayout.WEST);
-        txtTimKiem.setBorder(BorderFactory.createEmptyBorder());
-        txtTimKiem.setOpaque(false);
-        txtTimKiem.setFont(font(12));
-        txtTimKiem.putClientProperty("JTextField.placeholderText", "Tìm kiếm nhanh...");
-        txtTimKiem.setToolTipText("Tìm tên bệnh nhân hoặc bác sĩ trong lịch hẹn hôm nay.");
-        search.add(txtTimKiem, BorderLayout.CENTER);
-        controls.add(search);
-        txtTimKiem.getDocument().addDocumentListener(new DocumentListener() {
-            private void search() {
-                moTrang("Tổng quan");
-                pnlTongQuan.timKiem(txtTimKiem.getText());
-            }
-
-            public void insertUpdate(DocumentEvent e) {
-                search();
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                search();
-            }
-
-            public void changedUpdate(DocumentEvent e) {
-                search();
-            }
-        });
         JButton bell = new JButton(new LineIcon(LineIcon.Type.BELL, MUTED, 23)) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -193,13 +194,7 @@ public class PnlQuanLy extends JPanel {
         stylePlain(bell);
         bell.setPreferredSize(new Dimension(32, 38));
         bell.setToolTipText("Lịch hẹn đang chờ và sắp tới");
-        bell.addActionListener(e -> {
-            JPopupMenu popup = new JPopupMenu();
-            JMenuItem item = new JMenuItem(pnlTongQuan.thongBaoLichTiep());
-            item.addActionListener(a -> moTrang("Tổng quan"));
-            popup.add(item);
-            popup.show(bell, 0, bell.getHeight());
-        });
+        bell.addActionListener(e -> hienThongBao());
         controls.add(bell);
         JSeparator separator = new JSeparator(SwingConstants.VERTICAL);
         separator.setPreferredSize(new Dimension(1, 30));
@@ -211,6 +206,24 @@ public class PnlQuanLy extends JPanel {
         center.add(controls);
         header.add(center, BorderLayout.EAST);
         return header;
+    }
+
+    private void hienThongBao() {
+        var ds = pnlTongQuan.thongBaoLich().stream().map(lh -> {
+            boolean daDen = lh.trangThai() == TrangThaiLichHen.DA_DEN;
+            String nhaSi = lh.nhaSi() == null || lh.nhaSi().isBlank()
+                    ? "Chưa phân công nha sĩ" : "Nha sĩ: " + lh.nhaSi();
+            return new PopupThongBao.Dong(
+                    lh.ngayGio().format(GIO),
+                    lh.benhNhan(),
+                    nhaSi,
+                    daDen ? "Đã đến" : "Đã đặt",
+                    daDen ? GREEN : AMBER,
+                    daDen ? new Color(0xE7F7EF) : AMBER_LIGHT,
+                    () -> moTrang("Tổng quan"));
+        }).toList();
+        PopupThongBao.hien(btnThongBao, "Lịch hẹn đang chờ hôm nay", ds,
+                "Không có lịch hẹn đang chờ hoặc sắp tới.");
     }
 
     private JButton taoTaiKhoan() {
@@ -240,19 +253,8 @@ public class PnlQuanLy extends JPanel {
         text.add(label("Quản lý", font(10), MUTED));
         profile.add(avatar, BorderLayout.WEST);
         profile.add(text, BorderLayout.CENTER);
-        profile.add(new JLabel(new LineIcon(LineIcon.Type.CHEVRON, MUTED, 14)), BorderLayout.EAST);
+        profile.setCursor(Cursor.getDefaultCursor());
         profile.setToolTipText("Tài khoản " + taiKhoan.getTenTK());
-        profile.addActionListener(e -> {
-            JPopupMenu popup = new JPopupMenu();
-            JMenuItem user = new JMenuItem(tenDayDu() + " · Quản lý");
-            user.setEnabled(false);
-            popup.add(user);
-            popup.addSeparator();
-            JMenuItem logout = new JMenuItem("Đăng xuất", new LineIcon(LineIcon.Type.LOGOUT, TEXT, 16));
-            logout.addActionListener(a -> dangXuat.run());
-            popup.add(logout);
-            popup.show(profile, 0, profile.getHeight());
-        });
         return profile;
     }
 
@@ -329,10 +331,18 @@ public class PnlQuanLy extends JPanel {
     }
 
     private void lamMoiTrangHienTai() {
-        if ("Nhân viên".equals(lblTrang.getText()) && pnlNhanVien != null) {
+        if ("Lịch của tôi".equals(lblTrang.getText()) && pnlLichCaNhan != null) {
+            pnlLichCaNhan.lamMoiDuLieu();
+        } else if ("Nhân viên".equals(lblTrang.getText()) && pnlNhanVien != null) {
             pnlNhanVien.lamMoiDuLieu();
+        } else if ("Lịch làm việc".equals(lblTrang.getText()) && pnlLichLamViec != null) {
+            pnlLichLamViec.lamMoiDuLieu();
         } else if ("Dịch vụ".equals(lblTrang.getText()) && pnlDichVu != null) {
             pnlDichVu.lamMoiDuLieu();
+        } else if ("Báo cáo".equals(lblTrang.getText()) && pnlBaoCao != null) {
+            pnlBaoCao.lamMoi();
+        } else if ("Voucher".equals(lblTrang.getText()) && pnlVoucher != null) {
+            pnlVoucher.lamMoiDuLieu();
         } else {
             pnlTongQuan.lamMoiDuLieu();
         }
@@ -342,13 +352,38 @@ public class PnlQuanLy extends JPanel {
         if (!"Tổng quan".equals(name) && !menu.containsKey(name)) {
             return;
         }
+        if ("Lịch của tôi".equals(name)) {
+            if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlCards.add(pnlLichCaNhan,name); }
+            pnlLichCaNhan.lamMoiDuLieu();
+        }
         if ("Nhân viên".equals(name) && pnlNhanVien == null) {
             pnlNhanVien = new PnlNhanVien();
             pnlCards.add(pnlNhanVien, name);
         }
+        if ("Lịch làm việc".equals(name) && pnlLichLamViec == null) {
+            pnlLichLamViec = new PnlLichLamViec();
+            pnlCards.add(pnlLichLamViec, name);
+        }
+        if ("Lịch làm việc".equals(name)) {
+            pnlLichLamViec.lamMoiDuLieu();
+        }
         if ("Dịch vụ".equals(name) && pnlDichVu == null) {
             pnlDichVu = new PnlDichVu();
             pnlCards.add(pnlDichVu, name);
+        }
+        if ("Dịch vụ".equals(name)) {
+            pnlDichVu.lamMoiDuLieu();
+        }
+        if ("Voucher".equals(name)) {
+            if (pnlVoucher == null) { pnlVoucher = new PnlVoucher(); pnlCards.add(pnlVoucher, name); }
+            pnlVoucher.lamMoiDuLieu();
+        }
+        if ("Báo cáo".equals(name)) { // trang Báo cáo hoạt động (doanh thu, dịch vụ, lịch hẹn)
+            if (pnlBaoCao == null) {
+                pnlBaoCao = new PnlBaoCao();
+                pnlCards.add(pnlBaoCao, name);
+            }
+            pnlBaoCao.lamMoi();
         }
         if (!"Tổng quan".equals(name) && java.util.Arrays.stream(pnlCards.getComponents()).noneMatch(c -> name.equals(c.getName()))) {
             JPanel empty = new JPanel(new GridBagLayout());
@@ -388,7 +423,7 @@ public class PnlQuanLy extends JPanel {
                     LineIcon.Type.PEOPLE;
                 case "Dịch vụ" ->
                     LineIcon.Type.CLIPBOARD;
-                case "Lịch làm việc" ->
+                case "Lịch làm việc", "Lịch của tôi" ->
                     LineIcon.Type.CALENDAR;
                 case "Báo cáo" ->
                     LineIcon.Type.CHART;

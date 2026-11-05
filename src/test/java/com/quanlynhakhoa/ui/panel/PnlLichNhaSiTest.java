@@ -21,13 +21,6 @@ import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/*
- * T802 – UC022 lịch nha sĩ được phân công.
- * Kiểm tra phần lọc/thống kê thuần, không cần database.
- * [x] thống kê chỉ tính lịch hôm nay và bỏ lịch hủy/không đến
- * [x] đếm tái khám theo phiếu nguồn trong tuần
- * [x] lọc theo ngày/tuần, trạng thái và từ khóa
- */
 class PnlLichNhaSiTest {
 
     private static final LocalDate HOM_NAY = LocalDate.of(2026, 11, 4);

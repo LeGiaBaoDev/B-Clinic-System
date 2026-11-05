@@ -35,6 +35,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.geom.RoundRectangle2D;
@@ -61,10 +62,14 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextField;
+import javax.swing.JTable;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.KeyStroke;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.border.EmptyBorder;
 
 public class PnlTiepNhan extends JPanel {
@@ -77,20 +82,17 @@ public class PnlTiepNhan extends JPanel {
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/uuuu")
             .withResolverStyle(ResolverStyle.STRICT);
     private static final DateTimeFormatter NGAY_HIEN_THI = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DateTimeFormatter NGAY_GIO = DateTimeFormatter.ofPattern("HH:mm · dd/MM/yyyy");
     private static final DateTimeFormatter GIO = DateTimeFormatter.ofPattern("HH:mm");
 
     private final LichHenDAO lichHenDAO = new LichHenDAO();
     private final PhieuKhamDAO phieuKhamDAO = new PhieuKhamDAO();
     private final JDateChooser dpNgay = new JDateChooser();
-    private final JButton btnLuotMoi = PnlTongQuanQuanLy.button("Tiếp nhận lượt mới",
-            LineIcon.Type.PLUS, true);
     private final JButton btnInPhieu = PnlTongQuanQuanLy.button("In phiếu tiếp nhận",
             LineIcon.Type.PRINTER, false);
     private final JButton btnXacNhan = PnlTongQuanQuanLy.button("Xác nhận tiếp nhận",
             LineIcon.Type.CHECK, true);
     private final JCheckBox chkXacNhan = new JCheckBox(
-            "Đã đối chiếu họ tên, ngày sinh và số điện thoại với bệnh nhân.");
+            "Đã đối chiếu họ tên, ngày sinh và SĐT với bệnh nhân.");
     private final JComboBox<String> cboNguon = new JComboBox<>(new String[]{"Lịch hẹn trước"});
 
     private final JLabel lblBanner = new JLabel();
@@ -114,6 +116,16 @@ public class PnlTiepNhan extends JPanel {
     private final JLabel lblMoi = new JLabel(" ");
     private final JLabel lblMoiPhu = new JLabel(" ");
 
+    private final DefaultTableModel modelLich = new DefaultTableModel(
+            new String[]{"GIỜ", "BỆNH NHÂN", "NHA SĨ", "TRẠNG THÁI"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable tblLich = new JTable(modelLich);
+    private final JLabel lblTieuDeLich = new JLabel("Lịch hẹn");
+    private boolean dangCapNhatLich;
     private List<LichHen> dsLich = new ArrayList<>();
     private List<LichHen> dsLoc = new ArrayList<>();
     private List<PhieuKham> dsCho = new ArrayList<>();
@@ -124,6 +136,7 @@ public class PnlTiepNhan extends JPanel {
     private SwingWorker<DuLieu, Void> worker;
     private boolean dangXuLy;
     private boolean vuaTiepNhan;
+    private String maLHCanChon;
 
     public PnlTiepNhan() {
         super(new BorderLayout(0, 14));
@@ -144,7 +157,12 @@ public class PnlTiepNhan extends JPanel {
     // ---------------------------------------------------------------- giao diện
     private void initComponents() {
         add(taoDau(), BorderLayout.NORTH);
-        add(taoHaiCot(), BorderLayout.CENTER);
+        JScrollPane cuon = new JScrollPane(taoHaiCot());
+        cuon.setBorder(null);
+        cuon.getViewport().setBackground(BACKGROUND);
+        cuon.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        cuon.getVerticalScrollBar().setUnitIncrement(16);
+        add(cuon, BorderLayout.CENTER);
     }
 
     private JPanel taoDau() {
@@ -166,7 +184,6 @@ public class PnlTiepNhan extends JPanel {
         text.add(Box.createVerticalStrut(4));
         text.add(phuDe);
         hang.add(text, BorderLayout.WEST);
-        hang.add(btnLuotMoi, BorderLayout.EAST);
         dau.add(hang, BorderLayout.NORTH);
 
         pnlBanner.setOpaque(true);
@@ -281,8 +298,14 @@ public class PnlTiepNhan extends JPanel {
         oNgay.add(iconLich, BorderLayout.WEST);
         oNgay.add(dpNgay, BorderLayout.CENTER);
 
+        JButton btnLamMoi = PnlTongQuanQuanLy.button("Làm mới", LineIcon.Type.CHART, false);
+        btnLamMoi.addActionListener(e -> taiDuLieu());
+        JPanel benPhai = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        benPhai.setOpaque(false);
+        benPhai.add(oNgay);
+        benPhai.add(btnLamMoi);
         card.add(nhan, BorderLayout.WEST);
-        card.add(oNgay, BorderLayout.EAST);
+        card.add(benPhai, BorderLayout.EAST);
         return card;
     }
 
@@ -291,26 +314,67 @@ public class PnlTiepNhan extends JPanel {
         row.setOpaque(false);
         GridBagConstraints g = new GridBagConstraints();
         g.gridy = 0;
-        g.fill = GridBagConstraints.HORIZONTAL;
-        g.weighty = 0;
+        g.fill = GridBagConstraints.BOTH;
+        g.weighty = 1;
         g.anchor = GridBagConstraints.NORTH;
         g.gridx = 0;
-        g.weightx = 0.62;
+        g.weightx = 0.58;
         g.insets = new Insets(0, 0, 0, 16);
         row.add(taoTheXacNhan(), g);
         g.gridx = 1;
-        g.weightx = 0.38;
+        g.weightx = 0.42;
         g.insets = new Insets(0, 0, 0, 0);
         row.add(taoThePhongCho(), g);
-        JPanel haiCot = new JPanel(new BorderLayout());
+        JPanel haiCot = new PanelCuon();
+        haiCot.setLayout(new GridBagLayout());
         haiCot.setOpaque(false);
-        haiCot.add(row, BorderLayout.NORTH);
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0;
+        c.gridy = 0;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.NORTH;
+        c.insets = new Insets(0, 0, 12, 0);
+        haiCot.add(taoDanhSachLich(), c);
+        c.gridy = 1;
+        c.weighty = 1;
+        c.fill = GridBagConstraints.BOTH;
+        c.insets = new Insets(0, 0, 0, 0);
+        haiCot.add(row, c);
         return haiCot;
     }
 
+    private JPanel taoDanhSachLich() {
+        SurfacePanel card = new SurfacePanel(new BorderLayout(0, 8));
+        card.setBorder(new EmptyBorder(10, 14, 10, 14));
+        card.setPreferredSize(new Dimension(0, 130));
+        lblTieuDeLich.setFont(bold(13));
+        lblTieuDeLich.setForeground(TEXT);
+        card.add(lblTieuDeLich, BorderLayout.NORTH);
+        tblLich.setRowHeight(28);
+        tblLich.setFont(font(12));
+        tblLich.getTableHeader().setFont(bold(10));
+        tblLich.getTableHeader().setBackground(new Color(0xF7F9FB));
+        tblLich.getTableHeader().setForeground(MUTED);
+        tblLich.setShowVerticalLines(false);
+        tblLich.setGridColor(new Color(0xEDF1F5));
+        tblLich.setSelectionBackground(new Color(0xEFF6F5));
+        tblLich.setSelectionForeground(TEXT);
+        tblLich.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblLich.getColumnModel().getColumn(0).setPreferredWidth(60);
+        DefaultTableCellRenderer center = new DefaultTableCellRenderer();
+        center.setHorizontalAlignment(SwingConstants.CENTER);
+        tblLich.getColumnModel().getColumn(0).setCellRenderer(center);
+        JScrollPane scr = new JScrollPane(tblLich);
+        scr.setBorder(BorderFactory.createLineBorder(BORDER));
+        scr.getViewport().setBackground(Color.WHITE);
+        card.add(scr, BorderLayout.CENTER);
+        return card;
+    }
+
     private JPanel taoTheXacNhan() {
-        SurfacePanel card = new SurfacePanel(new BorderLayout(0, 12));
-        card.setBorder(new EmptyBorder(16, 16, 16, 16));
+        SurfacePanel card = new SurfacePanel(new BorderLayout(0, 10));
+        card.setBorder(new EmptyBorder(12, 14, 12, 14));
 
         JPanel heading = new JPanel(new BorderLayout());
         heading.setOpaque(false);
@@ -366,7 +430,7 @@ public class PnlTiepNhan extends JPanel {
         chkXacNhan.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
         dongCheck.add(chkXacNhan);
         noiDung.add(dongCheck);
-        noiDung.add(Box.createVerticalStrut(8));
+        noiDung.add(Box.createVerticalStrut(4));
 
         JPanel ghiChu = new JPanel(new BorderLayout());
         ghiChu.setOpaque(false);
@@ -377,7 +441,7 @@ public class PnlTiepNhan extends JPanel {
         ghiChu.add(lblSomTre, BorderLayout.WEST);
         ghiChu.add(lblNguoiTiepNhan, BorderLayout.EAST);
         noiDung.add(ghiChu);
-        noiDung.add(Box.createVerticalStrut(12));
+        noiDung.add(Box.createVerticalStrut(6));
 
         JPanel nut = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         nut.setOpaque(false);
@@ -436,8 +500,8 @@ public class PnlTiepNhan extends JPanel {
     }
 
     private JPanel taoThePhongCho() {
-        SurfacePanel card = new SurfacePanel(new BorderLayout(0, 10));
-        card.setBorder(new EmptyBorder(16, 18, 16, 18));
+        SurfacePanel card = new SurfacePanel(new BorderLayout(0, 8));
+        card.setBorder(new EmptyBorder(12, 14, 12, 14));
 
         JPanel heading = new JPanel(new BorderLayout());
         heading.setOpaque(false);
@@ -451,9 +515,8 @@ public class PnlTiepNhan extends JPanel {
         heading.add(badge, BorderLayout.EAST);
         card.add(heading, BorderLayout.NORTH);
 
-        JPanel giua = new JPanel();
+        JPanel giua = new JPanel(new BorderLayout(0, 6));
         giua.setOpaque(false);
-        giua.setLayout(new BoxLayout(giua, BoxLayout.Y_AXIS));
 
         JPanel tieuDeBang = new JPanel(new BorderLayout());
         tieuDeBang.setOpaque(true);
@@ -466,14 +529,14 @@ public class PnlTiepNhan extends JPanel {
         tieuDeBang.add(stt, BorderLayout.WEST);
         tieuDeBang.add(benhNhan, BorderLayout.CENTER);
         tieuDeBang.add(gio, BorderLayout.EAST);
-        giua.add(tieuDeBang);
+        giua.add(tieuDeBang, BorderLayout.NORTH);
 
         JScrollPane scr = new JScrollPane(pnlCho);
         scr.setBorder(BorderFactory.createLineBorder(BORDER));
         scr.getViewport().setBackground(Color.WHITE);
         pnlCho.setBackground(Color.WHITE);
         pnlCho.setLayout(new BoxLayout(pnlCho, BoxLayout.Y_AXIS));
-        giua.add(scr);
+        giua.add(scr, BorderLayout.CENTER);
         card.add(giua, BorderLayout.CENTER);
 
         pnlMoi.setOpaque(true);
@@ -527,12 +590,20 @@ public class PnlTiepNhan extends JPanel {
             }
         });
         chkXacNhan.addActionListener(e -> capNhatNutXacNhan());
+        tblLich.getSelectionModel().addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting() || dangCapNhatLich) {
+                return;
+            }
+            int row = tblLich.getSelectedRow();
+            if (row >= 0 && row < dsLoc.size()) {
+                LichHen lh = dsLoc.get(row);
+                if (dangChon == null || !dangChon.getMaLH().equals(lh.getMaLH())) {
+                    chonLich(lh);
+                }
+            }
+        });
         btnInPhieu.addActionListener(e -> inPhieuTiepNhan());
         btnXacNhan.addActionListener(e -> xacNhanTiepNhan());
-        btnLuotMoi.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "Tiếp nhận khách đến trực tiếp chưa có nghiệp vụ trong UC021. "
-                + "Vui lòng dùng lịch hẹn đã đặt (L2).",
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE));
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "lamMoi");
         getActionMap().put("lamMoi", new javax.swing.AbstractAction() {
@@ -601,11 +672,50 @@ public class PnlTiepNhan extends JPanel {
         dsLoc = dsLich.stream()
                 .sorted(Comparator.comparing(LichHen::getNgayGioHen))
                 .toList();
+        hienDanhSachLich();
         boolean boQuaChon = vuaTiepNhan;
         vuaTiepNhan = false;
+        if (maLHCanChon != null) {
+            for (LichHen lh : dsLoc) {
+                if (maLHCanChon.equals(lh.getMaLH())) {
+                    chonLich(lh);
+                    maLHCanChon = null;
+                    return;
+                }
+            }
+        }
         if (!boQuaChon && (dangChon == null || !dsLoc.contains(dangChon))) {
             chonLich(dsLoc.isEmpty() ? null : dsLoc.getFirst());
         }
+    }
+
+    private void hienDanhSachLich() {
+        dangCapNhatLich = true;
+        modelLich.setRowCount(0);
+        for (LichHen lh : dsLoc) {
+            modelLich.addRow(new Object[]{
+                lh.getNgayGioHen().format(GIO),
+                lh.getKhachHang().getTenKH(),
+                lh.getNhaSi() == null ? "—" : lh.getNhaSi().getHoTenNV(),
+                nhanTrangThai(lh)});
+        }
+        lblTieuDeLich.setText("Lịch hẹn ngày " + ngay.format(NGAY_HIEN_THI)
+                + " · " + dsLoc.size() + " lịch");
+        if (!dsLoc.isEmpty()) {
+            int chon = 0;
+            String ma = maLHCanChon != null ? maLHCanChon
+                    : (dangChon == null ? null : dangChon.getMaLH());
+            if (ma != null) {
+                for (int i = 0; i < dsLoc.size(); i++) {
+                    if (ma.equals(dsLoc.get(i).getMaLH())) {
+                        chon = i;
+                        break;
+                    }
+                }
+            }
+            tblLich.setRowSelectionInterval(chon, chon);
+        }
+        dangCapNhatLich = false;
     }
 
     private void timKiem() {
@@ -634,7 +744,8 @@ public class PnlTiepNhan extends JPanel {
         maPKMoi = null;
         gioDen = LocalDateTime.now(ZONE);
         chkXacNhan.setSelected(false);
-        chkXacNhan.setEnabled(lh != null && lh.getTrangThai() == TrangThaiLichHen.DA_DAT);
+        chkXacNhan.setEnabled(lh != null && lh.getTrangThai() == TrangThaiLichHen.DA_DAT
+                && lh.getNgayGioHen().toLocalDate().equals(LocalDate.now(ZONE)));
         btnInPhieu.setEnabled(false);
         if (lh == null) {
             lblTen.setText("Chưa chọn lịch hẹn");
@@ -687,7 +798,7 @@ public class PnlTiepNhan extends JPanel {
                 + lh.getGioKetThuc().format(GIO) + "  ·  BS. " + lh.getNhaSi().getHoTenNV());
         lblBacSi.setText(" ");
         lblDichVu.setText(lh.getDichVu().getTenDV() + "  ·  Phòng khám B-Clinic");
-        lblGioDen.setText(gioDen.format(NGAY_GIO));
+        lblGioDen.setText(gioDen.format(GIO));
         lblNguoiTiepNhan.setText("Tiếp nhận bởi " + tenNguoiDung());
         long phut = Duration.between(gioDen, lh.getNgayGioHen()).toMinutes();
         if (phut > 0) {
@@ -705,6 +816,7 @@ public class PnlTiepNhan extends JPanel {
     private void capNhatNutXacNhan() {
         btnXacNhan.setEnabled(!dangXuLy && maPKMoi == null
                 && dangChon != null && dangChon.getTrangThai() == TrangThaiLichHen.DA_DAT
+                && dangChon.getNgayGioHen().toLocalDate().equals(LocalDate.now(ZONE))
                 && chkXacNhan.isSelected());
     }
 
@@ -859,6 +971,34 @@ public class PnlTiepNhan extends JPanel {
         } else {
             JOptionPane.showMessageDialog(this, "Đã xảy ra lỗi, vui lòng thử lại.", "Lỗi",
                     JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Panel co giãn theo chiều ngang viewport để không bị cắt hai bên. */
+    private static final class PanelCuon extends JPanel implements javax.swing.Scrollable {
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 120;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
         }
     }
 

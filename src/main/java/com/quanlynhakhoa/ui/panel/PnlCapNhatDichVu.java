@@ -29,24 +29,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-/**
- * UC007: trang "Chỉnh sửa dịch vụ" (chỉ Quản lý), mở khi nhấn đúp một dịch vụ đang cung cấp trên
- * màn Danh sách dịch vụ. Trang hiện ngay trong vùng nội dung (không phải hộp thoại), như ảnh thiết kế.
- *
- * <p>Bố cục theo ảnh: bên trái thẻ "Thông tin dịch vụ" + thanh nút Hủy / Lưu thay đổi; bên phải thẻ
- * "Giá thanh toán dự kiến", hộp cảnh báo khi bản nháp sai, thẻ "Quy tắc cập nhật". Các chỗ ảnh lệch
- * báo cáo làm theo báo cáo (Dương chọn 04/11):</p>
- * <ul>
- *   <li>"Danh mục" = 3 phân loại của Bảng 4.5; thuế GTGT tự đổi theo danh mục, không chọn riêng.</li>
- *   <li>Ô "Mô tả dịch vụ" của ảnh là "Lộ trình dịch vụ" (entity không có mô tả); có gợi ý như form Thêm.</li>
- *   <li>Trạng thái chỉ hiển thị: UC007 không đổi trạng thái, ngừng / mở lại thuộc UC008.</li>
- *   <li>Thời lượng chỉ cần &gt; 0 phút (báo cáo), không dùng 5–240 của ảnh.</li>
- *   <li>Dòng "Cập nhật gần nhất / Người cập nhật" tạm ẩn, chờ API nhật ký của Hiếu.</li>
- * </ul>
- *
- * <p>Kiểm tra ngay khi gõ: ô sai viền đỏ + dòng lỗi bên dưới. Nút "Lưu thay đổi" chỉ bật khi mọi ô hợp lệ
- * VÀ có ít nhất một thay đổi (UC007 luồng 4.1). DAO vẫn kiểm tra lại mọi thứ khi lưu.</p>
- */
 public class PnlCapNhatDichVu extends JPanel {
 
     /** Hành động lưu (DichVuDAO.capNhat); tách ra để test không cần DB. */
@@ -345,7 +327,6 @@ public class PnlCapNhatDichVu extends JPanel {
         JLabel tdQuyTac = new JLabel("Quy tắc cập nhật");
         tdQuyTac.setFont(bold(16));
         tdQuyTac.setForeground(TEXT);
-        // Nội dung lấy từ UC007 (hậu điều kiện, bước 6) và ràng buộc thời lượng nhóm đã chốt (Q2).
         JLabel noiDung = new JLabel("<html>Giá mới chỉ áp dụng cho các lượt chỉ định / lịch hẹn tạo sau khi lưu."
                 + " Không thay đổi phiếu khám, hóa đơn đã phát sinh."
                 + "<br><br>Tên không được trùng với dịch vụ khác đang cung cấp."
@@ -371,7 +352,7 @@ public class PnlCapNhatDichVu extends JPanel {
 
     // ===================== Dữ liệu ban đầu, sự kiện =====================
 
-    /** UC007 bước 2: hiển thị form với dữ liệu hiện tại. */
+    
     private void dienDuLieuBanDau() {
         dangDienBanDau = true;
         try {
@@ -451,7 +432,6 @@ public class PnlCapNhatDichVu extends JPanel {
         hienLoi(txtDonGia, lblLoiDonGia, loiDonGia, "Giá chưa bao gồm thuế GTGT.");
 
         boolean hopLe = loiTen == null && loiDanhMuc == null && loiThoiLuong == null && loiDonGia == null;
-        // Dữ liệu hợp lệ mới so được với bản gốc (UC007 luồng 4.1: không có thay đổi thì không cho lưu).
         boolean coThayDoi = hopLe && !DichVuDAO.moTaThayDoi(banGoc, docForm()).isEmpty();
         btnLuu.setEnabled(hopLe && coThayDoi && !dangLuu);
 
@@ -473,7 +453,7 @@ public class PnlCapNhatDichVu extends JPanel {
                 + (coThayDoi || (!hopLe && !daCham.isEmpty()) ? " · Thay đổi chưa được lưu" : ""));
     }
 
-    /** UC007 bước 5: tên không rỗng, tối đa 150 ký tự (trùng tên do DAO kiểm tra khi lưu). */
+    
     private String loiTen() {
         String ten = txtTenDV.getText().trim();
         if (ten.isEmpty()) {
@@ -491,7 +471,7 @@ public class PnlCapNhatDichVu extends JPanel {
         return phut <= 0 ? "Thời lượng phải lớn hơn 0 phút." : null;
     }
 
-    /** UC007 luồng 5.1: đơn giá > 0. */
+    
     private String loiDonGia() {
         Double gia = docDonGia(txtDonGia.getText());
         if (gia == null) {
@@ -608,7 +588,7 @@ public class PnlCapNhatDichVu extends JPanel {
 
     // ===================== Lưu / đóng =====================
 
-    /** UC007 bước 4–7: lưu bằng DAO trong SwingWorker; lỗi nghiệp vụ hiện ngay, giữ trang để sửa. */
+    
     void luuThayDoi() {
         // Bấm lưu coi như đã chạm mọi ô, để nếu còn sai thì hiện hết lỗi.
         daCham.addAll(List.of(txtTenDV, cboDanhMuc, txtThoiLuong, txtDonGia));
@@ -707,7 +687,7 @@ public class PnlCapNhatDichVu extends JPanel {
 
     static Integer docSoNguyen(String text) {
         String so = text == null ? "" : text.trim();
-        return so.matches("-?\\d{1,6}") ? Integer.valueOf(so) : null;
+        return so.matches("\\d{1,6}") ? Integer.valueOf(so) : null;
     }
 
     /** 300000 -> "300.000" để hiện trong ô đơn giá. */
@@ -765,6 +745,6 @@ public class PnlCapNhatDichVu extends JPanel {
     /** Đọc đơn giá giống form Thêm ("300000", "300.000", "300,000 ₫"); không phải số nguyên thì null. */
     static Double docDonGia(String text) {
         String so = text == null ? "" : text.replace("₫", "").replace("đ", "").replaceAll("[\\s.,]", "");
-        return so.matches("-?\\d{1,15}") ? Double.valueOf(so) : null;
+        return so.matches("\\d{1,15}") ? Double.valueOf(so) : null;
     }
 }

@@ -45,6 +45,14 @@ public class HoaDonDAO {
         });
     }
 
+    public HoaDon layTheoPhieuKham(String maPK) {
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.LETAN);
+            return loc(JdbcHelper.one(c, SQL_SELECT + " WHERE maPK=?",
+                    r -> mapRow(c, r), maPK), actor.vaiTro());
+        });
+    }
+
     private HoaDon layTheoMa(Connection c, String ma) throws SQLException {
         return JdbcHelper.one(c, SQL_SELECT + " WHERE maHD=?",
                 r -> mapRow(c, r), ma);
@@ -67,6 +75,10 @@ public class HoaDonDAO {
                 + "+ROUND(thanhTien*mucThueGTGT/100,0)),0)"
                 + " FROM ChiTietPhieuKham WHERE maPK=?",
                 r -> r.getBigDecimal(1), maPK);
+    }
+
+    public static BigDecimal tinhTienGiam(Voucher vc, BigDecimal tong) {
+        return tienGiam(vc, tong);
     }
 
     static BigDecimal tienGiam(Voucher vc, BigDecimal tong) {
@@ -114,26 +126,51 @@ public class HoaDonDAO {
      * nhận số tiền.
      */
     public BigDecimal thanhToan(String maHD, String hinhThuc, BigDecimal soTienNhan) {
+        return thanhToan(maHD, hinhThuc, soTienNhan, null);
+    }
+
+    /**
+     * Áp dụng voucher (nếu có) và thanh toán trong cùng một transaction để không
+     * để lại hóa đơn đã giảm giá nhưng chưa thanh toán khi thao tác thất bại.
+     */
+    public BigDecimal thanhToan(String maHD, String hinhThuc, BigDecimal soTienNhan,
+            String maVoucherMoi) {
         yeuCau(HoaDon.TIEN_MAT.equals(hinhThuc) || HoaDon.CHUYEN_KHOAN.equals(hinhThuc),
                 "Hình thức thanh toán không hợp lệ.");
+        String voucherChon = maVoucherMoi == null || maVoucherMoi.isBlank()
+                ? null : maVoucherMoi.trim();
         return JdbcHelper.transaction(c -> {
             Actor actor = PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:thanh-toan");
             HoaDon hd = layTheoMa(c, maHD);
             yeuCau(hd != null && !hd.isTrangThai(), "Hóa đơn không tồn tại hoặc đã thanh toán.");
+            String maVoucherHienTai = hd.getVoucher() == null ? null : hd.getVoucher().getMaVoucher();
+            yeuCau(voucherChon == null || maVoucherHienTai == null
+                    || voucherChon.equals(maVoucherHienTai),
+                    "Hóa đơn đã áp dụng voucher khác.");
 
-            if (hd.getVoucher() != null) {
-                Voucher vc = new VoucherDAO().layTheoMa(c, hd.getVoucher().getMaVoucher());
-                yeuCau(vc.kiemTraHieuLuc(LocalDate.now()),
-                        "Voucher đã hết hiệu lực trước khi thanh toán.");
-                yeuCau(tienGiam(vc, tongTruocGiam(c, hd.getPhieuKham().getMaPK()))
-                        .compareTo(BigDecimal.valueOf(hd.getTongKhuyenMai())) == 0,
-                        "Giá trị voucher đã thay đổi.");
+            BigDecimal tongTruoc = tongTruocGiam(c, hd.getPhieuKham().getMaPK());
+            String maVoucherApDung = maVoucherHienTai == null ? voucherChon : maVoucherHienTai;
+            BigDecimal giam = BigDecimal.valueOf(hd.getTongKhuyenMai());
+            if (maVoucherApDung != null) {
+                Voucher vc = new VoucherDAO().layTheoMa(c, maVoucherApDung);
+                yeuCau(vc != null && vc.kiemTraHieuLuc(LocalDate.now()),
+                        "Voucher không có hiệu lực.");
+                giam = tienGiam(vc, tongTruoc);
+                if (maVoucherHienTai != null) {
+                    yeuCau(giam.compareTo(BigDecimal.valueOf(hd.getTongKhuyenMai())) == 0,
+                            "Giá trị voucher đã thay đổi.");
+                }
+                yeuCau(maVoucherHienTai != null
+                        || JdbcHelper.update(c, "UPDATE HoaDon SET maVoucher=?,tongKhuyenMai=?"
+                        + " WHERE maHD=? AND trangThai=0", maVoucherApDung, giam, maHD) == 1,
+                        "Không thể áp dụng voucher.");
+                if (maVoucherHienTai == null) {
+                    NhatKy.ghi(c, "AP_DUNG_VOUCHER", maHD + " / " + maVoucherApDung);
+                }
             }
 
-            BigDecimal tong = tongTruocGiam(c, hd.getPhieuKham().getMaPK())
-                    .subtract(BigDecimal.valueOf(hd.getTongKhuyenMai()))
-                    .max(BigDecimal.ZERO);
+            BigDecimal tong = tongTruoc.subtract(giam).max(BigDecimal.ZERO);
             yeuCau(soTienNhan != null && soTienNhan.compareTo(tong) >= 0,
                     "Số tiền nhận chưa đủ.");
             yeuCau(!HoaDon.CHUYEN_KHOAN.equals(hinhThuc) || soTienNhan.compareTo(tong) == 0,

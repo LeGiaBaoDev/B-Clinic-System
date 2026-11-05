@@ -11,8 +11,28 @@ import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 public class VoucherDAO {
+
+    /** Xem mã còn trống, không giữ chỗ; them() vẫn cấp lại mã trong transaction lưu. */
+    public String layMaDuKien() {
+        return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY);
+            return MaSinh.maMoi(c, MaSinh.Bang.VOUCHER, null);
+        });
+    }
+
+    /** Dùng để khóa chỉnh sửa nội dung trên UI; DAO vẫn kiểm tra lại khi lưu. */
+    public Set<String> layMaDaSuDung() {
+        return JdbcHelper.doc(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY);
+            return new HashSet<>(JdbcHelper.query(c,
+                    "SELECT DISTINCT maVoucher FROM HoaDon WHERE maVoucher IS NOT NULL",
+                    r -> r.getString(1)));
+        });
+    }
 
     private static final String SQL_SELECT = """
             SELECT maVoucher, tenVoucher, loaiGiam, giaGiam, giaTriGiamToiDa,
@@ -54,7 +74,7 @@ public class VoucherDAO {
     public boolean capNhat(Voucher v) { return luu(v, false); }
 
     private boolean luu(Voucher v, boolean themMoi) {
-        return JdbcHelper.transaction(c -> {
+        String maDaLuu = JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:thanh-toan");
             new Voucher(v.getMaVoucher(), v.getTenVoucher(), v.isLoaiGiam(), v.getGiaGiam(),
@@ -81,11 +101,14 @@ public class VoucherDAO {
                             + "ngayBatDau=?,ngayKetThuc=?,trangThai=? WHERE maVoucher=?",
                     args);
             if (rows == 1) {
-                v.setMaVoucher(ma);
                 NhatKy.ghi(c, themMoi ? "THEM_VOUCHER" : "CAP_NHAT_VOUCHER", ma);
             }
-            return rows == 1;
+            return rows == 1 ? ma : null;
         });
+        // Chỉ công bố mã sau khi cả dữ liệu và nhật ký đã commit thành công.
+        if (maDaLuu == null) { return false; }
+        v.setMaVoucher(maDaLuu);
+        return true;
     }
 
     public boolean xoa(String ma) {

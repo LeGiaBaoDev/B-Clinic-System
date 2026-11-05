@@ -5,6 +5,7 @@ import com.quanlynhakhoa.entity.KhachHang;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.toedter.calendar.JDateChooser;
 import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
 import static com.quanlynhakhoa.ui.component.UiConstants.MUTED;
@@ -23,9 +24,10 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.KeyEvent;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -61,7 +63,7 @@ public class DlgKhachHang extends JDialog {
 
     private final JTextField txtMaKH = new JTextField();
     private final JTextField txtHoTen = new JTextField();
-    private final JTextField txtNgaySinh = new JTextField();
+    private final JDateChooser dpNgaySinh = new JDateChooser();
     private final JRadioButton radNam = new JRadioButton("Nam", true);
     private final JRadioButton radNu = new JRadioButton("Nữ");
     private final JTextField txtSdt = new JTextField();
@@ -140,7 +142,12 @@ public class DlgKhachHang extends JDialog {
             themDong(form, dong++, "Mã bệnh nhân", txtMaKH);
         }
         themDong(form, dong++, "Họ và tên *", txtHoTen);
-        themDong(form, dong++, "Ngày sinh (dd/MM/yyyy) *", txtNgaySinh);
+        dpNgaySinh.setDateFormatString("dd/MM/yyyy");
+        dpNgaySinh.setFont(font(13));
+        dpNgaySinh.setPreferredSize(new Dimension(320, 34));
+        dpNgaySinh.setMaxSelectableDate(Date.from(LocalDate.now().atTime(23, 59, 59)
+                .atZone(ZoneId.systemDefault()).toInstant()));
+        themDong(form, dong++, "Ngày sinh *", dpNgaySinh);
         ButtonGroup nhom = new ButtonGroup();
         nhom.add(radNam);
         nhom.add(radNu);
@@ -221,13 +228,14 @@ public class DlgKhachHang extends JDialog {
         }
         txtMaKH.setText(goc.getMaKH());
         txtHoTen.setText(goc.getTenKH());
-        txtNgaySinh.setText(goc.getNgaySinh() == null ? "" : goc.getNgaySinh().format(NGAY));
+        dpNgaySinh.setDate(goc.getNgaySinh() == null ? null
+                : Date.from(goc.getNgaySinh().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         radNam.setSelected(goc.isGioiTinh());
         radNu.setSelected(!goc.isGioiTinh());
         txtSdt.setText(goc.getSdt());
         txtDiaChi.setText(goc.getDiaChi() == null ? "" : goc.getDiaChi());
         txtEmail.setText(goc.getEmail() == null ? "" : goc.getEmail());
-        for (JComponent khoa : new JComponent[]{txtMaKH, txtHoTen, txtNgaySinh, radNam, radNu}) {
+        for (JComponent khoa : new JComponent[]{txtMaKH, txtHoTen, dpNgaySinh, radNam, radNu}) {
             khoa.setEnabled(false);
         }
     }
@@ -343,15 +351,8 @@ public class DlgKhachHang extends JDialog {
         if (sdt.isEmpty()) {
             throw new LoiNhap("Vui lòng nhập đầy đủ thông tin bắt buộc", txtSdt);
         }
-        LocalDate ngaySinh = null;
-        String chuoiNgay = txtNgaySinh.getText().trim();
-        if (!chuoiNgay.isEmpty()) {
-            try {
-                ngaySinh = LocalDate.parse(chuoiNgay, NGAY);
-            } catch (DateTimeParseException e) {
-                throw new LoiNhap("Ngày sinh phải theo định dạng dd/MM/yyyy", txtNgaySinh);
-            }
-        }
+        LocalDate ngaySinh = dpNgaySinh.getDate() == null ? null
+                : dpNgaySinh.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         try {
             return new KhachHang(null, ten, ngaySinh, radNam.isSelected(), sdt,
                     txtDiaChi.getText(), txtEmail.getText());
@@ -374,7 +375,12 @@ public class DlgKhachHang extends JDialog {
             baoLoiNhap(new LoiNhap("Email không hợp lệ", txtEmail));
             return;
         }
-        moi.setDiaChi(txtDiaChi.getText());
+        try {
+            moi.setDiaChi(txtDiaChi.getText());
+        } catch (IllegalArgumentException e) {
+            baoLoiNhap(new LoiNhap(e.getMessage(), txtDiaChi));
+            return;
+        }
 
         boolean khongDoi = Objects.equals(moi.getSdt(), goc.getSdt())
                 && Objects.equals(moi.getDiaChi(), goc.getDiaChi())
@@ -450,7 +456,7 @@ public class DlgKhachHang extends JDialog {
             return txtEmail;
         }
         if (thongBao.contains("Ngày sinh")) {
-            return txtNgaySinh;
+            return dpNgaySinh;
         }
         return txtHoTen;
     }

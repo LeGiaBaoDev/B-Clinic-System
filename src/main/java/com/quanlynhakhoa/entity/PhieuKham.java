@@ -1,6 +1,7 @@
 package com.quanlynhakhoa.entity;
 
 import com.quanlynhakhoa.entity.enums.TrangThaiPhieuKham;
+import com.quanlynhakhoa.util.DinhDang;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -76,7 +77,7 @@ public class PhieuKham {
     }
 
     public void setLoiDan(String loiDan) {
-        this.loiDan = (loiDan == null || loiDan.isBlank()) ? null : loiDan.trim();
+        this.loiDan = DinhDang.toiDa(loiDan, DinhDang.NOI_DUNG_TOI_DA, "Lời dặn");
     }
 
     public HoSoBenhAn getHoSoBenhAn() {

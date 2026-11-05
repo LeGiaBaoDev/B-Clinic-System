@@ -11,7 +11,6 @@ import com.quanlynhakhoa.entity.enums.*;
 import com.quanlynhakhoa.exception.BusinessException;
 import java.sql.*;
 import java.time.*;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,19 +37,31 @@ public class LichHenDAO {
     }
 
     public List<LichHen> timKiem(LocalDate tu, LocalDate den, TrangThaiLichHen trangThai) {
+        return timKiem("", tu, den, trangThai);
+    }
+
+    
+    public List<LichHen> timKiem(String tuKhoa, LocalDate tu, LocalDate den, TrangThaiLichHen trangThai) {
         khoangNgay(tu, den);
+        String mau = JdbcHelper.tuKhoa(tuKhoa);
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
-            return JdbcHelper.query(c, SQL_SELECT
-                    + " WHERE ngayGioHen>=? AND ngayGioHen<? AND (? IS NULL OR trangThai=?)"
-                    + " AND (?=1 OR maNV=?) ORDER BY ngayGioHen",
+            return JdbcHelper.query(c, """
+                    SELECT lh.maLH, lh.ngayGioHen, lh.trangThai, lh.ghiChu, lh.lyDoHuy,
+                           lh.maKH, lh.maNV, lh.maDV, lh.maPKNguon
+                    FROM LichHen lh JOIN KhachHang kh ON kh.maKH = lh.maKH
+                    WHERE lh.ngayGioHen>=? AND lh.ngayGioHen<? AND (? IS NULL OR lh.trangThai=?)
+                      AND (lh.maLH LIKE ? OR lh.maKH LIKE ? OR kh.tenKH LIKE ? OR kh.sdt LIKE ?)
+                      AND (?=1 OR lh.maNV=?)
+                    ORDER BY lh.ngayGioHen
+                    """,
                     r -> loc(mapRow(c, r, true), actor.vaiTro()),
                     tu.atStartOfDay(), den.plusDays(1).atStartOfDay(), trangThai, trangThai,
-                    actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+                    mau, mau, mau, mau, actor.vaiTro() != VaiTro.NHASI, actor.maNV());
         });
     }
 
-    /** UC024: lịch sử hẹn của một bệnh nhân (mới nhất trước). */
+    
     public List<LichHen> timTheoKhachHang(String maKH) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
@@ -76,26 +87,76 @@ public class LichHenDAO {
         return JdbcHelper.one(c, SQL_SELECT + " WHERE maLH=?", r -> mapRow(c, r, napNguon), ma);
     }
 
+    
     public boolean them(LichHen lh) {
         return luu(lh, true);
     }
 
+    
     public boolean capNhat(LichHen lh) {
         return luu(lh, false);
+    }
+
+    
+    public boolean capNhatThongTin(LichHen lh) {
+        return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
+            MaSinh.khoa(c, "BClinic:lich");
+            LichHen old = lh.getMaLH() == null ? null : layTheoMa(c, lh.getMaLH(), false);
+            yeuCau(old != null && old.getTrangThai() == TrangThaiLichHen.DA_DAT,
+                    "Chỉ được cập nhật lịch hẹn đang ở trạng thái đã đặt.");
+            yeuCau(lh.getKhachHang() != null
+                    && old.getKhachHang().getMaKH().equals(lh.getKhachHang().getMaKH()),
+                    "Không được đổi bệnh nhân của lịch hẹn.");
+            yeuCau(lh.getNhaSi() != null && lh.getNgayGioHen() != null
+                    && old.getNgayGioHen().equals(lh.getNgayGioHen())
+                    && old.getNhaSi().getMaNV().equals(lh.getNhaSi().getMaNV()),
+                    "Cập nhật thông tin không được đổi ngày giờ hoặc nha sĩ; hãy dùng chức năng dời lịch.");
+            kiemTra(c, lh, lh.getMaLH(), false);
+            int rows = JdbcHelper.update(c, "UPDATE LichHen SET maDV=?,ghiChu=?"
+                    + " WHERE maLH=? AND trangThai='DA_DAT'",
+                    lh.getDichVu().getMaDV(), lh.getGhiChu(), lh.getMaLH());
+            if (rows == 1) {
+                NhatKy.ghi(c, "CAP_NHAT_LICH_HEN", lh.getMaLH());
+            }
+            return rows == 1;
+        });
+    }
+
+    
+    boolean danhDauDaDen(Connection c, String maLH) throws SQLException {
+        return JdbcHelper.update(c, "UPDATE LichHen SET trangThai='DA_DEN'"
+                + " WHERE maLH=? AND trangThai='DA_DAT'", maLH) == 1;
+    }
+
+    
+    boolean danhDauHoanTat(Connection c, String maLH) throws SQLException {
+        return JdbcHelper.update(c, "UPDATE LichHen SET trangThai='HOAN_TAT'"
+                + " WHERE maLH=? AND trangThai='DA_DEN'", maLH) == 1;
     }
 
     private boolean luu(LichHen lh, boolean themMoi) {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:lich");
+            return luuTrongGiaoDich(c, lh, themMoi);
+        });
+    }
+
+    /** Phần ghi của {@link #luu}: đã có giao dịch, đã kiểm quyền và đã khóa mã sinh. */
+    private boolean luuTrongGiaoDich(Connection c, LichHen lh, boolean themMoi) throws SQLException {
+        {
             if (!themMoi) {
                 LichHen old = layTheoMa(c, lh.getMaLH(), false);
                 yeuCau(old != null && old.getTrangThai() == TrangThaiLichHen.DA_DAT,
                         "Chỉ được dời lịch đang ở trạng thái đã đặt.");
+                yeuCau(lh.getKhachHang() != null
+                        && old.getKhachHang().getMaKH().equals(lh.getKhachHang().getMaKH()),
+                        "Không được đổi bệnh nhân của lịch hẹn.");
             }
             yeuCau(lh.getTrangThai() == TrangThaiLichHen.DA_DAT,
                     "Đặt/dời lịch phải ở trạng thái đã đặt.");
-            kiemTra(c, lh, themMoi ? "" : lh.getMaLH());
+            kiemTra(c, lh, themMoi ? "" : lh.getMaLH(), true);
 
             String ma = themMoi
                     ? MaSinh.maMoi(c, MaSinh.Bang.LICH_HEN, lh.getNgayGioHen().toLocalDate())
@@ -116,10 +177,77 @@ public class LichHenDAO {
                 NhatKy.ghi(c, themMoi ? "DAT_LICH" : "DOI_LICH", ma);
             }
             return rows == 1;
+        }
+    }
+
+    /** Khoảng ngày cho phép đặt tái khám (gồm cả hai đầu). */
+    public record KhoangNgay(LocalDate tu, LocalDate den) {
+
+        public boolean chua(LocalDate ngay) {
+            return ngay != null && !ngay.isBefore(tu) && !ngay.isAfter(den);
+        }
+    }
+
+    /**
+     * UC017 – đặt lịch tái khám từ phiếu khám đã hoàn tất. Khách hàng, nha sĩ và dịch vụ lấy từ
+     * phiếu nguồn (giữ cùng nha sĩ); ngày hẹn phải nằm trong khoảng tái khám cho phép.
+     *
+     * @return lịch hẹn vừa tạo (đã có mã)
+     */
+    public LichHen taoTaiKham(String maPK, LocalDateTime ngayGio, String ghiChu) {
+        yeuCau(ngayGio != null, "Thiếu ngày giờ tái khám.");
+        return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
+            MaSinh.khoa(c, "BClinic:lich");
+            PhieuKham nguon = phieuNguon(c, maPK);
+            LichHen lh = new LichHen(null, ngayGio, TrangThaiLichHen.DA_DAT, ghiChu, null,
+                    nguon.getHoSoBenhAn().getKhachHang(), nguon.getLichHen().getNhaSi(),
+                    nguon.getLichHen().getDichVu(), nguon);
+            yeuCau(luuTrongGiaoDich(c, lh, true), "Không đặt được lịch tái khám.");
+            return lh;
         });
     }
 
-    private void kiemTra(Connection c, LichHen lh, String boQua) throws SQLException {
+    /** Khoảng ngày tái khám hợp lệ của một phiếu khám đã hoàn tất (để giới hạn ô chọn ngày). */
+    public KhoangNgay khoangNgayTaiKham(String maPK) {
+        return JdbcHelper.doc(c -> {
+            PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
+            return khoangTaiKham(phieuNguon(c, maPK));
+        });
+    }
+
+    /** Gợi ý khung giờ trống của đúng nha sĩ đã khám, cho một ngày nằm trong khoảng tái khám. */
+    public List<LocalDateTime> goiYKhungTrongTaiKham(String maPK, LocalDate ngay) {
+        yeuCau(ngay != null, "Thiếu ngày cần tìm.");
+        LichHen goc = JdbcHelper.doc(c -> {
+            PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
+            PhieuKham nguon = phieuNguon(c, maPK);
+            yeuCau(khoangTaiKham(nguon).chua(ngay), "Ngày tái khám ngoài khoảng cho phép.");
+            return nguon.getLichHen();
+        });
+        return goiYKhungTrong(goc.getKhachHang().getMaKH(), goc.getNhaSi().getMaNV(),
+                goc.getDichVu().getMaDV(), ngay);
+    }
+
+    private PhieuKham phieuNguon(Connection c, String maPK) throws SQLException {
+        PhieuKham nguon = maPK == null ? null : new PhieuKhamDAO().layTheoMa(c, maPK, true);
+        yeuCau(nguon != null && nguon.getTrangThai() == TrangThaiPhieuKham.HOAN_TAT
+                && nguon.getLichHen() != null, "Phiếu nguồn tái khám chưa hoàn tất.");
+        return nguon;
+    }
+
+    private KhoangNgay khoangTaiKham(PhieuKham nguon) {
+        LocalDate ngayLap = nguon.getNgayLap().toLocalDate();
+        return new KhoangNgay(ngayLap.plusDays(quyDinh.taiKhamMinNgay()),
+                ngayLap.plusDays(quyDinh.taiKhamMaxNgay()));
+    }
+
+    /**
+     * @param apDungGioiHanHuy false khi chỉ sửa thông tin của lịch đã có (không đổi giờ), nên không
+     *                         áp dụng hạn chế khung giờ do hủy nhiều lần
+     */
+    private void kiemTra(Connection c, LichHen lh, String boQua, boolean apDungGioiHanHuy)
+            throws SQLException {
         yeuCau(lh.getKhachHang() != null && lh.getNhaSi() != null
                 && lh.getDichVu() != null && lh.getNgayGioHen() != null,
                 "Thiếu khách hàng, nha sĩ, dịch vụ hoặc thời gian hẹn.");
@@ -145,10 +273,12 @@ public class LichHenDAO {
         yeuCau(!trungLich(c, lh.getKhachHang().getMaKH(), lh.getNhaSi().getMaNV(), start, end, boQua),
                 "Trùng lịch khách hàng/nha sĩ hoặc thiếu khoảng cách chuẩn bị.");
 
-        int huy = demHuy(c, lh.getKhachHang().getMaKH(), start.toLocalDate());
-        yeuCau(huy < quyDinh.nguongHuy()
-                || quyDinh.thuocKhungGioiHan(start.toLocalTime(), end.toLocalTime()),
-                "Khách hủy nhiều lần trong tháng; chỉ đặt khung đầu/cuối ngày.");
+        if (apDungGioiHanHuy) {
+            int huy = demHuy(c, lh.getKhachHang().getMaKH(), start.toLocalDate());
+            yeuCau(huy < quyDinh.nguongHuy()
+                    || quyDinh.thuocKhungGioiHan(start.toLocalTime(), end.toLocalTime()),
+                    "Khách hủy nhiều lần trong tháng; chỉ đặt khung đầu/cuối ngày.");
+        }
 
         if (lh.getPhieuKhamNguon() != null) {
             PhieuKham src = new PhieuKhamDAO().layTheoMa(c, lh.getPhieuKhamNguon().getMaPK(), true);
@@ -160,8 +290,10 @@ public class LichHenDAO {
                     && src.getLichHen().getDichVu().getMaDV().equals(dv.getMaDV()),
                     "Tái khám phải giữ khách hàng, nha sĩ và dịch vụ nguồn.");
             yeuCau(dv.getLoTrinhDichVu() != null, "Dịch vụ chưa có lộ trình tái khám.");
-            long days = ChronoUnit.DAYS.between(src.getNgayLap().toLocalDate(), start.toLocalDate());
-            yeuCau(days >= quyDinh.taiKhamMinNgay() && days <= quyDinh.taiKhamMaxNgay(),
+            yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichHen WHERE maPKNguon=? AND maLH<>?"
+                    + " AND trangThai IN('DA_DAT','DA_DEN','HOAN_TAT')", src.getMaPK(), boQua),
+                    "Phiếu khám này đã có lịch tái khám.");
+            yeuCau(khoangTaiKham(src).chua(start.toLocalDate()),
                     "Ngày tái khám ngoài khoảng cho phép.");
         }
     }
@@ -189,6 +321,16 @@ public class LichHenDAO {
     public int demSoLanHuyTrongThang(String maKH, LocalDate ngay) {
         return JdbcHelper.doc(c -> {
             PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
+            return demHuy(c, maKH, ngay);
+        });
+    }
+
+    public int demSoLanHuyTrongThangChoNhaSi(String maKH, LocalDate ngay) {
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c, VaiTro.NHASI, VaiTro.QUANLY);
+            yeuCau(actor.vaiTro() == VaiTro.QUANLY || JdbcHelper.exists(c,
+                    "SELECT 1 FROM LichHen WHERE maKH=? AND maNV=?", maKH, actor.maNV()),
+                    "Bạn không được xem lịch sử hủy của bệnh nhân này.");
             return demHuy(c, maKH, ngay);
         });
     }
@@ -224,7 +366,17 @@ public class LichHenDAO {
      * Gợi ý theo ca trực và thời lượng dịch vụ, loại trùng khách/nha sĩ.
      */
     public List<LocalDateTime> goiYKhungTrong(String maKH, String maNV, String maDV, LocalDate ngay) {
+        return goiYKhungTrong(maKH, maNV, maDV, ngay, null);
+    }
+
+    /**
+     * Như {@link #goiYKhungTrong(String, String, String, LocalDate)}, nhưng bỏ qua lịch
+     * {@code maLHBoQua} (lịch đang được dời) để khung cũ của nó vẫn được gợi ý.
+     */
+    public List<LocalDateTime> goiYKhungTrong(String maKH, String maNV, String maDV, LocalDate ngay,
+            String maLHBoQua) {
         yeuCau(ngay != null, "Thiếu ngày cần tìm.");
+        String boQua = maLHBoQua == null ? "" : maLHBoQua;
         return JdbcHelper.doc(c -> {
             PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
             DichVu dv = new DichVuDAO().layTheoMa(c, maDV);
@@ -242,10 +394,11 @@ public class LichHenDAO {
                     "SELECT lh.maKH,lh.maNV,lh.ngayGioHen,DATEADD(MINUTE,dv.thoiLuong,lh.ngayGioHen)"
                     + " FROM LichHen lh JOIN DichVu dv ON dv.maDV=lh.maDV"
                     + " WHERE (lh.maKH=? OR lh.maNV=?) AND lh.ngayGioHen>=?"
-                    + " AND lh.ngayGioHen<? AND lh.trangThai NOT IN('DA_HUY','KHONG_DEN')",
+                    + " AND lh.ngayGioHen<? AND lh.trangThai NOT IN('DA_HUY','KHONG_DEN')"
+                    + " AND lh.maLH<>?",
                     r -> new Khoang(r.getString(1), r.getString(2),
                             r.getObject(3, LocalDateTime.class), r.getObject(4, LocalDateTime.class)),
-                    maKH, maNV, ngay.atStartOfDay(), ngay.plusDays(1).atStartOfDay());
+                    maKH, maNV, ngay.atStartOfDay(), ngay.plusDays(1).atStartOfDay(), boQua);
 
             boolean limited = demHuy(c, maKH, ngay) >= quyDinh.nguongHuy();
             LocalDateTime bayGio = LocalDateTime.now();

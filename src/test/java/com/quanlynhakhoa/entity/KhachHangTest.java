@@ -12,17 +12,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/*
- * UC009–UC011 – Khách hàng (Bảng 4.3)
- * [x] mã KH đúng "KH" + 5 số, cho phép null khi chưa sinh mã
- * [x] tên không rỗng, được trim
- * [x] ngày sinh không ở tương lai, cho phép null
- * [x] SĐT đúng 10 số bắt đầu bằng 0
- * [x] email rỗng -> null, sai định dạng -> lỗi
- * [x] địa chỉ rỗng -> null
- * [x] equals/hashCode theo mã
- * [x] constructor sao chép
- */
 class KhachHangTest {
 
     private static KhachHang taoHopLe() {
@@ -76,6 +65,14 @@ class KhachHangTest {
         KhachHang kh = new KhachHang();
         kh.setTenKH("  Trần Thị Bình  ");
         assertEquals("Trần Thị Bình", kh.getTenKH());
+    }
+
+    @Test
+    void tuDuLieu_khongKiemTraDinhDang_deDocDuLieuCu() {
+        KhachHang kh = KhachHang.tuDuLieu("KH00001", "Bệnh nhân test UC023",
+                LocalDate.of(1995, 4, 16), false, "0972711898", null, null);
+        assertEquals("Bệnh nhân test UC023", kh.getTenKH());
+        assertEquals("0972711898", kh.getSdt());
     }
 
     @Test

@@ -26,6 +26,7 @@ import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 import com.quanlynhakhoa.ui.component.LineIcon;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.quanlynhakhoa.ui.dialog.DlgChiTietBenhAn;
 import com.quanlynhakhoa.ui.dialog.DlgInHoSo;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -43,6 +44,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -65,7 +67,6 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
-/** UC024 — Nha sĩ tra cứu hồ sơ bệnh án điện tử và lịch sử khám/hẹn của bệnh nhân. */
 public class PnlTraCuuHoSo extends JPanel {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -90,6 +91,7 @@ public class PnlTraCuuHoSo extends JPanel {
     private final transient List<KhachHangDAO.TomTat> dsTomTat = new ArrayList<>();
     private final Map<String, CardBenhNhan> theCard = new LinkedHashMap<>();
     private String maChon;
+    private String chonKhiNap;
     private transient ChiTiet chiTietHienTai;
 
     // trái
@@ -133,6 +135,15 @@ public class PnlTraCuuHoSo extends JPanel {
     }
 
     /** Tải lại danh sách khi chuyển vào trang. */
+    /** Chọn sẵn một bệnh nhân ở lần nạp danh sách kế tiếp (gọi từ Lịch trực → "Xem bệnh án"). */
+    public void chuanBiChon(String maKH) {
+        chonKhiNap = maKH;
+        if (cboLoc.getSelectedIndex() != 0) {
+            cboLoc.setSelectedIndex(0);
+        }
+        txtTim.setText("");
+    }
+
     public void lamMoi() {
         taiDanhSach();
     }
@@ -162,9 +173,7 @@ public class PnlTraCuuHoSo extends JPanel {
         nut.setOpaque(false);
         JButton inHoSo = PnlTongQuanQuanLy.button("In hồ sơ", LineIcon.Type.PRINTER, false);
         inHoSo.addActionListener(e -> inHoSo());
-        btnMoPhieu.addActionListener(e -> moPhieu());
         nut.add(inHoSo);
-        nut.add(btnMoPhieu);
         p.add(nut, BorderLayout.EAST);
         return p;
     }
@@ -265,6 +274,7 @@ public class PnlTraCuuHoSo extends JPanel {
                 hienThi.add(t);
             }
         }
+        hienThi.sort(Comparator.comparing(t -> t.khachHang().getTenKH()));
         for (KhachHangDAO.TomTat t : hienThi) {
             CardBenhNhan card = new CardBenhNhan(t);
             theCard.put(t.khachHang().getMaKH(), card);
@@ -280,8 +290,14 @@ public class PnlTraCuuHoSo extends JPanel {
             maChon = null;
             trangThaiRong();
         } else {
-            String giuChon = maChon != null && theCard.containsKey(maChon)
-                    ? maChon : hienThi.get(0).khachHang().getMaKH();
+            String giuChon;
+            if (chonKhiNap != null && theCard.containsKey(chonKhiNap)) {
+                giuChon = chonKhiNap;
+                chonKhiNap = null;
+            } else {
+                giuChon = maChon != null && theCard.containsKey(maChon)
+                        ? maChon : hienThi.get(0).khachHang().getMaKH();
+            }
             chonBenhNhan(giuChon);
         }
     }
@@ -356,15 +372,7 @@ public class PnlTraCuuHoSo extends JPanel {
         JLabel note = new JLabel("Thông tin y tế · Chỉ sử dụng cho mục đích khám chữa bệnh");
         note.setFont(font(10));
         note.setForeground(MUTED);
-        JLabel tiepTuc = linkLabel("Tiếp tục phiếu khám →");
-        tiepTuc.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                moPhieu();
-            }
-        });
         chan.add(note, BorderLayout.WEST);
-        chan.add(tiepTuc, BorderLayout.EAST);
         pnlPhai.add(chan, BorderLayout.SOUTH);
         return pnlPhai;
     }
@@ -421,14 +429,14 @@ public class PnlTraCuuHoSo extends JPanel {
                 HoSoBenhAn hs = hoSoDAO.layTheoKhachHang(maKH);
                 List<PhieuKham> phieu = phieuKhamDAO.timTheoKhachHang(maKH);
                 List<LichHen> lich = lichHenDAO.timTheoKhachHang(maKH);
-                Map<String, ChiTietPhieuKham> ctDau = new LinkedHashMap<>();
+                Map<String, List<ChiTietPhieuKham>> ctTheoPhieu = new LinkedHashMap<>();
                 for (PhieuKham pk : phieu) {
                     List<ChiTietPhieuKham> ct = chiTietDAO.layTheoPhieuKham(pk.getMaPK());
                     if (!ct.isEmpty()) {
-                        ctDau.put(pk.getMaPK(), ct.get(0));
+                        ctTheoPhieu.put(pk.getMaPK(), ct);
                     }
                 }
-                return new ChiTiet(kh, hs, phieu, lich, ctDau);
+                return new ChiTiet(kh, hs, phieu, lich, ctTheoPhieu);
             }
 
             @Override
@@ -446,7 +454,7 @@ public class PnlTraCuuHoSo extends JPanel {
     }
 
     private record ChiTiet(KhachHang kh, HoSoBenhAn hs, List<PhieuKham> phieu,
-            List<LichHen> lich, Map<String, ChiTietPhieuKham> ctDau) {
+            List<LichHen> lich, Map<String, List<ChiTietPhieuKham>> ctTheoPhieu) {
     }
 
     private void hienChiTiet(ChiTiet d) {
@@ -491,59 +499,79 @@ public class PnlTraCuuHoSo extends JPanel {
 
     private void hienHoSo(ChiTiet d) {
         pnlHoSo.removeAll();
-        if (d.phieu().isEmpty()) {
-            pnlHoSo.add(trong("Chưa có phiếu khám nào cho bệnh nhân này."));
+        List<PhieuKham> hoanTat = chiPhieuHoanTat(d.phieu());
+        if (hoanTat.isEmpty()) {
+            pnlHoSo.add(trong("Chưa có phiếu khám nào đã hoàn tất."));
         }
-        for (PhieuKham pk : d.phieu()) {
-            pnlHoSo.add(khoiPhieu(pk, d.ctDau().get(pk.getMaPK())));
+        for (PhieuKham pk : hoanTat) {
+            List<ChiTietPhieuKham> ct = d.ctTheoPhieu().get(pk.getMaPK());
+            pnlHoSo.add(khoiPhieu(pk, ct == null || ct.isEmpty() ? null : ct.get(0)));
             pnlHoSo.add(Box.createVerticalStrut(10));
         }
         capNhat(pnlHoSo);
     }
 
     private JPanel khoiPhieu(PhieuKham pk, ChiTietPhieuKham ct) {
-        JPanel p = new JPanel();
-        p.setOpaque(false);
-        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        p.setAlignmentX(LEFT_ALIGNMENT);
-        p.setBorder(new EmptyBorder(0, 0, 8, 0));
+        JPanel row = new JPanel(new BorderLayout(12, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 64));
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0xEDF1F5)),
+                new EmptyBorder(8, 0, 9, 0)));
 
-        JPanel dong = new JPanel(new BorderLayout());
-        dong.setOpaque(false);
+        JPanel info = new JPanel();
+        info.setOpaque(false);
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+        JLabel dong = new JLabel("Hồ sơ " + pk.getMaPK() + " · Ngày "
+                + pk.getNgayLap().format(NGAY));
+        dong.setFont(bold(12));
+        dong.setForeground(TEXT);
         dong.setAlignmentX(LEFT_ALIGNMENT);
-        dong.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
-        JLabel tieuDe = new JLabel("Phiếu khám ngày " + pk.getNgayLap().format(NGAY));
-        tieuDe.setFont(bold(12));
-        tieuDe.setForeground(TEXT);
-        dong.add(tieuDe, BorderLayout.WEST);
-        JPanel bd = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        bd.setOpaque(false);
-        bd.add(pillTrangThai(pk.getTrangThai()));
-        dong.add(bd, BorderLayout.EAST);
-        p.add(dong);
+        String chanDoan = ct == null ? "—" : chanDoanNgan(ct.getChanDoan());
+        JLabel benh = new JLabel("Bệnh: " + chanDoan);
+        benh.setFont(font(11));
+        benh.setForeground(MUTED);
+        benh.setAlignmentX(LEFT_ALIGNMENT);
+        info.add(dong);
+        info.add(Box.createVerticalStrut(3));
+        info.add(benh);
+        row.add(info, BorderLayout.CENTER);
 
-        String bs = pk.getLichHen() != null && pk.getLichHen().getNhaSi() != null
-                ? "BS. " + pk.getLichHen().getNhaSi().getHoTenNV() : "—";
-        String dv = pk.getLichHen() != null && pk.getLichHen().getDichVu() != null
-                ? pk.getLichHen().getDichVu().getTenDV() : "—";
-        p.add(dongChu(bs + " · " + dv, font(11), MUTED));
+        JButton chiTiet = PnlTongQuanQuanLy.button("Chi tiết", null, false);
+        chiTiet.setPreferredSize(new Dimension(112, 34));
+        chiTiet.addActionListener(e -> moChiTiet(pk));
+        JPanel nut = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        nut.setOpaque(false);
+        nut.add(chiTiet);
+        row.add(nut, BorderLayout.EAST);
+        return row;
+    }
 
-        if (ct != null) {
-            JPanel g = new JPanel(new GridLayout(1, 2, 16, 0));
-            g.setOpaque(false);
-            g.setAlignmentX(LEFT_ALIGNMENT);
-            g.setBorder(new EmptyBorder(6, 0, 0, 0));
-            g.add(oInfo("Triệu chứng ghi nhận", valueLabel(trieuChungNgan(ct.getTrieuChung()))));
-            g.add(oInfo("Chẩn đoán dự kiến", valueLabel(chanDoanNgan(ct.getChanDoan()))));
-            p.add(g);
+    private void moChiTiet(PhieuKham pk) {
+        if (pk.getTrangThai() != TrangThaiPhieuKham.HOAN_TAT) {
+            return;
         }
-        if (pk.getLoiDan() != null && !pk.getLoiDan().isBlank()) {
-            p.add(hopThongTin("Lời dặn: " + motDong(pk.getLoiDan()), new Color(0xF4F7FA), MUTED));
-        } else if (pk.getTrangThai() != TrangThaiPhieuKham.HOAN_TAT) {
-            p.add(hopThongTin("Nội dung nháp chỉ được ghi vào bệnh án sau khi bác sĩ xác nhận.",
-                    new Color(0xF4F7FA), MUTED));
-        }
-        return p;
+        new SwingWorker<List<ChiTietPhieuKham>, Void>() {
+            @Override
+            protected List<ChiTietPhieuKham> doInBackground() {
+                return chiTietDAO.layTheoPhieuKham(pk.getMaPK());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ChiTiet d = chiTietHienTai;
+                    DlgChiTietBenhAn.hien(javax.swing.SwingUtilities.getWindowAncestor(PnlTraCuuHoSo.this),
+                            d == null ? null : d.kh(), d == null ? null : d.hs(), pk, get());
+                } catch (CancellationException ignored) {
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException e) {
+                    baoLoi(e.getCause());
+                }
+            }
+        }.execute();
     }
 
     private void hienLichSu(List<LichHen> ds) {
@@ -585,7 +613,7 @@ public class PnlTraCuuHoSo extends JPanel {
     private void hienGhiChu(List<PhieuKham> phieu) {
         pnlGhiChu.removeAll();
         boolean co = false;
-        for (PhieuKham pk : phieu) {
+        for (PhieuKham pk : chiPhieuHoanTat(phieu)) {
             if (pk.getLoiDan() != null && !pk.getLoiDan().isBlank()) {
                 co = true;
                 JLabel l = valueLabel(pk.getNgayLap().format(NGAY) + ": " + motDong(pk.getLoiDan()));
@@ -597,6 +625,10 @@ public class PnlTraCuuHoSo extends JPanel {
             pnlGhiChu.add(trong("Chưa có ghi chú/lời dặn."));
         }
         capNhat(pnlGhiChu);
+    }
+
+    private static List<PhieuKham> chiPhieuHoanTat(List<PhieuKham> ds) {
+        return ds.stream().filter(pk -> pk.getTrangThai() == TrangThaiPhieuKham.HOAN_TAT).toList();
     }
 
     private void trangThaiRong() {
@@ -637,7 +669,7 @@ public class PnlTraCuuHoSo extends JPanel {
             return;
         }
         DlgInHoSo.hien(javax.swing.SwingUtilities.getWindowAncestor(this),
-                d.kh(), d.hs(), d.phieu(), d.ctDau());
+                d.kh(), d.hs(), chiPhieuHoanTat(d.phieu()), d.ctTheoPhieu());
     }
 
     private void baoLoi(Throwable loi) {
@@ -758,7 +790,7 @@ public class PnlTraCuuHoSo extends JPanel {
         return s == null ? "" : s.replaceAll("\\s+", " ").trim();
     }
 
-    /** Giá trị sau nhãn (vd "Triệu chứng:") trong chuỗi nhiều dòng do UC023 lưu; null nếu không có nhãn. */
+    
     private static String dong(String blob, String nhan) {
         if (blob == null) {
             return null;
@@ -835,13 +867,38 @@ public class PnlTraCuuHoSo extends JPanel {
         private boolean chon;
 
         CardBenhNhan(KhachHangDAO.TomTat t) {
-            super(new BorderLayout(8, 0));
+            super(new BorderLayout(12, 0));
             KhachHang kh = t.khachHang();
             setOpaque(false);
             setAlignmentX(LEFT_ALIGNMENT);
-            setMaximumSize(new Dimension(Integer.MAX_VALUE, 92));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 106));
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setBorder(new EmptyBorder(10, 12, 10, 12));
+            setBorder(new EmptyBorder(12, 15, 12, 13));
+
+            JLabel avatar = new JLabel(vietTat(kh.getTenKH()), SwingConstants.CENTER) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(TEAL_LIGHT);
+                    g2.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
+                    g2.dispose();
+                    super.paintComponent(g);
+                }
+            };
+            avatar.setFont(bold(14));
+            avatar.setForeground(TEAL);
+            avatar.setPreferredSize(new Dimension(42, 42));
+            avatar.setMinimumSize(new Dimension(42, 42));
+            avatar.setMaximumSize(new Dimension(42, 42));
+            JPanel avatarWrap = new JPanel();
+            avatarWrap.setOpaque(false);
+            avatarWrap.setLayout(new BoxLayout(avatarWrap, BoxLayout.Y_AXIS));
+            avatar.setAlignmentY(CENTER_ALIGNMENT);
+            avatarWrap.add(Box.createVerticalGlue());
+            avatarWrap.add(avatar);
+            avatarWrap.add(Box.createVerticalGlue());
+            add(avatarWrap, BorderLayout.WEST);
 
             JPanel info = new JPanel();
             info.setOpaque(false);
@@ -850,8 +907,8 @@ public class PnlTraCuuHoSo extends JPanel {
             ten.setFont(bold(13));
             ten.setForeground(TEXT);
             ten.setAlignmentX(LEFT_ALIGNMENT);
-            JLabel meta = new JLabel(kh.getMaKH() + " · " + (kh.isGioiTinh() ? "Nam" : "Nữ")
-                    + (kh.getNgaySinh() == null ? "" : " · " + kh.getNgaySinh().format(NGAY)));
+            JLabel meta = new JLabel(kh.getMaKH() + "  ·  " + (kh.isGioiTinh() ? "Nam" : "Nữ")
+                    + (kh.getNgaySinh() == null ? "" : "  ·  " + kh.getNgaySinh().format(NGAY)));
             meta.setFont(font(10));
             meta.setForeground(MUTED);
             meta.setAlignmentX(LEFT_ALIGNMENT);
@@ -859,21 +916,33 @@ public class PnlTraCuuHoSo extends JPanel {
             sdt.setFont(font(10));
             sdt.setForeground(MUTED);
             sdt.setAlignmentX(LEFT_ALIGNMENT);
-            JLabel tt = new JLabel(dongTrangThai(t));
-            tt.setFont(font(10));
-            tt.setForeground(t.coLichSapToi() ? TEAL : MUTED);
-            tt.setAlignmentX(LEFT_ALIGNMENT);
+
             info.add(ten);
             info.add(Box.createVerticalStrut(3));
             info.add(meta);
             info.add(Box.createVerticalStrut(2));
             info.add(sdt);
-            info.add(Box.createVerticalStrut(4));
-            info.add(tt);
+            if (t.coLichSapToi() && t.lichGanNhat() != null) {
+                PillLabel badge = new PillLabel();
+                badge.set("Lịch hẹn " + t.lichGanNhat().format(NGAY_GIO), TEAL, TEAL_LIGHT);
+                JPanel badgeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+                badgeRow.setOpaque(false);
+                badgeRow.setAlignmentX(LEFT_ALIGNMENT);
+                badgeRow.add(badge);
+                info.add(Box.createVerticalStrut(5));
+                info.add(badgeRow);
+            }
             add(info, BorderLayout.CENTER);
 
             JLabel chevron = new JLabel(new LineIcon(LineIcon.Type.ARROW, MUTED, 14));
-            add(chevron, BorderLayout.EAST);
+            JPanel chevronWrap = new JPanel();
+            chevronWrap.setOpaque(false);
+            chevronWrap.setLayout(new BoxLayout(chevronWrap, BoxLayout.Y_AXIS));
+            chevron.setAlignmentY(CENTER_ALIGNMENT);
+            chevronWrap.add(Box.createVerticalGlue());
+            chevronWrap.add(chevron);
+            chevronWrap.add(Box.createVerticalGlue());
+            add(chevronWrap, BorderLayout.EAST);
             addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
@@ -892,19 +961,30 @@ public class PnlTraCuuHoSo extends JPanel {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(chon ? TEAL_LIGHT : Color.WHITE);
-            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+            if (chon) {
+                g2.setColor(TEAL);
+                g2.fillRoundRect(0, 0, 4, getHeight() - 1, 10, 10);
+                g2.fillRect(2, 0, 2, getHeight() - 1);
+            }
             g2.setColor(chon ? TEAL : BORDER);
-            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+            g2.setStroke(new java.awt.BasicStroke(chon ? 1.5f : 1f));
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
             g2.dispose();
             super.paintComponent(g);
         }
 
-        private String dongTrangThai(KhachHangDAO.TomTat t) {
-            if (t.lichGanNhat() != null && t.coLichSapToi()) {
-                return "Lịch hẹn: " + t.lichGanNhat().format(NGAY_GIO);
-            }
-            return t.trangThaiHoSo() + " · " + t.soLanKham() + " lần khám";
+    }
+
+    private static String vietTat(String hoTen) {
+        if (hoTen == null || hoTen.isBlank()) {
+            return "?";
         }
+        String[] phan = hoTen.trim().split("\\s+");
+        if (phan.length == 1) {
+            return phan[0].substring(0, Math.min(2, phan[0].length())).toUpperCase(Locale.ROOT);
+        }
+        return ("" + phan[0].charAt(0) + phan[phan.length - 1].charAt(0)).toUpperCase(Locale.ROOT);
     }
 
     // ---------------------------------------------------------------- pill

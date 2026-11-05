@@ -67,11 +67,25 @@
             <version>1.4</version>
         </dependency>
 
-        <!-- PDFBox: lưu phiếu tiếp nhận ra PDF -->
+        <!-- PDFBox: lưu phiếu tiếp nhận ra PDF --> 
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>2.0.31</version>
+        </dependency>
+
+        <!-- JFreeChart: biểu đồ tròn/cột cho thống kê lịch hẹn (UC029) -->
+        <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.5.5</version>
+        </dependency>
+
+        <!-- Angus Mail: gửi email qua SMTP (quên mật khẩu) -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-mail</artifactId>
+            <version>2.0.3</version>
         </dependency>
     </dependencies>
 

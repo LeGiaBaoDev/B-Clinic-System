@@ -1,10 +1,10 @@
 package com.quanlynhakhoa.ui.panel;
 
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO;
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.DoanhThuNgay;
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.LichHenTrongNgay;
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.NhaSiHienTai;
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.TongQuanQuanLy;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO.DoanhThuNgay;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO.LichHenTrongNgay;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO.NhaSiHienTai;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO.TongQuanQuanLy;
 import com.quanlynhakhoa.entity.enums.TrangThaiLichHen;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.ui.component.*;
@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.concurrent.CancellationException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -38,7 +39,9 @@ public class PnlTongQuanQuanLy extends JPanel {
     private static final DateTimeFormatter GIO = DateTimeFormatter.ofPattern("HH:mm");
     private final Consumer<String> dieuHuong;
     private final String tenQuanLy;
-    private final Supplier<TongQuanQuanLy> taiDuLieu;
+    private final Function<LocalDate, TongQuanQuanLy> taiDuLieu;
+    private LocalDate ngayDangTai;
+    private final JButton btnTaiLai = button("Làm mới", null, false);
     private final javax.swing.Timer tuLamMoi = new javax.swing.Timer(60_000, e -> lamMoiDuLieu());
     private SwingWorker<TongQuanQuanLy, Void> worker;
     private Consumer<TrangThaiTai> langNghe = state -> {
@@ -49,6 +52,7 @@ public class PnlTongQuanQuanLy extends JPanel {
     private final JLabel lblCaLichHen = label("Đang tải lịch hẹn...", font(12), MUTED);
     private final JLabel lblLichTiep = label("Đang tải dữ liệu...", font(11), MUTED);
     private final JLabel lblTongBayNgay = new FitLabel("—", bold(27), 20);
+    private final JLabel lblKyBieuDo = label("Doanh thu đã thu · 7 ngày gần nhất", bold(15), TEXT);
     private final JLabel lblTangTruong = label(" — ", bold(10), MUTED);
     private final JLabel lblTieuDeNhaSi = label("Trạng thái nha sĩ", bold(15), TEXT);
     private final JLabel lblGhiChuNhaSi = label("Đang tải dữ liệu...", font(11), TEAL);
@@ -62,10 +66,15 @@ public class PnlTongQuanQuanLy extends JPanel {
     private Boolean compactMode;
 
     public PnlTongQuanQuanLy(String tenQuanLy, Consumer<String> dieuHuong) {
-        this(tenQuanLy, dieuHuong, () -> new ThongKeDoanhThuDAO().layTongQuanQuanLy());
+        this(tenQuanLy, dieuHuong, ngay -> new TongQuanQuanLyDAO().layTongQuanQuanLy(ngay));
     }
 
     public PnlTongQuanQuanLy(String tenQuanLy, Consumer<String> dieuHuong, Supplier<TongQuanQuanLy> taiDuLieu) {
+        this(tenQuanLy, dieuHuong, ngay -> taiDuLieu.get());
+    }
+
+    public PnlTongQuanQuanLy(String tenQuanLy, Consumer<String> dieuHuong,
+            Function<LocalDate, TongQuanQuanLy> taiDuLieu) {
         super(new GridBagLayout());
         this.dieuHuong = dieuHuong;
         this.tenQuanLy = tenQuanLy;
@@ -119,7 +128,15 @@ public class PnlTongQuanQuanLy extends JPanel {
         JPanel text = new JPanel(new BorderLayout(0, 4));
         text.setOpaque(false);
         text.add(lblLoiChao, BorderLayout.NORTH);
-        text.add(lblNgay, BorderLayout.SOUTH);
+        JPanel dates = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        dates.setOpaque(false);
+        dates.add(lblNgay);
+        btnTaiLai.setName("lamMoiTongQuan");
+        btnTaiLai.setToolTipText("Làm mới dữ liệu hôm nay (F5)");
+        btnTaiLai.addActionListener(e -> lamMoiDuLieu());
+        dates.add(btnTaiLai);
+        text.add(dates, BorderLayout.SOUTH);
+        lblNgay.setToolTipText("Các chỉ số hôm nay; trạng thái hóa đơn tại lúc tải.");
         panel.add(text, BorderLayout.CENTER);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 9, 5));
         actions.setOpaque(false);
@@ -138,7 +155,7 @@ public class PnlTongQuanQuanLy extends JPanel {
         metrics.setOpaque(false);
         metrics.setPreferredSize(new Dimension(0, 124));
         metrics.add(the(0, "Lịch hẹn hôm nay", LineIcon.Type.CALENDAR));
-        metrics.add(the(1, "Doanh thu dự kiến", LineIcon.Type.CHART));
+        metrics.add(the(1, "Doanh thu tạm tính", LineIcon.Type.CHART));
         metrics.add(the(2, "Hóa đơn đã thanh toán", LineIcon.Type.CHECK));
         metrics.add(the(3, "Hóa đơn chưa thanh toán", LineIcon.Type.INVOICE));
         return metrics;
@@ -341,7 +358,7 @@ public class PnlTongQuanQuanLy extends JPanel {
         JPanel top = new JPanel();
         top.setOpaque(false);
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        JLabel title = label("Doanh thu đã thu · 7 ngày gần nhất", bold(15), TEXT);
+        JLabel title = lblKyBieuDo;
         title.setAlignmentX(LEFT_ALIGNMENT);
         top.add(title);
         top.add(Box.createVerticalStrut(12));
@@ -426,6 +443,7 @@ public class PnlTongQuanQuanLy extends JPanel {
             worker.cancel(true);
             worker = null;
         }
+        btnTaiLai.setEnabled(true);
         super.removeNotify();
     }
 
@@ -434,14 +452,39 @@ public class PnlTongQuanQuanLy extends JPanel {
             SwingUtilities.invokeLater(this::lamMoiDuLieu);
             return;
         }
+        LocalDate ngayXem = LocalDate.now(ZONE);
         if (worker != null) {
-            return;
+            if (ngayXem.equals(ngayDangTai)) return;
+            worker.cancel(true);
         }
+        if (duLieu != null && !duLieu.ngayXem().equals(ngayXem)) {
+            duLieu = null;
+            lichHen = List.of();
+            maLichTiep = null;
+            modelLichHen.setRowCount(0);
+            for (int i = 0; i < lblSoLieu.length; i++) {
+                lblSoLieu[i].setText("—");
+                lblGhiChu[i].setText("Đang làm mới dữ liệu hôm nay...");
+            }
+            lblTongBayNgay.setText("—");
+            lblTangTruong.setText(" — ");
+            bieuDo.setPoints(List.of());
+            pnlNhaSi.removeAll();
+            lblTieuDeNhaSi.setText("Đang tải lịch nha sĩ...");
+            lblGhiChuNhaSi.setText("Đang làm mới dữ liệu hôm nay...");
+            pnlNhaSi.revalidate();
+            pnlNhaSi.repaint();
+        }
+        LocalDate requested = ngayXem;
+        ngayDangTai = requested;
+        btnTaiLai.setEnabled(false);
+        lblCaLichHen.setText("Đang tải " + requested.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "...");
+        lblLichTiep.setText("Đang tải dữ liệu...");
         langNghe.accept(new TrangThaiTai(true, duLieu, null));
         worker = new SwingWorker<>() {
             @Override
             protected TongQuanQuanLy doInBackground() {
-                return taiDuLieu.get();
+                return taiDuLieu.apply(requested);
             }
 
             @Override
@@ -449,8 +492,16 @@ public class PnlTongQuanQuanLy extends JPanel {
                 if (this != worker || isCancelled()) {
                     return;
                 }
+                if (!requested.equals(LocalDate.now(ZONE))) {
+                    worker = null;
+                    lamMoiDuLieu();
+                    return;
+                }
                 try {
                     TongQuanQuanLy data = java.util.Objects.requireNonNull(get(), "DAO trả dữ liệu rỗng.");
+                    if (!requested.equals(data.ngayXem())) {
+                        throw new IllegalStateException("Ngày dữ liệu không khớp ngày yêu cầu.");
+                    }
                     hienThiDuLieu(data);
                     langNghe.accept(new TrangThaiTai(false, data, null));
                 } catch (CancellationException ignored) {
@@ -475,6 +526,7 @@ public class PnlTongQuanQuanLy extends JPanel {
                 } finally {
                     if (this == worker) {
                         worker = null;
+                        btnTaiLai.setEnabled(true);
                     }
                 }
             }
@@ -492,13 +544,15 @@ public class PnlTongQuanQuanLy extends JPanel {
         lblGhiChu[0].setText(data.daDat() + " đã đặt · " + data.daDen() + " đã đến · " + data.daHuy() + " đã hủy");
         lblGhiChu[0].setToolTipText("Hoàn tất: " + data.hoanTat() + " · Không đến: " + data.khongDen());
         lblSoLieu[1].setText(tien(data.doanhThuDuKien()));
-        lblGhiChu[1].setText("Đã thu hôm nay + còn phải thu");
+        lblGhiChu[1].setText("Hóa đơn lập hôm nay");
         lblSoLieu[2].setText(Long.toString(data.hoaDonDaTra()));
-        lblGhiChu[2].setText("Hôm nay: " + tien(data.daThu()));
+        lblGhiChu[2].setText("Đã thanh toán: " + tien(data.daThu()));
+        lblGhiChu[2].setToolTipText("Hóa đơn lập hôm nay; trạng thái thanh toán hiện tại.");
         lblSoLieu[3].setText(Long.toString(data.hoaDonChuaTra()));
         lblGhiChu[3].setText("Còn phải thu: " + tien(data.conPhaiThu()));
-        lblSoLieu[3].setToolTipText("Tất cả hóa đơn chưa thanh toán đến " + data.capNhatLuc().format(DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy")));
+        lblSoLieu[3].setToolTipText("Hóa đơn lập hôm nay, chưa trả tại " + data.capNhatLuc().format(DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy")));
         lblTongBayNgay.setText(tien(data.thuBayNgay()));
+        lblTangTruong.setVisible(true);
         var change = data.tangTruong();
         boolean down = change.isPresent() && change.get().signum() < 0;
         boolean unchanged = change.isEmpty() || change.get().signum() == 0;
@@ -506,6 +560,8 @@ public class PnlTongQuanQuanLy extends JPanel {
         lblTangTruong.setForeground(unchanged ? MUTED : down ? new Color(0xC94C48) : GREEN);
         lblTangTruong.setBackground(unchanged ? new Color(0xF1F3F6) : down ? new Color(0xFDEDEC) : new Color(0xE5F5ED));
         bieuDo.setPoints(data.bieuDo());
+        lblKyBieuDo.setToolTipText("Thực thu từ " + data.ngayXem().minusDays(6).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                + " đến " + data.ngayXem().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
         lichHen = data.lichHen();
         LichHenTrongNgay next = lichTiepTheo();
         maLichTiep = next == null ? null : next.maLH();
@@ -513,11 +569,15 @@ public class PnlTongQuanQuanLy extends JPanel {
         for (LichHenTrongNgay lh : lichHen) {
             modelLichHen.addRow(new Object[]{lh.ngayGio().format(GIO), lh.benhNhan(), "BS. " + lh.nhaSi(), tenTrangThai(lh.trangThai())});
         }
-        lblCaLichHen.setText("Hôm nay · " + data.tongLichHen() + " lịch hẹn");
+        boolean homNay = data.ngayXem().equals(data.capNhatLuc().toLocalDate());
+        String dateText = data.ngayXem().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        lblCaLichHen.setText(dateText + " · " + data.tongLichHen() + " lịch hẹn");
         lblLichTiep.setText(next == null ? (lichHen.isEmpty() ? "Hôm nay chưa có lịch hẹn." : "Không còn lịch hẹn đang chờ hoặc sắp tới trong ngày.")
                 : (next.trangThai() == TrangThaiLichHen.DA_DEN ? "Đang chờ: " : "Tiếp theo: ") + next.benhNhan() + " · " + next.ngayGio().format(GIO));
         lblLichTiep.setToolTipText(lblLichTiep.getText());
-        lblTieuDeNhaSi.setText("Trạng thái nha sĩ · " + data.capNhatLuc().format(GIO));
+        if (!homNay) lblLichTiep.setText("Lịch hẹn ngày " + dateText + " · không hiển thị lượt chờ hiện tại.");
+        lblTieuDeNhaSi.setText(homNay ? "Trạng thái nha sĩ · " + data.capNhatLuc().format(GIO)
+                : "Lịch nha sĩ · " + dateText);
         pnlNhaSi.removeAll();
         for (NhaSiHienTai ns : data.nhaSi()) {
             boolean busy = ns.benhNhanDangKham() != null;
@@ -525,6 +585,10 @@ public class PnlTongQuanQuanLy extends JPanel {
             String desc = busy ? ns.benhNhanDangKham() + " · bắt đầu " + ns.batDauKham().format(GIO)
                     : ns.lichTiep() != null ? "Tiếp: " + ns.benhNhanTiep() + " · " + ns.lichTiep().format(GIO)
                     : ns.trongCa() ? "Chưa có lịch tiếp theo trong ngày." : "Không có ca làm việc hiện tại.";
+            if (!homNay) {
+                status = ns.trongCa() && ns.nghiPhep() ? "Có ca / nghỉ" : ns.trongCa() ? "Có phân ca" : ns.nghiPhep() ? "Nghỉ phép" : "Chưa phân ca";
+                desc = "Theo lịch phân công; không có dữ liệu bận/rảnh lịch sử.";
+            }
             JPanel row = nhaSi("BS. " + ns.hoTen(), desc, status, busy ? 1 : ns.trongCa() && !ns.nghiPhep() ? 0 : 2);
             row.setAlignmentX(LEFT_ALIGNMENT);
             row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 72));
@@ -538,7 +602,8 @@ public class PnlTongQuanQuanLy extends JPanel {
         }
         pnlNhaSi.add(Box.createVerticalGlue());
         long busy = data.nhaSi().stream().filter(ns -> ns.benhNhanDangKham() != null).count();
-        lblGhiChuNhaSi.setText(data.nhaSi().size() + " nha sĩ hoạt động · " + busy + " đang khám");
+        lblGhiChuNhaSi.setText(homNay ? data.nhaSi().size() + " nha sĩ hoạt động · " + busy + " đang khám"
+                : "Theo lịch phân công · danh sách nha sĩ đang hoạt động");
         pnlNhaSi.revalidate();
         pnlNhaSi.repaint();
         revalidate();
@@ -546,7 +611,7 @@ public class PnlTongQuanQuanLy extends JPanel {
     }
 
     private LichHenTrongNgay lichTiepTheo() {
-        if (duLieu == null) {
+        if (duLieu == null || !duLieu.ngayXem().equals(duLieu.capNhatLuc().toLocalDate())) {
             return null;
         }
         return lichHen.stream().filter(lh -> (lh.trangThai() == TrangThaiLichHen.DA_DAT && !lh.ngayGio().isBefore(duLieu.capNhatLuc()))
@@ -567,6 +632,17 @@ public class PnlTongQuanQuanLy extends JPanel {
         return lichTiepTheo() != null;
     }
 
+    /** Danh sách lịch hẹn đang chờ/sắp tới trong ngày cho popup chuông. */
+    public List<LichHenTrongNgay> thongBaoLich() {
+        if (duLieu == null) {
+            return List.of();
+        }
+        return lichHen.stream()
+                .filter(lh -> lh.trangThai() == TrangThaiLichHen.DA_DAT
+                        || lh.trangThai() == TrangThaiLichHen.DA_DEN)
+                .toList();
+    }
+
     private boolean laLichTiep(JTable table, int row) {
         int index = table.convertRowIndexToModel(row);
         return index >= 0 && index < lichHen.size() && java.util.Objects.equals(maLichTiep, lichHen.get(index).maLH());
@@ -576,7 +652,7 @@ public class PnlTongQuanQuanLy extends JPanel {
         String greeting = now.getHour() < 12 ? "Chào buổi sáng" : now.getHour() < 18 ? "Chào buổi chiều" : "Chào buổi tối";
         lblLoiChao.setText(greeting + ", " + tenQuanLy);
         String date = now.format(DateTimeFormatter.ofPattern("EEEE, dd 'tháng' MM 'năm' yyyy", Locale.forLanguageTag("vi-VN")));
-        lblNgay.setText(Character.toUpperCase(date.charAt(0)) + date.substring(1) + " · Tổng quan hoạt động phòng khám");
+        lblNgay.setText("Hôm nay · " + now.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
     }
 
     private static String tenTrangThai(TrangThaiLichHen state) {
@@ -705,7 +781,7 @@ public class PnlTongQuanQuanLy extends JPanel {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int base = getHeight() - 23;
             int max = Math.max(0, base - 24);
-            double step = getWidth() / 7.0;
+            double step = getWidth() / (double) Math.max(1, points.size());
             double highest = points.stream().mapToDouble(p -> p.soTien().doubleValue()).max().orElse(0);
             double scale = Math.max(1, highest * 1.15);
             g.setFont(font(9));
@@ -717,7 +793,7 @@ public class PnlTongQuanQuanLy extends JPanel {
                 int height = (int) (point.soTien().doubleValue() / scale * max);
                 int x = (int) (step * i + (step - width) / 2);
                 int y = base - height;
-                g.setColor(i == 6 ? TEAL_DARK : new Color(0xB6DEDC));
+                g.setColor(i == points.size() - 1 ? TEAL_DARK : new Color(0xB6DEDC));
                 g.fill(new RoundRectangle2D.Double(x, y, width, height, 2, 2));
                 g.setColor(MUTED);
                 g.drawString(amount, x + (width - fm.stringWidth(amount)) / 2, Math.max(10, y - 8));

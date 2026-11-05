@@ -1,13 +1,5 @@
 package com.quanlynhakhoa.ui.panel;
 
-import com.quanlynhakhoa.dao.KhachHangDAO;
-import com.quanlynhakhoa.dao.KhachHangDAO.TomTat;
-import com.quanlynhakhoa.entity.KhachHang;
-import com.quanlynhakhoa.entity.enums.VaiTro;
-import com.quanlynhakhoa.exception.BusinessException;
-import com.quanlynhakhoa.exception.DataAccessException;
-import com.quanlynhakhoa.ui.component.LineIcon;
-import com.quanlynhakhoa.ui.component.SurfacePanel;
 import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
 import static com.quanlynhakhoa.ui.component.UiConstants.GREEN;
@@ -17,8 +9,20 @@ import static com.quanlynhakhoa.ui.component.UiConstants.TEAL_LIGHT;
 import static com.quanlynhakhoa.ui.component.UiConstants.TEXT;
 import static com.quanlynhakhoa.ui.component.UiConstants.bold;
 import static com.quanlynhakhoa.ui.component.UiConstants.font;
+
+import com.quanlynhakhoa.dao.KhachHangDAO;
+import com.quanlynhakhoa.dao.KhachHangDAO.TomTat;
+import com.quanlynhakhoa.entity.KhachHang;
+import com.quanlynhakhoa.entity.enums.VaiTro;
+import com.quanlynhakhoa.exception.BusinessException;
+import com.quanlynhakhoa.exception.DataAccessException;
+import com.quanlynhakhoa.ui.component.LineIcon;
+import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.quanlynhakhoa.entity.LichHen;
+import com.quanlynhakhoa.ui.dialog.DlgDatLich;
 import com.quanlynhakhoa.ui.dialog.DlgHoSoKhachHang;
 import com.quanlynhakhoa.ui.dialog.DlgKhachHang;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -29,6 +33,7 @@ import java.awt.FlowLayout;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -54,7 +59,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -84,6 +88,9 @@ public class PnlKhachHang extends JPanel {
 
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter NGAY_GIO = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final int COT_THAO_TAC = 7;
+    private static final int LIEN_KET_XEM = 1;
+    private static final int LIEN_KET_DAT_LICH = 2;
     private static final String THE_BANG = "bang";
     private static final String THE_TRONG = "trong";
     private static final String[] COT = {"MÃ BỆNH NHÂN", "HỌ VÀ TÊN", "NGÀY SINH", "GIỚI TÍNH",
@@ -96,7 +103,7 @@ public class PnlKhachHang extends JPanel {
 
     private final JTextField txtTimKiem = new JTextField();
     private final JComboBox<String> cboTrangThai = new JComboBox<>(TRANG_THAI);
-    private final JCheckBox chkGanNhat = new JCheckBox("Làm khám gần nhất");
+    private final JCheckBox chkGanNhat = new JCheckBox("Lần khám gần nhất");
     private final JComboBox<Integer> cboSoDong = new JComboBox<>(DONG_MOI_TRANG);
     private final JButton btnThem = PnlTongQuanQuanLy.button("Thêm bệnh nhân", LineIcon.Type.PLUS, true);
     private final JButton btnXuat = PnlTongQuanQuanLy.button("Xuất Excel", LineIcon.Type.INVOICE, false);
@@ -134,6 +141,7 @@ public class PnlKhachHang extends JPanel {
     }
 
     // ---------------------------------------------------------------- giao diện
+
     private void initComponents() {
         setBackground(BACKGROUND);
         setBorder(new EmptyBorder(24, 24, 20, 24));
@@ -313,6 +321,7 @@ public class PnlKhachHang extends JPanel {
     }
 
     // ---------------------------------------------------------------- dữ liệu
+
     private void taiDuLieu(String tuKhoa) {
         if (worker != null) {
             worker.cancel(true);
@@ -390,7 +399,7 @@ public class PnlKhachHang extends JPanel {
                 : "Hiển thị " + (tu + 1) + "–" + den + " trong tổng số " + tong + " bệnh nhân");
         lblTong.setText(tong + " hồ sơ bệnh nhân · Thông tin được bảo mật theo phân quyền nhân viên");
         lblSapXep.setText(chkGanNhat.isSelected()
-                ? "Sắp xếp: Làm khám gần nhất ↓" : "Sắp xếp: Mã bệnh nhân ↑");
+                ? "Sắp xếp: Lần khám gần nhất ↓" : "Sắp xếp: Mã bệnh nhân ↑");
         dungSoTrang(soTrang);
     }
 
@@ -434,6 +443,7 @@ public class PnlKhachHang extends JPanel {
     }
 
     // ---------------------------------------------------------------- sự kiện
+
     private void addEvents() {
         txtTimKiem.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             @Override
@@ -465,8 +475,13 @@ public class PnlKhachHang extends JPanel {
                     return;
                 }
                 table.setRowSelectionInterval(hang, hang);
-                if (table.convertColumnIndexToModel(cot) == 7) {
-                    moThaoTac(hang, e);
+                if (table.convertColumnIndexToModel(cot) == COT_THAO_TAC) {
+                    int lienKet = lienKetThaoTac(e);
+                    if (lienKet == LIEN_KET_XEM) {
+                        moHoSo(hang);
+                    } else if (lienKet == LIEN_KET_DAT_LICH) {
+                        moDatLich(hang);
+                    }
                 } else if (e.getClickCount() == 2) {
                     moHoSo(hang);
                 }
@@ -475,9 +490,10 @@ public class PnlKhachHang extends JPanel {
         table.addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                int cot = table.columnAtPoint(e.getPoint());
-                table.setCursor(Cursor.getPredefinedCursor(
-                        table.convertColumnIndexToModel(cot) == 7 ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+                boolean tren = table.rowAtPoint(e.getPoint()) >= 0
+                        && table.convertColumnIndexToModel(table.columnAtPoint(e.getPoint())) == COT_THAO_TAC
+                        && lienKetThaoTac(e) != 0;
+                table.setCursor(Cursor.getPredefinedCursor(tren ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
             }
         });
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
@@ -490,19 +506,44 @@ public class PnlKhachHang extends JPanel {
         });
     }
 
-    private void moThaoTac(int hang, MouseEvent e) {
-        TomTat t = trangHienTai.get(hang);
-        JPopupMenu popup = new JPopupMenu();
-        var xem = new javax.swing.JMenuItem("Xem hồ sơ");
-        xem.addActionListener(a -> moHoSo(t));
-        popup.add(xem);
-        var datLich = new javax.swing.JMenuItem("Đặt lịch hẹn");
-        datLich.addActionListener(a -> JOptionPane.showMessageDialog(this,
-                "Đặt lịch hẹn thuộc L2 (UC016) và chưa được triển khai trong L1.",
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE));
-        datLich.setEnabled(false);
-        popup.add(datLich);
-        popup.show(table, e.getX(), e.getY());
+    /**
+     * Xác định liên kết trong ô THAO TÁC mà con trỏ đang chỉ vào: {@link #LIEN_KET_XEM},
+     * {@link #LIEN_KET_DAT_LICH} hoặc 0 nếu không trúng liên kết nào.
+     */
+    private int lienKetThaoTac(MouseEvent e) {
+        int hang = table.rowAtPoint(e.getPoint());
+        int cot = table.columnAtPoint(e.getPoint());
+        if (hang < 0 || cot < 0) {
+            return 0;
+        }
+        java.awt.Rectangle o = table.getCellRect(hang, cot, false);
+        int[] v = ThaoTacRenderer.vung(o.width, table.getFontMetrics(bold(11)));
+        int x = e.getX() - o.x;
+        int le = ThaoTacRenderer.KHOANG_CACH / 2;
+        if (x >= v[0] - 10 && x <= v[1] + le) {
+            return LIEN_KET_XEM;
+        }
+        if (x >= v[2] - le && x <= v[3] + 10) {
+            return LIEN_KET_DAT_LICH;
+        }
+        return 0;
+    }
+
+    
+    private void moDatLich(int hang) {
+        if (hang < 0 || hang >= trangHienTai.size()) {
+            return;
+        }
+        if (!duocSua) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền đặt lịch hẹn.", "Thông báo",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        LichHen lh = DlgDatLich.datMoi(SwingUtilities.getWindowAncestor(this),
+                trangHienTai.get(hang).khachHang());
+        if (lh != null) {
+            taiDuLieu(txtTimKiem.getText());
+        }
     }
 
     private void moHoSo(int hang) {
@@ -632,6 +673,7 @@ public class PnlKhachHang extends JPanel {
     }
 
     // ---------------------------------------------------------------- renderer
+
     private static final class PadRenderer extends DefaultTableCellRenderer {
 
         PadRenderer(boolean boldName) {
@@ -667,12 +709,9 @@ public class PnlKhachHang extends JPanel {
             setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
             String trangThai = String.valueOf(value);
             switch (trangThai) {
-                case "Mới" ->
-                    pill.set(trangThai, GREEN, new Color(0xE7F7EF));
-                case "Đang điều trị" ->
-                    pill.set(trangThai, TEAL, TEAL_LIGHT);
-                default ->
-                    pill.set(trangThai, MUTED, new Color(0xF0F2F5));
+                case "Mới" -> pill.set(trangThai, GREEN, new Color(0xE7F7EF));
+                case "Đang điều trị" -> pill.set(trangThai, TEAL, TEAL_LIGHT);
+                default -> pill.set(trangThai, MUTED, new Color(0xF0F2F5));
             }
             return this;
         }
@@ -710,22 +749,47 @@ public class PnlKhachHang extends JPanel {
         }
     }
 
-    private static final class ThaoTacRenderer extends DefaultTableCellRenderer {
+    /** Ô THAO TÁC vẽ hai liên kết "Xem" và "Đặt lịch"; bấm vào từng liên kết để dùng ngay. */
+    private static final class ThaoTacRenderer extends JPanel implements TableCellRenderer {
+
+        static final int KHOANG_CACH = 26;
 
         ThaoTacRenderer() {
-            setFont(bold(11));
-            setForeground(TEAL);
-            setHorizontalAlignment(SwingConstants.CENTER);
-            setBorder(new EmptyBorder(0, 6, 0, 6));
+            setOpaque(true);
+        }
+
+        /** Vị trí ngang (xem bắt đầu, xem kết thúc, đặt lịch bắt đầu, đặt lịch kết thúc) trong ô. */
+        static int[] vung(int rong, FontMetrics fm) {
+            int wXem = fm.stringWidth("Xem");
+            int wDat = fm.stringWidth("Đặt lịch");
+            int x0 = (rong - (wXem + KHOANG_CACH + wDat)) / 2;
+            return new int[] {x0, x0 + wXem, x0 + wXem + KHOANG_CACH, x0 + wXem + KHOANG_CACH + wDat};
         }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                 boolean hasFocus, int row, int column) {
-            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            c.setForeground(TEAL);
-            c.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
-            return c;
+            setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            return this;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setFont(bold(11));
+            FontMetrics fm = g2.getFontMetrics();
+            int[] v = vung(getWidth(), fm);
+            int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+            g2.setColor(TEAL);
+            g2.drawString("Xem", v[0], y);
+            g2.drawString("Đặt lịch", v[2], y);
+            g2.drawLine(v[0], y + 2, v[1], y + 2);
+            g2.drawLine(v[2], y + 2, v[3], y + 2);
+            g2.setColor(MUTED);
+            g2.drawString("·", v[1] + KHOANG_CACH / 2 - fm.charWidth('·') / 2, y);
+            g2.dispose();
         }
     }
 }

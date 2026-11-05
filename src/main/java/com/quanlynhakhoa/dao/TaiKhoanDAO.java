@@ -21,7 +21,20 @@ public class TaiKhoanDAO {
             LEFT JOIN NhanVien nv ON nv.maNV = tk.maNV
             """;
 
-    private static final ConcurrentHashMap<String, LocalDateTime> XAC_MINH = new ConcurrentHashMap<>();
+    private static final int SO_LAN_NHAP_OTP_TOI_DA = 5;
+    private static final int HAN_OTP_PHUT = 5;
+    private static final java.security.SecureRandom NGauNhien = new java.security.SecureRandom();
+    private static final ConcurrentHashMap<String, MaOtp> OTP = new ConcurrentHashMap<>();
+
+    private record MaOtp(String ma, LocalDateTime hetHan, int soLanSai) {
+        MaOtp(String ma, LocalDateTime hetHan) {
+            this(ma, hetHan, 0);
+        }
+    }
+
+    /** Kết quả tra cứu khi quên mật khẩu: tài khoản và email sẽ nhận mã xác thực. */
+    public record ThongTinDatLai(String maTK, String email) {
+    }
 
     public TaiKhoan dangNhap(String tenDangNhap, String matKhauNhap) {
         yeuCau(tenDangNhap != null && !tenDangNhap.isBlank()
@@ -47,39 +60,69 @@ public class TaiKhoanDAO {
         });
     }
 
-    /** Tra maTK theo số điện thoại hoặc email (cả hai đều UNIQUE, gắn 1–1 với nhân viên). */
-    public String xacMinh(String lienHe) {
+    /**
+     * Tra tài khoản và email nhận mã theo số điện thoại hoặc email.
+     * Cả hai đều gắn 1–1 với nhân viên nên nhập cách nào cũng về cùng email.
+     */
+    public ThongTinDatLai traCuuDatLai(String lienHe) {
         yeuCau(lienHe != null && !lienHe.isBlank(), "Vui lòng nhập số điện thoại hoặc email.");
         String id = lienHe.trim();
-        String ma = JdbcHelper.doc(c -> JdbcHelper.one(c, """
-                SELECT tk.maTK
+        ThongTinDatLai tt = JdbcHelper.doc(c -> JdbcHelper.one(c, """
+                SELECT tk.maTK, nv.email
                 FROM TaiKhoan tk
                 JOIN NhanVien nv ON nv.maNV = tk.maNV
                 WHERE tk.trangThai=1 AND (nv.sdt=? OR nv.email=?)
-                """, r -> r.getString(1), id, id));
-        yeuCau(ma != null, "Số điện thoại hoặc email không hợp lệ hoặc chưa có tài khoản.");
+                """, r -> new ThongTinDatLai(r.getString(1), r.getString(2)), id, id));
+        yeuCau(tt != null, "Số điện thoại hoặc email không hợp lệ hoặc chưa có tài khoản.");
+        yeuCau(tt.email() != null && !tt.email().isBlank(),
+                "Tài khoản chưa có email nhận mã xác thực.");
+        return tt;
+    }
+
+    /** Sinh OTP 6 số, hiệu lực 5 phút và ghi đè mã cũ của cùng tài khoản. */
+    public String taoOtp(String maTK) {
+        yeuCau(maTK != null && !maTK.isBlank(), "Thiếu tài khoản cần đặt lại mật khẩu.");
+        String ma = String.format("%06d", NGauNhien.nextInt(1_000_000));
         LocalDateTime bayGio = LocalDateTime.now();
-        XAC_MINH.entrySet().removeIf(e -> e.getValue().isBefore(bayGio));
-        XAC_MINH.put(ma, bayGio.plusMinutes(5));
+        OTP.entrySet().removeIf(e -> !e.getValue().hetHan().isAfter(bayGio));
+        OTP.put(maTK, new MaOtp(ma, bayGio.plusMinutes(HAN_OTP_PHUT)));
         return ma;
     }
 
-    public void doiMatKhau(String maTK, String matKhauMoi) {
+    /** Đổi mật khẩu sau khi xác thực OTP đã gửi tới email của tài khoản. */
+    public void doiMatKhau(String maTK, String otp, String matKhauMoi) {
         TaiKhoan.kiemTraMatKhauGoc(matKhauMoi);
+        kiemTraOtp(maTK, otp);
         JdbcHelper.transaction(c -> {
-            LocalDateTime han = XAC_MINH.get(maTK);
-            if (han == null || !han.isAfter(LocalDateTime.now())) {
-                Actor actor = PhanQuyen.quyen(c);
-                yeuCau(actor.maTK().equals(maTK) || actor.vaiTro() == VaiTro.QUANLY,
-                        "Không được đổi mật khẩu tài khoản khác.");
-            }
             yeuCau(JdbcHelper.update(c, "UPDATE TaiKhoan SET matKhau=? WHERE maTK=? AND trangThai=1",
                     PasswordHasher.bam(matKhauMoi), maTK) == 1,
                     "Tài khoản không tồn tại hoặc đã bị khóa.");
             NhatKy.ghi(c, maTK, "DOI_MAT_KHAU", "Đã đổi mật khẩu; không ghi nội dung mật khẩu.");
             return null;
         });
-        XAC_MINH.remove(maTK);
+        OTP.remove(maTK);
+    }
+
+    /** Xác thực OTP ở bước riêng; OTP vẫn còn hiệu lực cho bước đổi mật khẩu kế tiếp. */
+    public void xacThucOtp(String maTK, String otp) {
+        yeuCau(maTK != null && !maTK.isBlank(), "Thiếu tài khoản cần xác thực.");
+        kiemTraOtp(maTK, otp);
+    }
+
+    private void kiemTraOtp(String maTK, String otp) {
+        yeuCau(otp != null && !otp.isBlank(), "Vui lòng nhập mã xác thực đã gửi qua email.");
+        MaOtp daGui = OTP.get(maTK);
+        yeuCau(daGui != null && daGui.hetHan().isAfter(LocalDateTime.now()),
+                "Mã xác thực đã hết hạn. Vui lòng gửi lại mã mới.");
+        if (!daGui.ma().equals(otp.trim())) {
+            int sai = daGui.soLanSai() + 1;
+            if (sai >= SO_LAN_NHAP_OTP_TOI_DA) {
+                OTP.remove(maTK);
+                yeuCau(false, "Nhập sai quá số lần cho phép. Vui lòng gửi lại mã mới.");
+            }
+            OTP.put(maTK, new MaOtp(daGui.ma(), daGui.hetHan(), sai));
+            yeuCau(false, "Mã xác thực chưa chính xác.");
+        }
     }
 
     /** Đổi mật khẩu mặc định trước khi cấp session; luôn kiểm tra lại thông tin xác thực trong transaction. */
@@ -163,7 +206,7 @@ public class TaiKhoanDAO {
         return JdbcHelper.transaction(c -> capNhat(c, tk));
     }
 
-    /** UC003 theo kế hoạch H1: cập nhật nhân viên và quyền/trạng thái nguyên tử. */
+    
     public boolean capNhatNhanVienVaTaiKhoan(NhanVien nv, TaiKhoan tk) {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
@@ -178,7 +221,6 @@ public class TaiKhoanDAO {
             TaiKhoan cu = layTheoMa(c, tk.getMaTK());
             yeuCau(cu != null && cu.getNhanVien().getMaNV().equals(nv.getMaNV()),
                     "Không tìm thấy tài khoản nhân viên.");
-            // UC003 không thay tên đăng nhập hay mật khẩu đã cấp.
             TaiKhoan moi = new TaiKhoan(tk);
             moi.setTenTK(cu.getTenTK());
             yeuCau(capNhat(c, moi), "Không tìm thấy tài khoản nhân viên.");
@@ -240,7 +282,7 @@ public class TaiKhoanDAO {
     }
 
     private TaiKhoan mapRow(ResultSet r) throws SQLException {
-        NhanVien nv = new NhanVien(
+        NhanVien nv = NhanVien.tuDuLieu(
                 r.getString("maNV"),
                 r.getString("hoTenNV"),
                 r.getBoolean("gioiTinh"),
