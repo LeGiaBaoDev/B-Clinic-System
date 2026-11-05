@@ -1,3 +1,40 @@
+## H4 — Toàn luồng, snapshot đồng thời và hiệu năng (05/11/2026)
+
+[Báo cáo và checklist kiểm thử chéo](../../../docs/H4/H4_TEST_REPORT.md). Test `H4ToanLuongIntegrationTest` tạo DB UUID/JVM riêng, gọi DAO tạo KH/đặt lịch/tiếp nhận/khám/voucher/thanh toán thật; kiểm rollback và Tổng quan/Báo cáo khi thanh toán đang cập nhật. Đã tái hiện lỗi snapshot ghép trước/sau commit và sửa bằng `DocThongKe`. Không sửa dữ liệu BClinic_Dev.
+
+```powershell
+mvn -o '-Dbclinic.integration=true' '-Dtest=H4ToanLuongIntegrationTest,H4TongQuanIntegrationTest,BaoCaoQuanLyIntegrationTest' test
+```
+
+Test toàn luồng cần chạy trước khoảng 15:35 giờ Việt Nam để còn khung đặt/tiếp nhận cùng ngày trong ca 07:00–17:30; không tự giả đổi ngày để vượt điều kiện. Cần quyền tạo/xóa DB test và truy cập SQL Server. Mặc định opt-in bị bỏ qua; khi bật lỗi phải fail thật. Fixture khối lượng 1.443 hóa đơn/4.329 chi tiết chỉ ở DB UUID. 3 test SQL riêng đạt; hồi quy 275 test/0 lỗi/6 skipped. Đo panel Tổng quan 1.224 ms/Báo cáo 953 ms trên máy hiện tại; số DAO/giới hạn phép đo trong báo cáo. Chưa thay review/kiểm thử chéo hoặc tải cao điểm.
+
+## Báo cáo hoạt động Quản lý (05/11/2026)
+
+[Hướng dẫn/công thức/API/kết quả](../../../docs/H4/BAO_CAO_QUAN_LY.md). Mở Báo cáo từ menu Quản lý hoặc Xem báo cáo trên Tổng quan; panel đã gắn thật, không còn placeholder. Bộ lọc Ngày/Tuần/Tháng/Tùy chọn, so sánh kỳ liền trước và Excel 4 sheet.
+
+```powershell
+mvn -o '-Dtest=BaoCaoQuanLyDAOTest,PnlBaoCaoQuanLyTest' test
+mvn -o '-Dbclinic.integration=true' '-Dtest=BaoCaoQuanLyIntegrationTest' test
+```
+
+5 test DAO + 5 test UI/Excel đạt; test SQL bật riêng đạt trên database UUID/JVM riêng, kiểm cả menu thật, tiền/thuế/voucher, tiền mặt/chuyển khoản, dịch vụ giá lịch sử, lịch/trạng thái và quyền. DB/config tạm được dọn; không ghi DB ứng dụng. Hồi quy 274 test/0 lỗi/5 integration skipped. Preview UI thêm `-Dbclinic.preview=true`, ảnh `target/baocao-full.png` và `baocao-viewport.png`; ảnh menu SQL tại `target/bao-cao-main-sql.png`. Đây là kiểm chứng kỹ thuật, chưa thay review/kiểm thử chéo và hiệu năng bộ dữ liệu lớn.
+
+## H4 — UC035 tổng quan theo ngày (05/11/2026)
+
+Điều chỉnh mới theo người dùng: Tổng quan chỉ hôm nay, bỏ chọn ngày/Hôm nay, nút Làm mới có nền/viền; thực thu chỉ hôm nay. `PnlTongQuanQuanLyTest` hiện có 3 test: nguồn luôn nhận hôm nay/nút Làm mới, lỗi làm mới giữ snapshot và mở lại nút, render. Mô tả kiểm thử chọn ngày bên dưới là lịch sử trước điều chỉnh; DAO/test SQL theo ngày vẫn giữ nguyên.
+
+- [Hành vi, API, kết quả và giới hạn](../../../docs/H4/H4_PROGRESS.md)
+- `TongQuanQuanLyDAOTest`: giờ Việt Nam, ranh giới ngày, tăng trưởng và biểu đồ.
+- `PnlTongQuanQuanLyTest`: chọn ngày/F5, worker cũ không ghi đè ngày mới, lỗi tải không giữ số liệu ngày khác, nút Hôm nay; tùy chọn `-Dbclinic.preview=true` tạo ảnh `target/h4-dashboard-preview.png`.
+- `H4TongQuanIntegrationTest` chỉ chạy khi bật `-Dbclinic.integration=true`: tạo DB UUID/JVM riêng, migrate, kiểm tra DB_NAME trước fixture, dọn DB/cấu hình sau chạy. Có quyền tạo/xóa DB test và kết nối SQL Server mới chạy; không ghi DB ứng dụng. Không tự skip lỗi khi đã bật.
+
+```powershell
+mvn -o '-Dtest=TongQuanQuanLyDAOTest,PnlTongQuanQuanLyTest' test
+mvn -o '-Dbclinic.integration=true' '-Dtest=H4TongQuanIntegrationTest' test
+```
+
+264 test hồi quy đạt, 4 integration opt-in skipped; test SQL H4 bật riêng đạt. Chưa thay nghiệm thu L2/B3/D3, đo tải ≤3s hoặc kiểm thử chéo/menu báo cáo.
+
 ## H3 — T503: kiểm thử tích hợp và bàn giao (05/11/2026)
 
 - [Báo cáo kiểm thử / phiếu kiểm thử chéo](../../../docs/H3/H3_TEST_REPORT.md)
