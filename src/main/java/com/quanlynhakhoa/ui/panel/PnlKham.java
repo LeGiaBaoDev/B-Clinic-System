@@ -132,7 +132,6 @@ public class PnlKham extends JPanel {
     private final PillLabel lblTrangThai = new PillLabel();
 
     // --- bước 1 ---
-    private final JTextArea txtLyDo = area(3);
     private final JTextArea txtTrieuChung = area(3);
     private final JTextArea txtDauHieu = area(3);
     private final JTextField txtThoiGian = new JTextField();
@@ -146,7 +145,6 @@ public class PnlKham extends JPanel {
         "Không xác định", "Toàn hàm", "Cung hàm trên", "Cung hàm dưới",
         "Răng cửa", "Răng nanh", "Răng tiền hàm", "Răng hàm", "Răng khôn"});
     private final JTextField txtKemTheo = new JTextField();
-    private final TruongChon tcLyDo = new TruongChon("Lý do khám *", txtLyDo, null);
     private final TruongChon tcTrieuChung = new TruongChon("Triệu chứng *", txtTrieuChung, null);
     private final TruongChon tcDauHieu = new TruongChon("Dấu hiệu lâm sàng *", txtDauHieu, null);
     private final TruongChon tcChanDoan = new TruongChon("Chẩn đoán *", txtChanDoan, null);
@@ -516,7 +514,6 @@ public class PnlKham extends JPanel {
         JPanel form = new JPanel();
         form.setOpaque(false);
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.add(tcLyDo);
         form.add(tcTrieuChung);
         JPanel hang = new JPanel(new GridLayout(1, 2, 12, 0));
         hang.setOpaque(false);
@@ -938,7 +935,6 @@ public class PnlKham extends JPanel {
     }
 
     private void xoaForm() {
-        tcLyDo.reset();
         tcTrieuChung.reset();
         tcDauHieu.reset();
         tcChanDoan.reset();
@@ -963,7 +959,7 @@ public class PnlKham extends JPanel {
     }
 
     private boolean kiemTraBuoc1() {
-        if (tcLyDo.giaTri().isBlank() || tcTrieuChung.giaTri().isBlank()
+        if (tcTrieuChung.giaTri().isBlank()
                 || tcDauHieu.giaTri().isBlank() || tcChanDoan.giaTri().isBlank()) {
             JOptionPane.showMessageDialog(this, "Vui lòng nhập đủ các trường bắt buộc (*).",
                     "Cảnh báo", JOptionPane.WARNING_MESSAGE);
@@ -1177,8 +1173,7 @@ public class PnlKham extends JPanel {
                 return;
             }
         }
-        String trieuChung = cat(500, "Lý do: " + tcLyDo.giaTri()
-                + "\nTriệu chứng: " + tcTrieuChung.giaTri()
+        String trieuChung = cat(500, "Triệu chứng: " + tcTrieuChung.giaTri()
                 + "\nThời gian: " + txtThoiGian.getText()
                 + "\nMức độ: " + cboMucDo.getSelectedItem()
                 + "\nDấu hiệu: " + tcDauHieu.giaTri());
