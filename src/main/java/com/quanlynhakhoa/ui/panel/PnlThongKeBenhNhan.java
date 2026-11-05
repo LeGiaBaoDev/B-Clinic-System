@@ -82,7 +82,7 @@ public class PnlThongKeBenhNhan extends JPanel {
     private final JLabel lblBangTrong = new JLabel(" ", SwingConstants.CENTER);
     private final BieuDoBenhNhan bieuDo = new BieuDoBenhNhan();
     private final DefaultTableModel model = new DefaultTableModel(
-            new String[]{"BỆNH NHÂN", "BỆNH / CHẨN ĐOÁN"}, 0) {
+            new String[]{"BỆNH NHÂN", "NGÀY KHÁM", "BỆNH / CHẨN ĐOÁN"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -248,7 +248,7 @@ public class PnlThongKeBenhNhan extends JPanel {
         header.add(title, BorderLayout.WEST);
         card.add(header, BorderLayout.NORTH);
 
-        table.setRowHeight(36);
+        table.setRowHeight(48);
         table.setFont(font(11));
         table.getTableHeader().setFont(bold(9));
         table.getTableHeader().setBackground(new Color(0xF7F9FB));
@@ -258,8 +258,9 @@ public class PnlThongKeBenhNhan extends JPanel {
         table.setSelectionBackground(new Color(0xEFF6F5));
         table.setSelectionForeground(TEXT);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.getColumnModel().getColumn(0).setPreferredWidth(120);
-        table.getColumnModel().getColumn(1).setPreferredWidth(300);
+        table.getColumnModel().getColumn(0).setPreferredWidth(150);
+        table.getColumnModel().getColumn(1).setPreferredWidth(90);
+        table.getColumnModel().getColumn(2).setPreferredWidth(280);
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -382,7 +383,12 @@ public class PnlThongKeBenhNhan extends JPanel {
         hienTai = d.benhNhan();
         model.setRowCount(0);
         for (BenhNhanTrongKy bn : d.benhNhan()) {
-            model.addRow(new Object[]{bn.tenKH(), chanDoanNgan(bn.chanDoan())});
+            String ten = "<html><b>" + escapeHtml(bn.tenKH()) + "</b><br>"
+                    + "<span style='color:#7B8BA5'>"
+                    + (bn.sdt() == null || bn.sdt().isBlank() ? "Chưa có SĐT" : escapeHtml(bn.sdt()))
+                    + "</span></html>";
+            String ngay = bn.ngayKham() == null ? "—" : bn.ngayKham().format(NGAY);
+            model.addRow(new Object[]{ten, ngay, chanDoanNgan(bn.chanDoan())});
         }
         boolean co = tt.soLuotKham() > 0 || tt.soBenhNhan() > 0;
         boolean coBenhNhan = !d.benhNhan().isEmpty();
