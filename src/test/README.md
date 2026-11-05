@@ -1,3 +1,18 @@
+## H3 — T503: kiểm thử tích hợp và bàn giao (05/11/2026)
+
+- [Báo cáo kiểm thử / phiếu kiểm thử chéo](../../../docs/H3/H3_TEST_REPORT.md)
+- [Hợp đồng API cho Bảo B3](../../../docs/H3/H3_HANDOFF.md)
+- [Tiêu đề và nội dung PR đề xuất](../../../docs/H3/H3_PR.md)
+
+```powershell
+mvn -o test
+mvn -o '-Dbclinic.integration=true' '-Dtest=H3VoucherIntegrationTest' test
+```
+
+Test H3 tích hợp chạy trên DB UUID/JVM riêng, bao gồm cả H3ThanhToanScenario: lịch fixture hôm nay → tiếp nhận → bắt đầu/hoàn tất khám → tự sinh hóa đơn → áp dụng voucher/thanh toán qua DAO và DlgThanhToan thật. Ba dòng điều trị có thuế KCT/5%/10%, tổng 640.000 ₫; kiểm tra tiền mặt/tiền thối, chuyển khoản, phần trăm/cap, giảm vượt tổng, voucher không hiệu lực, quyền, rollback và đồng thời. Không sửa mã của module khám/thanh toán. Không dùng fixture này để tuyên bố đã kiểm thử toàn luồng đặt lịch hoặc xuất PDF.
+
+Kiểm chứng kỹ thuật không thay kiểm thử chéo; T503 còn chờ thành viên khác ghi người/ngày/kết quả và tự review/commit/push/PR. Không đóng gói JAR/RAR.
+
 ## H3 — T502: giao diện voucher (05/11/2026)
 
 Quản lý mở **Voucher** từ menu. Danh sách có tìm mã/tên không phân biệt dấu/hoa thường, lọc loại giảm giá, năm trạng thái, 8 dòng/trang, sắp xếp bảng, F5 tải lại và Ctrl+F tìm kiếm. **Xuất danh sách** tạo Excel của toàn bộ kết quả đang lọc, không chỉ trang hiện tại; xác nhận nếu ghi đè file.
@@ -54,7 +69,7 @@ mvn -o '-Dbclinic.integration=true' '-Dtest=VoucherTest,H3VoucherIntegrationTest
 - Entity: tên/mã, giá trị giảm và giới hạn, chặn NaN/vô cực, đổi loại giảm, thứ tự ngày, hiệu lực gồm hai đầu, vô hiệu, tính giảm không vượt tổng.
 - DAO: sinh `VC###`, thêm/đọc/cập nhật/vô hiệu, `giaTriGiamToiDa` NULL ↔ 0, lọc thời hạn/trạng thái, mã không tồn tại; Quản lý/Lễ tân/Nha sĩ, chưa đăng nhập, giả vai trò session và tài khoản khóa; giữ tham chiếu/số giảm trên hóa đơn; rollback thêm/sửa/vô hiệu khi nhật ký lỗi, không gán mã trước commit và thử lại; bốn yêu cầu thêm đồng thời không trùng mã.
 - API giữ nguyên: Quản lý dùng `layTatCa`, `them`, `capNhat`, `xoa`; Quản lý/Lễ tân dùng `layTheoMa`, `layConHieuLuc`. `xoa` là vô hiệu, không xóa vật lý. Voucher đã gắn vào bất kỳ hóa đơn nào không được cập nhật nội dung, kể cả hóa đơn chưa thanh toán. Các thao tác ghi dùng chung khóa `BClinic:thanh-toan` với HoaDonDAO.
-- T501 là nền tảng DAO; UI UC036–038 xem T502 phía trên. Chưa nghiệm thu toàn H3 hoặc kiểm thử chéo. Kiểm thử này chưa thay thế kiểm thử thanh toán UC025 toàn luồng tại T503.
+- T501 là nền tảng DAO; UI UC036–038 xem T502 phía trên, kiểm thử thanh toán xem T503 đầu tài liệu. Chưa nghiệm thu toàn H3 hoặc kiểm thử chéo.
 
 ## Hồ sơ chốt kỹ thuật H2 (04/11/2026)
 
