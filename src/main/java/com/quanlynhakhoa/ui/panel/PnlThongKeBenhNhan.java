@@ -82,7 +82,7 @@ public class PnlThongKeBenhNhan extends JPanel {
     private final JLabel lblBangTrong = new JLabel(" ", SwingConstants.CENTER);
     private final BieuDoBenhNhan bieuDo = new BieuDoBenhNhan();
     private final DefaultTableModel model = new DefaultTableModel(
-            new String[]{"BỆNH NHÂN", "BỆNH / CHẨN ĐOÁN"}, 0) {
+            new String[]{"BỆNH NHÂN", "NGÀY KHÁM", "BỆNH / CHẨN ĐOÁN"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -139,7 +139,7 @@ public class PnlThongKeBenhNhan extends JPanel {
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel title = new JLabel("Thống kê số bệnh nhân");
+        JLabel title = new JLabel("Thống kê cá nhân");
         title.setFont(bold(21));
         title.setForeground(TEXT);
         JLabel sub = new JLabel("Chỉ tính các phiếu khám đã hoàn tất trong khoảng thời gian đã chọn.");
@@ -222,7 +222,7 @@ public class PnlThongKeBenhNhan extends JPanel {
     private JPanel taoChart() {
         SurfacePanel card = new SurfacePanel(new BorderLayout(0, 8));
         card.setBorder(new EmptyBorder(14, 16, 12, 16));
-        JLabel title = new JLabel("Bệnh nhân theo ngày");
+        JLabel title = new JLabel("Doanh thu theo ngày");
         title.setFont(bold(13));
         title.setForeground(TEXT);
         card.add(title, BorderLayout.NORTH);
@@ -248,7 +248,7 @@ public class PnlThongKeBenhNhan extends JPanel {
         header.add(title, BorderLayout.WEST);
         card.add(header, BorderLayout.NORTH);
 
-        table.setRowHeight(36);
+        table.setRowHeight(48);
         table.setFont(font(11));
         table.getTableHeader().setFont(bold(9));
         table.getTableHeader().setBackground(new Color(0xF7F9FB));
@@ -258,8 +258,9 @@ public class PnlThongKeBenhNhan extends JPanel {
         table.setSelectionBackground(new Color(0xEFF6F5));
         table.setSelectionForeground(TEXT);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.getColumnModel().getColumn(0).setPreferredWidth(120);
-        table.getColumnModel().getColumn(1).setPreferredWidth(300);
+        table.getColumnModel().getColumn(0).setPreferredWidth(150);
+        table.getColumnModel().getColumn(1).setPreferredWidth(90);
+        table.getColumnModel().getColumn(2).setPreferredWidth(280);
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -332,7 +333,7 @@ public class PnlThongKeBenhNhan extends JPanel {
         worker = new SwingWorker<DuLieu, Void>() {
             @Override
             protected DuLieu doInBackground() {
-                List<TheoNgay> ds = dao.thongKe(tu, den);
+                List<TheoNgay> ds = dao.doanhThuTheoNgay(tu, den);
                 TomTat tt = dao.tongHop(tu, den);
                 List<BenhNhanTrongKy> benhNhan = dao.danhSachBenhNhan(tu, den);
                 return new DuLieu(ds, tt, benhNhan);
@@ -382,7 +383,12 @@ public class PnlThongKeBenhNhan extends JPanel {
         hienTai = d.benhNhan();
         model.setRowCount(0);
         for (BenhNhanTrongKy bn : d.benhNhan()) {
-            model.addRow(new Object[]{bn.tenKH(), chanDoanNgan(bn.chanDoan())});
+            String ten = "<html><b>" + escapeHtml(bn.tenKH()) + "</b><br>"
+                    + "<span style='color:#7B8BA5'>"
+                    + (bn.sdt() == null || bn.sdt().isBlank() ? "Chưa có SĐT" : escapeHtml(bn.sdt()))
+                    + "</span></html>";
+            String ngay = bn.ngayKham() == null ? "—" : bn.ngayKham().format(NGAY);
+            model.addRow(new Object[]{ten, ngay, chanDoanNgan(bn.chanDoan())});
         }
         boolean co = tt.soLuotKham() > 0 || tt.soBenhNhan() > 0;
         boolean coBenhNhan = !d.benhNhan().isEmpty();
@@ -461,6 +467,20 @@ public class PnlThongKeBenhNhan extends JPanel {
             repaint();
         }
 
+        /** Rút gọn số tiền cho nhãn biểu đồ: 700000 → 700K, 1200000 → 1,2tr. */
+        private static String tienGon(long v) {
+            if (v >= 1_000_000) {
+                double tr = v / 1_000_000.0;
+                return (tr == Math.floor(tr)
+                        ? String.format(Locale.of("vi", "VN"), "%.0f", tr)
+                        : String.format(Locale.of("vi", "VN"), "%.1f", tr)) + "tr";
+            }
+            if (v >= 1000) {
+                return (v / 1000) + "K";
+            }
+            return String.valueOf(v);
+        }
+
         @Override
         protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
@@ -479,7 +499,7 @@ public class PnlThongKeBenhNhan extends JPanel {
                 int y = top + chartH - chartH * i / 4;
                 g.setColor(new Color(0xEDF2F5));
                 g.drawLine(left, y, left + chartW, y);
-                String nhan = String.valueOf(Math.round(max * i / 4.0));
+                String nhan = tienGon(Math.round(max * i / 4.0));
                 g.setColor(MUTED);
                 g.drawString(nhan, left - 7 - fmY.stringWidth(nhan), y + 3);
             }
@@ -511,7 +531,7 @@ public class PnlThongKeBenhNhan extends JPanel {
                 g.setColor(p.soBenhNhan() > 0 ? new Color(0x7FC7C4) : new Color(0xE6EEF2));
                 g.fill(new RoundRectangle2D.Double(x, y, barW, Math.max(2, h), 3, 3));
                 if (p.soBenhNhan() > 0) {
-                    String value = String.valueOf(p.soBenhNhan());
+                    String value = tienGon(p.soBenhNhan());
                     g.setColor(TEAL_DARK);
                     g.drawString(value, x + (barW - fm.stringWidth(value)) / 2, Math.max(10, y - 4));
                 }

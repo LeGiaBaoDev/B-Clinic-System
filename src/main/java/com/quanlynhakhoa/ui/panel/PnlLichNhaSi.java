@@ -253,8 +253,6 @@ public class PnlLichNhaSi extends JPanel {
         top.add(menuItem("Bệnh án", LineIcon.Type.CLIPBOARD, () -> moTrang("Bệnh án")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Thống kê", LineIcon.Type.CHART, () -> moTrang("Thống kê")));
-        top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, () -> thongBaoChuaCo("Cài đặt tài khoản")));
         sidebar.add(top, BorderLayout.NORTH);
 
         JPanel bottom = new JPanel();
