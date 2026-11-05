@@ -22,28 +22,26 @@ import javax.swing.border.EmptyBorder;
 /**
  * Trang "Báo cáo hoạt động" (mục Báo cáo của Quản lý), bố cục theo ảnh thiết kế của nhóm.
  *
- * <p>Hàng trên: chọn kỳ Ngày / Tuần / Tháng hoặc tự chọn khoảng ngày; bên phải ghi kỳ trước dùng để so sánh.
- * Bên dưới là lưới thẻ giống ảnh:</p>
+ * <p>Hàng trên: chọn kỳ Ngày / Tuần / Tháng / Năm hoặc tự chọn khoảng ngày; bên phải ghi kỳ trước dùng để
+ * so sánh. Bên dưới là lưới thẻ giống ảnh:</p>
  * <pre>
  *  [Doanh thu đã thu]      [Lịch hẹn hoàn tất]     [Đã hủy / Không đến]
- *  [Doanh thu theo ngày ............]  [Kết quả lịch hẹn ]
- *  [Dịch vụ được sử dụng nhiều .....]  [So sánh kỳ trước ]
+ *  [Doanh thu theo ngày ............]  [Kết quả lịch hẹn  ]
+ *  [Dịch vụ được sử dụng nhiều .....]  [Chi tiết doanh thu]
  * </pre>
  *
- * <p>Hiện chỉ thẻ "Dịch vụ được sử dụng nhiều" ({@link PnlThongKeDichVu}) có dữ liệu thật. Các thẻ còn lại mới
- * dựng khung (hiện "—") để giao diện đồng nhất trước:</p>
  * <ul>
- *   <li>Thẻ doanh thu, biểu đồ doanh thu theo ngày, nút "Xuất báo cáo": làm khi có ThongKeDoanhThuDAO mới của Hiếu.</li>
- *   <li>Thẻ lịch hẹn hoàn tất, đã hủy / không đến, kết quả lịch hẹn, so sánh kỳ trước: phần của Long. Long thay
- *       nội dung các ô {@code oLichHoanTat}, {@code oHuyKhongDen}, {@code oKetQuaLichHen}, {@code oSoSanh}
- *       bằng thẻ có dữ liệu, rồi gọi thẻ đó trong {@link #taiDuLieu()}.</li>
- *   <li>Ô "Chi nhánh": phòng khám chỉ có 1 chi nhánh nên để cố định, không chọn được.</li>
+ *   <li>Có dữ liệu: 3 thẻ doanh thu ({@link PnlDoanhThuKy}) và thẻ dịch vụ ({@link PnlThongKeDichVu}).</li>
+ *   <li>Mới dựng khung (hiện "—"): thẻ lịch hẹn hoàn tất, đã hủy / không đến, kết quả lịch hẹn — phần của Long.
+ *       Long thay nội dung các ô {@code oLichHoanTat}, {@code oHuyKhongDen}, {@code oKetQuaLichHen} bằng thẻ có
+ *       dữ liệu (dùng {@link #datO}), rồi gọi thẻ đó trong {@link #taiDuLieu()}.</li>
+ *   <li>Nút "Xuất báo cáo": bạn khác làm, hiện để tắt. Ô "Chi nhánh": 1 chi nhánh nên cố định.</li>
  * </ul>
  */
 public class PnlBaoCao extends JPanel {
 
     /** Các kỳ có sẵn; TUY_CHINH khi người dùng tự đổi ngày trên lịch. */
-    enum Ky { NGAY, TUAN, THANG, TUY_CHINH }
+    enum Ky { NGAY, TUAN, THANG, NAM, TUY_CHINH }
 
     /** Khoảng ngày [tu, den], tính cả 2 đầu. */
     record KhoangNgay(LocalDate tu, LocalDate den) {
@@ -57,12 +55,14 @@ public class PnlBaoCao extends JPanel {
     private static final DateTimeFormatter GIO_NGAY = DateTimeFormatter.ofPattern("HH:mm, dd/MM/yyyy");
 
     private final PnlThongKeDichVu theDichVu;
+    private final PnlDoanhThuKy doanhThu;
     private final Supplier<LocalDateTime> bayGio;
 
     final JLabel lblPhuDe = new JLabel();
     final JToggleButton btnNgay = new JToggleButton("Ngày");
     final JToggleButton btnTuan = new JToggleButton("Tuần");
     final JToggleButton btnThang = new JToggleButton("Tháng");
+    final JToggleButton btnNam = new JToggleButton("Năm");
     private final ButtonGroup nhomKy = new ButtonGroup();
     final JDateChooser dcTu = new JDateChooser();
     final JDateChooser dcDen = new JDateChooser();
@@ -71,15 +71,11 @@ public class PnlBaoCao extends JPanel {
     /** Lưới chứa các thẻ báo cáo. */
     final JPanel pnlNoiDung = new JPanel(new GridBagLayout());
 
-    // Các ô đang chứa thẻ khung (chưa có dữ liệu); thay nội dung khi phần tính toán xong.
-    final JPanel oDoanhThu = new JPanel(new BorderLayout());
+    // Các ô đang chứa thẻ khung của phần lịch hẹn (chưa có dữ liệu); Long thay nội dung khi làm xong.
     final JPanel oLichHoanTat = new JPanel(new BorderLayout());
     final JPanel oHuyKhongDen = new JPanel(new BorderLayout());
-    final JPanel oDoanhThuTheoNgay = new JPanel(new BorderLayout());
     final JPanel oKetQuaLichHen = new JPanel(new BorderLayout());
-    final JPanel oSoSanh = new JPanel(new BorderLayout());
 
-    private static final Color NEN_HEADER = new Color(0xF7F9FB);
     private static final Color VANG = new Color(0x9A6A12);
     private static final Color DO = new Color(0xC94C48);
     private static final String CHUA_CO = "—";
@@ -89,12 +85,13 @@ public class PnlBaoCao extends JPanel {
     private boolean dangDatNgay;
 
     public PnlBaoCao() {
-        this(new PnlThongKeDichVu(), LocalDateTime::now);
+        this(new PnlThongKeDichVu(), new PnlDoanhThuKy(), LocalDateTime::now);
     }
 
-    PnlBaoCao(PnlThongKeDichVu theDichVu, Supplier<LocalDateTime> bayGio) {
+    PnlBaoCao(PnlThongKeDichVu theDichVu, PnlDoanhThuKy doanhThu, Supplier<LocalDateTime> bayGio) {
         super(new BorderLayout(0, 16));
         this.theDichVu = Objects.requireNonNull(theDichVu);
+        this.doanhThu = Objects.requireNonNull(doanhThu);
         this.bayGio = Objects.requireNonNull(bayGio);
         setName("Báo cáo");
         setBackground(BACKGROUND);
@@ -154,8 +151,9 @@ public class PnlBaoCao extends JPanel {
         btnNgay.setName("kyNgay");
         btnTuan.setName("kyTuan");
         btnThang.setName("kyThang");
-        Ky[] kyCuaNut = {Ky.NGAY, Ky.TUAN, Ky.THANG};
-        JToggleButton[] nut = {btnNgay, btnTuan, btnThang};
+        btnNam.setName("kyNam");
+        Ky[] kyCuaNut = {Ky.NGAY, Ky.TUAN, Ky.THANG, Ky.NAM};
+        JToggleButton[] nut = {btnNgay, btnTuan, btnThang, btnNam};
         for (int i = 0; i < nut.length; i++) {
             Ky k = kyCuaNut[i];
             JToggleButton b = nut[i];
@@ -222,16 +220,13 @@ public class PnlBaoCao extends JPanel {
     private JScrollPane taoNoiDung() {
         pnlNoiDung.setName("noiDungBaoCao");
         pnlNoiDung.setOpaque(false);
-        datO(oDoanhThu, theChiSo("Doanh thu đã thu", LineIcon.Type.CHART));
         datO(oLichHoanTat, theChiSo("Lịch hẹn hoàn tất", LineIcon.Type.CHECK));
         datO(oHuyKhongDen, theChiSo("Đã hủy / Không đến", LineIcon.Type.CALENDAR));
-        datO(oDoanhThuTheoNgay, theBieuDoTrong());
         datO(oKetQuaLichHen, theKetQuaLichHen());
-        datO(oSoSanh, theSoSanh());
 
         JPanel hangChiSo = new JPanel(new GridLayout(1, 3, 16, 0));
         hangChiSo.setOpaque(false);
-        hangChiSo.add(oDoanhThu);
+        hangChiSo.add(doanhThu.theChiSo);
         hangChiSo.add(oLichHoanTat);
         hangChiSo.add(oHuyKhongDen);
 
@@ -246,10 +241,10 @@ public class PnlBaoCao extends JPanel {
         pnlNoiDung.add(hangChiSo, g);
 
         g.gridwidth = 1;
-        themCot(oDoanhThuTheoNgay, 0, 1, 2, g);
+        themCot(doanhThu.theBieuDo, 0, 1, 2, g);
         themCot(oKetQuaLichHen, 1, 1, 1, g);
         themCot(theDichVu, 0, 2, 2, g);
-        themCot(oSoSanh, 1, 2, 1, g);
+        themCot(doanhThu.theChiTiet, 1, 2, 1, g);
 
         g.gridx = 0;
         g.gridy = 3;
@@ -332,14 +327,6 @@ public class PnlBaoCao extends JPanel {
         return the;
     }
 
-    /** "Doanh thu theo ngày": chưa có dữ liệu nên chỉ giữ chỗ cho biểu đồ. */
-    private static JPanel theBieuDoTrong() {
-        JLabel trong = chu("Chưa có dữ liệu", font(12), MUTED);
-        trong.setHorizontalAlignment(SwingConstants.CENTER);
-        trong.setPreferredSize(new Dimension(0, 170));
-        return theKhung("Doanh thu theo ngày", "Đơn vị: triệu đồng", trong);
-    }
-
     /** "Kết quả lịch hẹn": thanh tỷ lệ để xám, 3 dòng chú thích hiện "—". */
     private static JPanel theKetQuaLichHen() {
         JPanel noiDung = new JPanel();
@@ -383,39 +370,6 @@ public class PnlBaoCao extends JPanel {
         return theKhung("Kết quả lịch hẹn", null, noiDung);
     }
 
-    /** "So sánh với kỳ trước": bảng Chỉ tiêu / Kỳ trước / Kỳ này, các số hiện "—". */
-    private static JPanel theSoSanh() {
-        JPanel bang = new JPanel(new GridLayout(0, 3));
-        bang.setBackground(SURFACE);
-        bang.setBorder(BorderFactory.createLineBorder(BORDER));
-        for (String tieuDe : new String[]{"CHỈ TIÊU", "KỲ TRƯỚC", "KỲ NÀY"}) {
-            JLabel o = oBang(tieuDe, bold(11), MUTED);
-            o.setOpaque(true);
-            o.setBackground(NEN_HEADER);
-            bang.add(o);
-        }
-        for (String chiTieu : new String[]{"Hoàn tất", "Đã hủy", "Không đến"}) {
-            bang.add(oBang(chiTieu, font(13), TEXT));
-            bang.add(oBang(CHUA_CO, font(13), TEXT));
-            bang.add(oBang(CHUA_CO, font(13), TEXT));
-        }
-        JPanel noiDung = new JPanel(new BorderLayout(0, 12));
-        noiDung.setOpaque(false);
-        noiDung.add(bang, BorderLayout.NORTH);
-        noiDung.add(chu("Chưa có dữ liệu so sánh.", font(11), MUTED), BorderLayout.CENTER);
-        JPanel giuTren = new JPanel(new BorderLayout());
-        giuTren.setOpaque(false);
-        giuTren.add(noiDung, BorderLayout.NORTH); // thẻ cao hơn bảng thì bảng vẫn nằm trên
-        return theKhung("So sánh với kỳ trước", null, giuTren);
-    }
-
-    private static JLabel oBang(String text, Font f, Color mau) {
-        JLabel o = chu(text, f, mau);
-        o.setPreferredSize(new Dimension(0, 40));
-        o.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER), new EmptyBorder(0, 12, 0, 12)));
-        return o;
-    }
 
     private static JLabel chu(String text, Font f, Color mau) {
         JLabel l = new JLabel(text);
@@ -494,26 +448,29 @@ public class PnlBaoCao extends JPanel {
     }
 
     /**
-     * Khoảng ngày của kỳ tính tới hôm nay: Ngày = hôm nay; Tuần = từ thứ Hai tuần này; Tháng = từ ngày 1.
-     * (Như ảnh: chọn Tuần ngày 16/10/2026 thứ Sáu -> 12/10 – 16/10/2026.)
+     * Khoảng ngày của kỳ tính tới hôm nay: Ngày = hôm nay; Tuần = từ thứ Hai tuần này; Tháng = từ ngày 1;
+     * Năm = từ 01/01. (Như ảnh: chọn Tuần ngày 16/10/2026 thứ Sáu -> 12/10 – 16/10/2026.)
      */
     static KhoangNgay khoangCuaKy(Ky ky, LocalDate homNay) {
         return switch (ky) {
             case NGAY, TUY_CHINH -> new KhoangNgay(homNay, homNay);
             case TUAN -> new KhoangNgay(homNay.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)), homNay);
             case THANG -> new KhoangNgay(homNay.withDayOfMonth(1), homNay);
+            case NAM -> new KhoangNgay(homNay.withDayOfYear(1), homNay);
         };
     }
 
     /**
      * Kỳ trước để so sánh: Ngày -> hôm qua; Tuần -> cùng các thứ của tuần trước; Tháng -> cùng ngày của tháng
-     * trước; tự chọn -> khoảng cùng số ngày ngay trước đó. (Ảnh: 12/10–16/10 so với 05/10–09/10.)
+     * trước; Năm -> cùng khoảng của năm trước; tự chọn -> khoảng cùng số ngày ngay trước đó.
+     * (Ảnh: 12/10–16/10 so với 05/10–09/10.)
      */
     static KhoangNgay kyTruoc(Ky ky, KhoangNgay k) {
         return switch (ky) {
             case NGAY -> new KhoangNgay(k.tu().minusDays(1), k.den().minusDays(1));
             case TUAN -> new KhoangNgay(k.tu().minusWeeks(1), k.den().minusWeeks(1));
             case THANG -> new KhoangNgay(k.tu().minusMonths(1), k.den().minusMonths(1));
+            case NAM -> new KhoangNgay(k.tu().minusYears(1), k.den().minusYears(1));
             case TUY_CHINH -> new KhoangNgay(k.tu().minusDays(k.soNgay()), k.tu().minusDays(1));
         };
     }
@@ -522,7 +479,8 @@ public class PnlBaoCao extends JPanel {
         btnNgay.setSelected(ky == Ky.NGAY);
         btnTuan.setSelected(ky == Ky.TUAN);
         btnThang.setSelected(ky == Ky.THANG);
-        for (JToggleButton b : new JToggleButton[]{btnNgay, btnTuan, btnThang}) {
+        btnNam.setSelected(ky == Ky.NAM);
+        for (JToggleButton b : new JToggleButton[]{btnNgay, btnTuan, btnThang, btnNam}) {
             b.setBackground(b.isSelected() ? TEAL : SURFACE);
             b.setForeground(b.isSelected() ? Color.WHITE : TEXT);
         }
@@ -546,9 +504,13 @@ public class PnlBaoCao extends JPanel {
         lblPhuDe.setText("Doanh thu đã thu và hiệu quả vận hành · Dữ liệu đến " + bayGio.get().format(GIO_NGAY));
         if (tu == null || den == null || tu.isAfter(den)) {
             lblSoSanh.setText(" ");
+            doanhThu.baoLoi(tu == null || den == null ? "Vui lòng chọn đủ ngày bắt đầu và ngày kết thúc."
+                    : "Khoảng thời gian không hợp lệ: ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
         } else {
-            KhoangNgay truoc = kyTruoc(ky, new KhoangNgay(tu, den));
+            KhoangNgay nay = new KhoangNgay(tu, den);
+            KhoangNgay truoc = kyTruoc(ky, nay);
             lblSoSanh.setText("So sánh: " + truoc.tu().format(NGAY_NGAN) + " – " + truoc.den().format(NGAY));
+            doanhThu.taiDuLieu(nay, truoc);
         }
         theDichVu.taiDuLieu(tu, den); // thẻ tự báo lỗi nếu khoảng ngày sai
     }

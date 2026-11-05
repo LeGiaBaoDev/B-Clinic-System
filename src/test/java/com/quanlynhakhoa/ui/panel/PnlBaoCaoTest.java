@@ -2,6 +2,8 @@ package com.quanlynhakhoa.ui.panel;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.DoanhThuMotNgay;
+import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.TongHopDoanhThu;
 import com.quanlynhakhoa.ui.panel.PnlBaoCao.KhoangNgay;
 import com.quanlynhakhoa.ui.panel.PnlBaoCao.Ky;
 import java.time.LocalDate;
@@ -15,7 +17,8 @@ import org.junit.jupiter.api.Test;
 
 /*
  * Trang Báo cáo hoạt động (không cần DB)
- * [x] kỳ Ngày / Tuần (từ thứ Hai) / Tháng (từ ngày 1) tính tới hôm nay; kỳ trước để so sánh (như ảnh)
+ * [x] kỳ Ngày / Tuần (từ thứ Hai) / Tháng (từ ngày 1) / Năm (từ 01/01) tính tới hôm nay; kỳ trước để so sánh
+ * [x] phần doanh thu nhận cả kỳ này và kỳ trước
  * [x] mở trang mặc định "Tuần", truyền đúng khoảng ngày cho thẻ dịch vụ, ghi "Dữ liệu đến ..." và "So sánh: ..."
  * [x] đổi kỳ / tự chọn ngày trên lịch -> thẻ tải lại với khoảng mới, bỏ chọn nút kỳ
  */
@@ -41,13 +44,51 @@ class PnlBaoCaoTest {
                 "Tự chọn 10 ngày -> 10 ngày ngay trước");
     }
 
+    /** Các khoảng ngày phần doanh thu được yêu cầu tải (kỳ này và kỳ trước xen kẽ). */
+    private final List<LocalDate[]> doanhThuGoi = new ArrayList<>();
+
     private void tao() throws Exception {
+        PnlDoanhThuKy.Nguon nguonDoanhThu = new PnlDoanhThuKy.Nguon() {
+            @Override
+            public TongHopDoanhThu tongHop(LocalDate tu, LocalDate den) {
+                synchronized (doanhThuGoi) {
+                    doanhThuGoi.add(new LocalDate[]{tu, den});
+                }
+                return TongHopDoanhThu.RONG;
+            }
+
+            @Override
+            public List<DoanhThuMotNgay> tungNgay(LocalDate tu, LocalDate den) {
+                return List.of();
+            }
+        };
         SwingUtilities.invokeAndWait(() -> trang = new PnlBaoCao(new PnlThongKeDichVu((tu, den, tc) -> {
             synchronized (daGoi) {
                 daGoi.add(new LocalDate[]{tu, den});
             }
             return List.of();
-        }), () -> LocalDateTime.of(2026, 10, 16, 9, 20)));
+        }), new PnlDoanhThuKy(nguonDoanhThu), () -> LocalDateTime.of(2026, 10, 16, 9, 20)));
+    }
+
+    @Test
+    void kyNam_vaTruyenKyTruocChoDoanhThu() throws Exception {
+        assertEquals(new KhoangNgay(LocalDate.of(2026, 1, 1), THU_SAU), PnlBaoCao.khoangCuaKy(Ky.NAM, THU_SAU));
+        assertEquals(new KhoangNgay(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 10, 16)),
+                PnlBaoCao.kyTruoc(Ky.NAM, PnlBaoCao.khoangCuaKy(Ky.NAM, THU_SAU)), "So với cùng kỳ năm trước");
+        tao();
+        PnlThongKeDichVuTest.choDen(() -> doanhThuGoi.size() >= 2);
+        synchronized (doanhThuGoi) {
+            assertArrayEquals(new LocalDate[]{LocalDate.of(2026, 10, 12), THU_SAU}, doanhThuGoi.get(0), "Kỳ này");
+            assertArrayEquals(new LocalDate[]{LocalDate.of(2026, 10, 5), LocalDate.of(2026, 10, 9)},
+                    doanhThuGoi.get(1), "Kỳ trước");
+            doanhThuGoi.clear();
+        }
+        SwingUtilities.invokeAndWait(() -> trang.btnNam.doClick());
+        PnlThongKeDichVuTest.choDen(() -> doanhThuGoi.size() >= 2);
+        synchronized (doanhThuGoi) {
+            assertArrayEquals(new LocalDate[]{LocalDate.of(2026, 1, 1), THU_SAU}, doanhThuGoi.get(0));
+        }
+        SwingUtilities.invokeAndWait(() -> assertTrue(trang.btnNam.isSelected() && !trang.btnTuan.isSelected()));
     }
 
     @Test
