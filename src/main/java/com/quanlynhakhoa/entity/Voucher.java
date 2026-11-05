@@ -65,6 +65,9 @@ public class Voucher {
     }
 
     public void setLoaiGiam(boolean loaiGiam) {
+        if (loaiGiam && giaGiam > 100) {
+            throw new IllegalArgumentException("Giá trị giảm phần trăm không được vượt quá 100");
+        }
         this.loaiGiam = loaiGiam;
     }
 
@@ -73,7 +76,7 @@ public class Voucher {
     }
 
     public void setGiaGiam(double giaGiam) {
-        if (giaGiam <= 0 || (loaiGiam && giaGiam > 100)) {
+        if (!Double.isFinite(giaGiam) || giaGiam <= 0 || (loaiGiam && giaGiam > 100)) {
             throw new IllegalArgumentException("Giá trị giảm không hợp lệ");
         }
         this.giaGiam = giaGiam;
@@ -84,7 +87,7 @@ public class Voucher {
     }
 
     public void setGiaTriGiamToiDa(double giaTriGiamToiDa) {
-        if (giaTriGiamToiDa < 0) {
+        if (!Double.isFinite(giaTriGiamToiDa) || giaTriGiamToiDa < 0) {
             throw new IllegalArgumentException("Giá trị giảm tối đa không được âm");
         }
         this.giaTriGiamToiDa = giaTriGiamToiDa;
