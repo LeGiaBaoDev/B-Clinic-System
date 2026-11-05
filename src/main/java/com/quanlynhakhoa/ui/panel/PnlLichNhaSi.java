@@ -158,6 +158,8 @@ public class PnlLichNhaSi extends JPanel {
     private PnlKham pnlKham;
     private PnlTraCuuHoSo pnlTraCuu;
     private PnlLichCaNhan pnlLichCaNhan;
+    private PnlThongKeBenhNhan pnlThongKe;
+    private PnlTongQuanNhaSi pnlTongQuan;
     private final CardLayout theNoiDung = new CardLayout();
     private final JPanel pnlNoiDung = new JPanel(theNoiDung);
     private final DefaultTableModel modelLich = new DefaultTableModel(COT, 0) {
@@ -194,10 +196,15 @@ public class PnlLichNhaSi extends JPanel {
     private void initComponents() {
         pnlKham = new PnlKham(taiKhoan, dangXuat);
         pnlTraCuu = new PnlTraCuuHoSo(taiKhoan, this::moKhamTuTraCuu);
+        pnlThongKe = new PnlThongKeBenhNhan();
+        pnlTongQuan = new PnlTongQuanNhaSi(taiKhoan, this::moKhamTuTraCuu,
+                () -> moTrang("Lịch trực"), () -> moTrang("Bệnh án"), this::moHoSoBenhAn);
         pnlTrang.setOpaque(false);
+        pnlTrang.add(pnlTongQuan, "Tổng quan");
         pnlTrang.add(taoNoiDung(), "Lịch trực");
         pnlTrang.add(pnlTraCuu, "Bệnh án");
         pnlTrang.add(pnlKham, "Khám");
+        pnlTrang.add(pnlThongKe, "Thống kê");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
@@ -205,7 +212,7 @@ public class PnlLichNhaSi extends JPanel {
         main.add(pnlTrang, BorderLayout.CENTER);
         main.add(taoThanhTrangThai(), BorderLayout.SOUTH);
         add(main, BorderLayout.CENTER);
-        moTrang("Lịch trực");
+        moTrang("Tổng quan");
     }
 
     private JPanel taoSidebar() {
@@ -237,13 +244,15 @@ public class PnlLichNhaSi extends JPanel {
         brand.add(label("PHÒNG KHÁM NHA KHOA", font(10), new Color(0x608480)));
         top.add(brand);
 
-        top.add(menuItem("Tổng quan", LineIcon.Type.GRID, () -> thongBaoChuaCo("Tổng quan nha sĩ")));
+        top.add(menuItem("Tổng quan", LineIcon.Type.GRID, () -> moTrang("Tổng quan")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Lịch trực", LineIcon.Type.CALENDAR, () -> moTrang("Lịch trực")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Lịch của tôi", LineIcon.Type.CALENDAR, () -> moTrang("Lịch của tôi")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Bệnh án", LineIcon.Type.CLIPBOARD, () -> moTrang("Bệnh án")));
+        top.add(Box.createVerticalStrut(4));
+        top.add(menuItem("Thống kê", LineIcon.Type.CHART, () -> moTrang("Thống kê")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, () -> thongBaoChuaCo("Cài đặt tài khoản")));
         sidebar.add(top, BorderLayout.NORTH);
@@ -328,6 +337,12 @@ public class PnlLichNhaSi extends JPanel {
             }
             pnlLichCaNhan.lamMoiDuLieu();
         }
+        if ("Tổng quan".equals(trang) && pnlTongQuan != null) {
+            pnlTongQuan.lamMoi();
+        }
+        if ("Thống kê".equals(trang) && pnlThongKe != null) {
+            pnlThongKe.lamMoi();
+        }
         theTrang.show(pnlTrang, trang);
         lblTrang.setText(trang);
         txtTimKiemHeader.setEnabled("Lịch trực".equals(trang));
@@ -342,6 +357,19 @@ public class PnlLichNhaSi extends JPanel {
             nut.setIcon(new LineIcon(iconCua(ten), chon ? TEAL : MUTED, 17));
             nut.repaint();
         });
+    }
+
+    /** Mở màn Bệnh án (UC024) và chọn sẵn một bệnh nhân. */
+    private void moHoSoBenhAn(String maKH) {
+        pnlTraCuu.chuanBiChon(maKH);
+        moTrang("Bệnh án");
+    }
+
+    /** Từ Lịch trực mở màn Bệnh án của lịch đang chọn. */
+    private void xemBenhAn() {
+        if (dangChon != null) {
+            moHoSoBenhAn(dangChon.getKhachHang().getMaKH());
+        }
     }
 
     private void moKhamTuTraCuu(String maKH) {
@@ -359,6 +387,8 @@ public class PnlLichNhaSi extends JPanel {
                 LineIcon.Type.CALENDAR;
             case "Bệnh án" ->
                 LineIcon.Type.CLIPBOARD;
+            case "Thống kê" ->
+                LineIcon.Type.CHART;
             default ->
                 LineIcon.Type.SETTINGS;
         };
@@ -711,7 +741,7 @@ public class PnlLichNhaSi extends JPanel {
         btnXemBenhAn.setForeground(TEXT);
         btnXemBenhAn.setIcon(new LineIcon(LineIcon.Type.CLIPBOARD, MUTED, 15));
         btnXemBenhAn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnXemBenhAn.addActionListener(e -> thongBaoChuaCo("Hồ sơ bệnh án (UC024)"));
+        btnXemBenhAn.addActionListener(e -> xemBenhAn());
         btnXemBenhAn.setEnabled(false);
         card.add(btnXemBenhAn, BorderLayout.EAST);
         return card;

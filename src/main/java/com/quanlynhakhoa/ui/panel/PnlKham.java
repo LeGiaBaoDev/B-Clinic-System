@@ -538,16 +538,6 @@ public class PnlKham extends JPanel {
         form2.add(tcChanDoan);
         form2.add(oNhap("Vị trí / Răng liên quan", txtViTri));
         form2.add(oNhap("Chẩn đoán kèm theo", txtKemTheo));
-        JLabel themTep = linkLabel("Thêm kết quả cận lâm sàng / tệp đính kèm  (0 tệp)");
-        themTep.setIcon(new LineIcon(LineIcon.Type.CLIPBOARD, TEAL, 15));
-        themTep.setIconTextGap(6);
-        themTep.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                thongBaoChuaHoTro("Đính kèm cận lâm sàng");
-            }
-        });
-        form2.add(themTep);
         JPanel holderPhai = new JPanel(new BorderLayout());
         holderPhai.setOpaque(false);
         holderPhai.add(form2, BorderLayout.NORTH);
