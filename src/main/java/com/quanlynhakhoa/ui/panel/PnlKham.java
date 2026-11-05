@@ -1060,7 +1060,14 @@ public class PnlKham extends JPanel {
             trong.setAlignmentX(LEFT_ALIGNMENT);
             pnlDongTomTat.add(trong);
         }
-        lblDaChon.setText(daChon.isEmpty() ? "Chưa chọn dịch vụ" : "Đã chọn " + daChon.size() + " dịch vụ");
+        boolean nhieuBuoi = coNhieuBuoi();
+        if (nhieuBuoi && dpTaiKham.getDate() == null) {
+            LocalDate goiY = LocalDate.now(ZONE).plusDays(QuyDinhLichHen.macDinh().taiKhamMinNgay());
+            dpTaiKham.setDate(Date.from(goiY.atStartOfDay(ZONE).toInstant()));
+        }
+        lblDaChon.setText(daChon.isEmpty() ? "Chưa chọn dịch vụ"
+                : "Đã chọn " + daChon.size() + " dịch vụ"
+                + (nhieuBuoi ? " · cần hẹn buổi kế tiếp" : ""));
         lblTong.setText(money(tong));
         String cd = tcChanDoan.giaTri().isBlank() ? "Chưa có chẩn đoán" : tcChanDoan.giaTri().trim();
         if (!txtViTri.getText().isBlank()) {
@@ -1076,11 +1083,30 @@ public class PnlKham extends JPanel {
                 "Thông báo", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    private boolean coNhieuBuoi() {
+        return daChon.stream().anyMatch(dv -> dv.getLoTrinhDichVu() != null);
+    }
+
     private void hoanTat() {
         if (daChon.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Chưa chọn dịch vụ điều trị.",
                     "Cảnh báo", JOptionPane.WARNING_MESSAGE);
             return;
+        }
+        if (coNhieuBuoi()) {
+            if (dpTaiKham.getDate() == null) {
+                JOptionPane.showMessageDialog(this,
+                        "Dịch vụ đã chọn điều trị nhiều buổi. Vui lòng chọn ngày tái khám.",
+                        "Thiếu lịch tái khám", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Object gio = cboGioTaiKham.getSelectedItem();
+            if (gio == null || "—".equals(gio.toString()) || gio.toString().isBlank()) {
+                JOptionPane.showMessageDialog(this,
+                        "Dịch vụ đã chọn điều trị nhiều buổi. Vui lòng chọn giờ hẹn tái khám.",
+                        "Thiếu giờ tái khám", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
         }
         if (txtLoiDan.getText().isBlank()) {
             int chon = JOptionPane.showConfirmDialog(this,
