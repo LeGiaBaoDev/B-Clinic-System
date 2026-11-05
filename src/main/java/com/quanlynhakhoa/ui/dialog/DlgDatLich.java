@@ -33,7 +33,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.Date;
 import com.toedter.calendar.JDateChooser;
@@ -547,12 +546,18 @@ public class DlgDatLich extends JDialog {
             return;
         }
         LichHen lh;
-        if (cheDo == CheDo.DAT_MOI) {
-            lh = new LichHen(null, gio, TrangThaiLichHen.DA_DAT, txtGhiChu.getText(), null, kh, ns, dv, null);
-        } else {
-            lh = new LichHen(lichCu);
-            lh.setNgayGioHen(gio);
-            lh.setNhaSi(ns);
+        try {
+            if (cheDo == CheDo.DAT_MOI) {
+                lh = new LichHen(null, gio, TrangThaiLichHen.DA_DAT, txtGhiChu.getText(), null, kh, ns, dv, null);
+            } else {
+                lh = new LichHen(lichCu);
+                lh.setNgayGioHen(gio);
+                lh.setNhaSi(ns);
+            }
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Dữ liệu chưa hợp lệ",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
         }
         boolean datMoi = cheDo == CheDo.DAT_MOI;
         datDangXuLy(true);

@@ -1,5 +1,6 @@
 package com.quanlynhakhoa.ui.panel;
 
+import com.quanlynhakhoa.config.QuyDinhLichHen;
 import com.quanlynhakhoa.dao.DichVuDAO;
 import com.quanlynhakhoa.dao.PhieuKhamDAO;
 import com.quanlynhakhoa.entity.ChiTietPhieuKham;
@@ -150,7 +151,7 @@ public class PnlKham extends JPanel {
     private final JTextField txtTimDichVu = new JTextField();
     private final JComboBox<String> cboLoaiDichVu = new JComboBox<>();
     private final DefaultTableModel modelDichVu = new DefaultTableModel(
-            new String[]{"Chọn", "Dịch vụ", "Đơn giá", "Đơn vị"}, 0) {
+            new String[]{"Chọn", "Dịch vụ", "Lộ trình", "Đơn giá", "Đơn vị"}, 0) {
         @Override
         public Class<?> getColumnClass(int column) {
             return column == 0 ? Boolean.class : String.class;
@@ -706,7 +707,7 @@ public class PnlKham extends JPanel {
     }
 
     private void cauHinhBangDichVu() {
-        tblDichVu.setRowHeight(36);
+        tblDichVu.setRowHeight(48);
         tblDichVu.setFont(font(11));
         tblDichVu.setShowVerticalLines(false);
         tblDichVu.setGridColor(new Color(0xEDF1F5));
@@ -717,14 +718,15 @@ public class PnlKham extends JPanel {
         tblDichVu.getTableHeader().setBackground(new Color(0xF7F9FB));
         tblDichVu.getTableHeader().setForeground(MUTED);
         tblDichVu.getTableHeader().setReorderingAllowed(false);
-        int[] rong = {52, 300, 110, 70};
+        int[] rong = {48, 210, 250, 90, 60};
         for (int i = 0; i < rong.length; i++) {
             tblDichVu.getColumnModel().getColumn(i).setPreferredWidth(rong[i]);
-            tblDichVu.getColumnModel().getColumn(i).setMaxWidth(i == 1 ? Integer.MAX_VALUE : rong[i] + 20);
+            tblDichVu.getColumnModel().getColumn(i).setMaxWidth(
+                    i == 1 || i == 2 ? Integer.MAX_VALUE : rong[i] + 20);
         }
         DefaultTableCellRenderer phai = new DefaultTableCellRenderer();
         phai.setHorizontalAlignment(SwingConstants.RIGHT);
-        tblDichVu.getColumnModel().getColumn(2).setCellRenderer(phai);
+        tblDichVu.getColumnModel().getColumn(3).setCellRenderer(phai);
         modelDichVu.addTableModelListener(e -> {
             if (!dangDungBang && e.getColumn() == 0) {
                 dongBoChon();
@@ -995,9 +997,18 @@ public class PnlKham extends JPanel {
                     && loai.equals(dv.getLoaiDichVu().getTenLoaiDV()));
             if (hopKhoa && hopLoai) {
                 dsHienThi.add(dv);
+                String loTrinh = dv.getLoTrinhDichVu();
+                String ten = "<html><b>" + escapeHtml(dv.getTenDV()) + "</b>";
+                if (loTrinh != null) {
+                    ten += "<br><span style='color:#007B83;font-size:9px'>Nhiều buổi</span>";
+                }
+                ten += "</html>";
+                String lo = loTrinh == null ? "—"
+                        : "<html><div style='width:230px'>" + escapeHtml(loTrinh) + "</div></html>";
                 modelDichVu.addRow(new Object[]{
                     daChon.contains(dv),
-                    "<html><b>" + dv.getTenDV() + "</b></html>",
+                    ten,
+                    lo,
                     money(dv.getDonGia()),
                     "Lần"});
             }
@@ -1030,7 +1041,8 @@ public class PnlKham extends JPanel {
             dong.setOpaque(false);
             dong.setAlignmentX(LEFT_ALIGNMENT);
             dong.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
-            JLabel ten = new JLabel(dv.getTenDV() + " × 1");
+            JLabel ten = new JLabel(dv.getTenDV()
+                    + (dv.getLoTrinhDichVu() == null ? "" : " (nhiều buổi)") + " × 1");
             ten.setFont(font(11));
             ten.setForeground(TEXT);
             JLabel gia = new JLabel(money(dv.getDonGia()));
@@ -1048,7 +1060,14 @@ public class PnlKham extends JPanel {
             trong.setAlignmentX(LEFT_ALIGNMENT);
             pnlDongTomTat.add(trong);
         }
-        lblDaChon.setText(daChon.isEmpty() ? "Chưa chọn dịch vụ" : "Đã chọn " + daChon.size() + " dịch vụ");
+        boolean nhieuBuoi = coNhieuBuoi();
+        if (nhieuBuoi && dpTaiKham.getDate() == null) {
+            LocalDate goiY = LocalDate.now(ZONE).plusDays(QuyDinhLichHen.macDinh().taiKhamMinNgay());
+            dpTaiKham.setDate(Date.from(goiY.atStartOfDay(ZONE).toInstant()));
+        }
+        lblDaChon.setText(daChon.isEmpty() ? "Chưa chọn dịch vụ"
+                : "Đã chọn " + daChon.size() + " dịch vụ"
+                + (nhieuBuoi ? " · cần hẹn buổi kế tiếp" : ""));
         lblTong.setText(money(tong));
         String cd = tcChanDoan.giaTri().isBlank() ? "Chưa có chẩn đoán" : tcChanDoan.giaTri().trim();
         if (!txtViTri.getText().isBlank()) {
@@ -1064,11 +1083,30 @@ public class PnlKham extends JPanel {
                 "Thông báo", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    private boolean coNhieuBuoi() {
+        return daChon.stream().anyMatch(dv -> dv.getLoTrinhDichVu() != null);
+    }
+
     private void hoanTat() {
         if (daChon.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Chưa chọn dịch vụ điều trị.",
                     "Cảnh báo", JOptionPane.WARNING_MESSAGE);
             return;
+        }
+        if (coNhieuBuoi()) {
+            if (dpTaiKham.getDate() == null) {
+                JOptionPane.showMessageDialog(this,
+                        "Dịch vụ đã chọn điều trị nhiều buổi. Vui lòng chọn ngày tái khám.",
+                        "Thiếu lịch tái khám", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Object gio = cboGioTaiKham.getSelectedItem();
+            if (gio == null || "—".equals(gio.toString()) || gio.toString().isBlank()) {
+                JOptionPane.showMessageDialog(this,
+                        "Dịch vụ đã chọn điều trị nhiều buổi. Vui lòng chọn giờ hẹn tái khám.",
+                        "Thiếu giờ tái khám", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
         }
         if (txtLoiDan.getText().isBlank()) {
             int chon = JOptionPane.showConfirmDialog(this,
@@ -1142,6 +1180,10 @@ public class PnlKham extends JPanel {
         }
     }
 
+    private static String escapeHtml(String s) {
+        return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
     private static String cat(int max, String text) {
         if (text == null) {
             return "";
@@ -1184,9 +1226,12 @@ public class PnlKham extends JPanel {
      */
     private JPanel taoONgay() {
         dpTaiKham.setDateFormatString("dd/MM/yyyy");
-        LocalDate min = LocalDate.now(ZONE);
+        QuyDinhLichHen quyDinh = QuyDinhLichHen.macDinh();
+        LocalDate homNay = LocalDate.now(ZONE);
+        LocalDate min = homNay.plusDays(quyDinh.taiKhamMinNgay());
+        LocalDate max = homNay.plusDays(quyDinh.taiKhamMaxNgay());
         dpTaiKham.setMinSelectableDate(Date.from(min.atStartOfDay(ZONE).toInstant()));
-        dpTaiKham.setMaxSelectableDate(Date.from(min.plusMonths(6).atTime(23, 59, 59).atZone(ZONE).toInstant()));
+        dpTaiKham.setMaxSelectableDate(Date.from(max.atTime(23, 59, 59).atZone(ZONE).toInstant()));
         dpTaiKham.setDate(null);
         dpTaiKham.setFont(font(11));
         dpTaiKham.setOpaque(false);

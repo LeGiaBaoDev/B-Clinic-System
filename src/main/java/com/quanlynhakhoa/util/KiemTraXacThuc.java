@@ -4,9 +4,6 @@ public final class KiemTraXacThuc {
 
     public static final int DO_DAI_MAT_KHAU_TOI_THIEU = 6;
 
-    private static final String REGEX_SDT = "0[35789]\\d{8}";
-    private static final String REGEX_EMAIL = "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}";
-
     private KiemTraXacThuc() {
     }
 
@@ -58,6 +55,6 @@ public final class KiemTraXacThuc {
             return false;
         }
         String id = lienHe.trim();
-        return id.matches(REGEX_SDT) || id.matches(REGEX_EMAIL);
+        return id.matches(DinhDang.SDT_NHAN_VIEN) || id.matches(DinhDang.EMAIL);
     }
 }

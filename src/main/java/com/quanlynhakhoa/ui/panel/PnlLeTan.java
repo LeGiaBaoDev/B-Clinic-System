@@ -2,10 +2,13 @@ package com.quanlynhakhoa.ui.panel;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
 
+import com.quanlynhakhoa.dao.LichHenDAO;
+import com.quanlynhakhoa.entity.LichHen;
 import com.quanlynhakhoa.entity.TaiKhoan;
+import com.quanlynhakhoa.entity.enums.TrangThaiLichHen;
 import com.quanlynhakhoa.entity.enums.VaiTro;
 import com.quanlynhakhoa.ui.component.LineIcon;
-import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.quanlynhakhoa.ui.component.PopupThongBao;
 import static com.quanlynhakhoa.ui.component.UiConstants.BACKGROUND;
 import static com.quanlynhakhoa.ui.component.UiConstants.BORDER;
 import static com.quanlynhakhoa.ui.component.UiConstants.GREEN;
@@ -25,10 +28,12 @@ import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import javax.swing.BorderFactory;
@@ -42,8 +47,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSeparator;
-import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
 public class PnlLeTan extends JPanel {
@@ -51,12 +56,17 @@ public class PnlLeTan extends JPanel {
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter DONG_HO
             = DateTimeFormatter.ofPattern("HH:mm · EEEE, dd/MM/yyyy", Locale.of("vi", "VN"));
+    private static final DateTimeFormatter GIO = DateTimeFormatter.ofPattern("HH:mm");
+    private static final Color AMBER = new Color(0xB26B00);
+    private static final Color AMBER_LIGHT = new Color(0xFFF4DE);
 
     private final TaiKhoan taiKhoan;
     private final Runnable dangXuat;
     private final PnlKhachHang pnlKhachHang;
     private final PnlTiepNhan pnlTiepNhan;
     private PnlLichCaNhan pnlLichCaNhan;
+    private PnlDoanhThuNgay pnlDoanhThuNgay;
+    private PnlThongKeLichHenNgay pnlThongKeLich; // UC032, tạo khi mở lần đầu
     private final PnlTraCuuPhieu pnlPhieuKham;
     private final PnlLichHen pnlLichHen;
     private final PnlHoaDon pnlHoaDon;
@@ -64,9 +74,9 @@ public class PnlLeTan extends JPanel {
     private final JPanel pnlCards = new JPanel(cards);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
     private final JLabel lblTrang = new JLabel("Bệnh nhân");
-    private final JTextField txtTimKiemNhanh = new JTextField();
     private final JLabel lblDongHo = new JLabel();
     private final javax.swing.Timer dongHo = new javax.swing.Timer(1000, e -> capNhatDongHo());
+    private JButton btnThongBao;
 
     public PnlLeTan(TaiKhoan taiKhoan, Runnable dangXuat) {
         super(new BorderLayout());
@@ -143,9 +153,9 @@ public class PnlLeTan extends JPanel {
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Hóa đơn", LineIcon.Type.INVOICE, () -> moTrang("Hóa đơn")));
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Báo cáo", LineIcon.Type.CHART, () -> thongBaoChuaCo("Báo cáo")));
+        top.add(menuItem("Báo cáo", LineIcon.Type.CHART, () -> moTrang("Báo cáo"))); // doanh thu trong ngày
         top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, () -> thongBaoChuaCo("Cài đặt tài khoản")));
+        top.add(menuItem("Thống kê lịch", LineIcon.Type.CHART, () -> moTrang("Thống kê lịch"))); // UC032
         JScrollPane scrollMenu=new JScrollPane(top);
         scrollMenu.setBorder(BorderFactory.createEmptyBorder());
         scrollMenu.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -225,11 +235,17 @@ public class PnlLeTan extends JPanel {
             if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlCards.add(pnlLichCaNhan,trang); }
             pnlLichCaNhan.lamMoiDuLieu();
         }
+        if ("Báo cáo".equals(trang)) { // trang doanh thu trong ngày, tạo khi mở lần đầu
+            if (pnlDoanhThuNgay == null) { pnlDoanhThuNgay = new PnlDoanhThuNgay(); pnlCards.add(pnlDoanhThuNgay, trang); }
+            pnlDoanhThuNgay.lamMoi();
+        }
+        if ("Thống kê lịch".equals(trang)) { // UC032: lịch hẹn trong ngày theo trạng thái
+            if (pnlThongKeLich == null) { pnlThongKeLich = new PnlThongKeLichHenNgay(); pnlCards.add(pnlThongKeLich, trang); }
+            pnlThongKeLich.lamMoi();
+        }
         cards.show(pnlCards, trang);
         lblTrang.setText(trang);
-        txtTimKiemNhanh.setEnabled("Bệnh nhân".equals(trang));
         if ("Tiếp nhận".equals(trang)) {
-            txtTimKiemNhanh.setText("");
             pnlTiepNhan.lamMoi();
         } else if ("Phiếu khám".equals(trang)) {
             pnlPhieuKham.lamMoi();
@@ -237,7 +253,6 @@ public class PnlLeTan extends JPanel {
             pnlHoaDon.lamMoi();
         }
         if ("Lịch hẹn".equals(trang)) {
-            txtTimKiemNhanh.setText("");
             pnlLichHen.lamMoi();
         }
         menu.forEach((ten, nut) -> {
@@ -262,7 +277,7 @@ public class PnlLeTan extends JPanel {
                 LineIcon.Type.CLIPBOARD;
             case "Hóa đơn" ->
                 LineIcon.Type.INVOICE;
-            case "Báo cáo" ->
+            case "Báo cáo", "Thống kê lịch" ->
                 LineIcon.Type.CHART;
             default ->
                 LineIcon.Type.SETTINGS;
@@ -281,32 +296,6 @@ public class PnlLeTan extends JPanel {
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 0));
         right.setOpaque(false);
-        SurfacePanel search = new SurfacePanel(new BorderLayout(10, 0));
-        search.setPreferredSize(new Dimension(290, 38));
-        search.setBorder(new EmptyBorder(4, 12, 4, 10));
-        search.add(new JLabel(new LineIcon(LineIcon.Type.SEARCH, MUTED, 17)), BorderLayout.WEST);
-        txtTimKiemNhanh.setBorder(BorderFactory.createEmptyBorder());
-        txtTimKiemNhanh.setOpaque(false);
-        txtTimKiemNhanh.setFont(font(12));
-        txtTimKiemNhanh.putClientProperty("JTextField.placeholderText", "Tìm kiếm nhanh...");
-        txtTimKiemNhanh.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            @Override
-            public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                pnlKhachHang.timKiemNhanh(txtTimKiemNhanh.getText());
-            }
-
-            @Override
-            public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                pnlKhachHang.timKiemNhanh(txtTimKiemNhanh.getText());
-            }
-
-            @Override
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                pnlKhachHang.timKiemNhanh(txtTimKiemNhanh.getText());
-            }
-        });
-        search.add(txtTimKiemNhanh, BorderLayout.CENTER);
-        right.add(search);
         JButton bell = new JButton(new LineIcon(LineIcon.Type.BELL, MUTED, 23)) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -320,25 +309,57 @@ public class PnlLeTan extends JPanel {
         bell.setFocusPainted(false);
         bell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         bell.setPreferredSize(new Dimension(32, 38));
-        bell.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "Không có thông báo mới.", "Thông báo", JOptionPane.INFORMATION_MESSAGE));
+        btnThongBao = bell;
+        bell.addActionListener(e -> hienThongBao());
         right.add(bell);
         JSeparator sep = new JSeparator(SwingConstants.VERTICAL);
         sep.setPreferredSize(new Dimension(1, 30));
         right.add(sep);
         right.add(taoHoSo());
         header.add(right, BorderLayout.EAST);
-
-        getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
-                .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_K,
-                        java.awt.event.InputEvent.CTRL_DOWN_MASK), "timKiemNhanh");
-        getActionMap().put("timKiemNhanh", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                txtTimKiemNhanh.requestFocusInWindow();
-            }
-        });
         return header;
+    }
+
+    private void hienThongBao() {
+        if (!btnThongBao.isEnabled()) {
+            return;
+        }
+        btnThongBao.setEnabled(false);
+        LocalDate homNay = LocalDate.now(ZONE);
+        new SwingWorker<List<LichHen>, Void>() {
+            @Override
+            protected List<LichHen> doInBackground() {
+                return new LichHenDAO().timKiem(homNay, homNay, null).stream()
+                        .filter(lh -> lh.getTrangThai() == TrangThaiLichHen.DA_DAT
+                                || lh.getTrangThai() == TrangThaiLichHen.DA_DEN)
+                        .toList();
+            }
+
+            @Override
+            protected void done() {
+                btnThongBao.setEnabled(true);
+                try {
+                    List<PopupThongBao.Dong> ds = get().stream().map(lh -> {
+                        boolean daDen = lh.getTrangThai() == TrangThaiLichHen.DA_DEN;
+                        return new PopupThongBao.Dong(
+                                lh.getNgayGioHen().format(GIO),
+                                lh.getKhachHang().getTenKH(),
+                                lh.getDichVu().getTenDV(),
+                                daDen ? "Đã đến" : "Đã đặt",
+                                daDen ? GREEN : AMBER,
+                                daDen ? new Color(0xE7F7EF) : AMBER_LIGHT,
+                                () -> moTrang("Lịch hẹn"));
+                    }).toList();
+                    PopupThongBao.hien(btnThongBao, "Lịch hẹn đang chờ hôm nay", ds,
+                            "Không có lịch hẹn nào đang chờ.");
+                } catch (java.util.concurrent.ExecutionException ex) {
+                    JOptionPane.showMessageDialog(PnlLeTan.this,
+                            "Không tải được thông báo lịch hẹn.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }.execute();
     }
 
     private JButton taoHoSo() {

@@ -10,12 +10,12 @@ import static com.quanlynhakhoa.ui.component.UiConstants.bold;
 import static com.quanlynhakhoa.ui.component.UiConstants.font;
 
 import com.quanlynhakhoa.dao.ThongKeBenhNhanDAO;
-import com.quanlynhakhoa.dao.ThongKeBenhNhanDAO.DichVuTop;
-import com.quanlynhakhoa.dao.ThongKeBenhNhanDAO.DichVuSuDung;
+import com.quanlynhakhoa.dao.ThongKeBenhNhanDAO.BenhNhanTrongKy;
 import com.quanlynhakhoa.dao.ThongKeBenhNhanDAO.TheoNgay;
 import com.quanlynhakhoa.dao.ThongKeBenhNhanDAO.TomTat;
 import com.quanlynhakhoa.ui.component.LineIcon;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.quanlynhakhoa.ui.dialog.DlgThongTinBenhNhan;
 import com.quanlynhakhoa.ui.dialog.HopThoaiLoi;
 import com.toedter.calendar.JDateChooser;
 import java.awt.BasicStroke;
@@ -27,6 +27,8 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
 import java.text.NumberFormat;
@@ -51,14 +53,11 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
-import javax.swing.RowSorter;
-import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
 
 public class PnlThongKeBenhNhan extends JPanel {
 
@@ -74,27 +73,23 @@ public class PnlThongKeBenhNhan extends JPanel {
     private final JButton btnHomNay = new JButton("Hôm nay");
     private final JButton btnBayNgay = new JButton("7 ngày qua");
     private final JButton btnThangNay = new JButton("Tháng này");
-    private final JButton btnSort = new JButton("Sắp xếp ↓");
     private final JLabel lblLuot = new JLabel("0");
     private final JLabel lblDoanhThu = new JLabel("0 đ");
     private final JLabel lblMoi = new JLabel("0");
-    private final JLabel lblDichVu = new JLabel("—");
     private final JLabel lblGhiChu = new JLabel("Chưa có dữ liệu");
     private final JLabel lblKhoang = new JLabel(" ");
     private final JLabel lblChartTrong = new JLabel(" ", SwingConstants.CENTER);
-    private final JLabel lblBangTrong = new JLabel(" ", SwingConstants.CENTER);
     private final BieuDoBenhNhan bieuDo = new BieuDoBenhNhan();
     private final DefaultTableModel model = new DefaultTableModel(
-            new String[]{"DỊCH VỤ", "SỐ LƯỢNG"}, 0) {
+            new String[]{"BỆNH NHÂN", "NGÀY KHÁM", "BỆNH / CHẨN ĐOÁN"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
         }
     };
     private final JTable table = new JTable(model);
-    private final TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
-    private boolean sortDesc = true;
     private final JPanel pnlBang = new JPanel(new BorderLayout());
+    private List<BenhNhanTrongKy> hienTai = List.of();
     private SwingWorker<?, ?> worker;
 
     public PnlThongKeBenhNhan() {
@@ -143,7 +138,7 @@ public class PnlThongKeBenhNhan extends JPanel {
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel title = new JLabel("Thống kê số bệnh nhân");
+        JLabel title = new JLabel("Thống kê cá nhân");
         title.setFont(bold(21));
         title.setForeground(TEXT);
         JLabel sub = new JLabel("Chỉ tính các phiếu khám đã hoàn tất trong khoảng thời gian đã chọn.");
@@ -197,27 +192,18 @@ public class PnlThongKeBenhNhan extends JPanel {
     }
 
     private JPanel taoKpi() {
-        JPanel row = new JPanel(new GridLayout(1, 4, 14, 0));
+        JPanel row = new JPanel(new GridLayout(1, 3, 14, 0));
         row.setOpaque(false);
         row.setPreferredSize(new Dimension(0, 92));
         row.add(kpiCard("Lượt khám hoàn tất", lblLuot));
         row.add(kpiCard("Doanh thu cá nhân", lblDoanhThu));
         row.add(kpiCard("Bệnh nhân mới", lblMoi));
-        row.add(kpiCardChu("Dịch vụ làm nhiều nhất", lblDichVu));
         return row;
     }
 
     private static JPanel kpiCard(String title, JLabel value) {
         value.setFont(bold(26));
         value.setForeground(TEAL_DARK);
-        return kpiKhung(title, value);
-    }
-
-    /** Thẻ KPI có giá trị là chuỗi (vd tên dịch vụ) — font nhỏ hơn, xuống dòng được. */
-    private static JPanel kpiCardChu(String title, JLabel value) {
-        value.setFont(bold(14));
-        value.setForeground(TEXT);
-        value.setVerticalAlignment(SwingConstants.TOP);
         return kpiKhung(title, value);
     }
 
@@ -235,7 +221,7 @@ public class PnlThongKeBenhNhan extends JPanel {
     private JPanel taoChart() {
         SurfacePanel card = new SurfacePanel(new BorderLayout(0, 8));
         card.setBorder(new EmptyBorder(14, 16, 12, 16));
-        JLabel title = new JLabel("Bệnh nhân theo ngày");
+        JLabel title = new JLabel("Doanh thu theo ngày");
         title.setFont(bold(13));
         title.setForeground(TEXT);
         card.add(title, BorderLayout.NORTH);
@@ -253,22 +239,15 @@ public class PnlThongKeBenhNhan extends JPanel {
     private JPanel taoBang() {
         SurfacePanel card = new SurfacePanel(new BorderLayout(0, 8));
         card.setBorder(new EmptyBorder(14, 16, 12, 16));
-        JLabel title = new JLabel("Dịch vụ sử dụng");
+        JLabel title = new JLabel("Bệnh nhân trong ngày");
         title.setFont(bold(13));
         title.setForeground(TEXT);
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         header.add(title, BorderLayout.WEST);
-        btnSort.setFont(font(10));
-        btnSort.setForeground(TEAL);
-        btnSort.setContentAreaFilled(false);
-        btnSort.setBorderPainted(false);
-        btnSort.setFocusPainted(false);
-        btnSort.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-        header.add(btnSort, BorderLayout.EAST);
         card.add(header, BorderLayout.NORTH);
 
-        table.setRowHeight(36);
+        table.setRowHeight(48);
         table.setFont(font(11));
         table.getTableHeader().setFont(bold(9));
         table.getTableHeader().setBackground(new Color(0xF7F9FB));
@@ -278,34 +257,80 @@ public class PnlThongKeBenhNhan extends JPanel {
         table.setSelectionBackground(new Color(0xEFF6F5));
         table.setSelectionForeground(TEXT);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setAutoCreateRowSorter(false);
-        table.setRowSorter(sorter);
-        table.getColumnModel().getColumn(0).setPreferredWidth(270);
-        table.getColumnModel().getColumn(1).setPreferredWidth(90);
-        sorter.setSortKeys(List.of(new RowSorter.SortKey(1, SortOrder.DESCENDING)));
-        DefaultTableCellRenderer right = new DefaultTableCellRenderer();
-        right.setHorizontalAlignment(SwingConstants.RIGHT);
-        table.getColumnModel().getColumn(1).setCellRenderer(right);
+        table.getColumnModel().getColumn(0).setPreferredWidth(150);
+        table.getColumnModel().getColumn(1).setPreferredWidth(96);
+        table.getColumnModel().getColumn(2).setPreferredWidth(280);
+        table.getColumnModel().getColumn(0).setCellRenderer(new OBenhNhan(SwingConstants.LEFT, TEXT, font(12)));
+        table.getColumnModel().getColumn(1).setCellRenderer(new OBenhNhan(SwingConstants.CENTER, MUTED, font(11)));
+        table.getColumnModel().getColumn(2).setCellRenderer(new OBenhNhan(SwingConstants.LEFT, TEXT, font(12)));
+        DefaultTableCellRenderer headTrai = headerRenderer(SwingConstants.LEFT);
+        DefaultTableCellRenderer headGiua = headerRenderer(SwingConstants.CENTER);
+        table.getColumnModel().getColumn(0).setHeaderRenderer(headTrai);
+        table.getColumnModel().getColumn(1).setHeaderRenderer(headGiua);
+        table.getColumnModel().getColumn(2).setHeaderRenderer(headTrai);
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int row = table.getSelectedRow();
+                if (row >= 0) {
+                    moThongTin(row);
+                }
+            }
+        });
         JScrollPane scr = new JScrollPane(table);
         scr.setBorder(BorderFactory.createLineBorder(BORDER));
         scr.getViewport().setBackground(Color.WHITE);
+        pnlBang.setLayout(new java.awt.CardLayout());
         pnlBang.setOpaque(false);
-        pnlBang.add(scr, BorderLayout.CENTER);
-        lblBangTrong.setFont(font(11));
-        lblBangTrong.setForeground(MUTED);
-        lblBangTrong.setHorizontalAlignment(SwingConstants.CENTER);
-        lblBangTrong.setVisible(false);
-        pnlBang.add(lblBangTrong, BorderLayout.SOUTH);
+        pnlBang.add(scr, "bang");
+        pnlBang.add(oTrong("Không có dữ liệu",
+                "Chưa có bệnh nhân khám trong khoảng thời gian này."), "trong");
         card.add(pnlBang, BorderLayout.CENTER);
         return card;
     }
 
+    /** Ô trống hiển thị gọn gàng, căn giữa ngay trong khung bảng. */
+    private static JPanel oTrong(String tieuDe, String moTa) {
+        JPanel box = new JPanel(new java.awt.GridBagLayout());
+        box.setBackground(Color.WHITE);
+        box.setBorder(BorderFactory.createLineBorder(BORDER));
+        JPanel inner = new JPanel();
+        inner.setOpaque(false);
+        inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
+        JLabel icon = new JLabel("—");
+        icon.setFont(bold(28));
+        icon.setForeground(new Color(0xCBD5E1));
+        icon.setAlignmentX(CENTER_ALIGNMENT);
+        JLabel t = new JLabel(tieuDe);
+        t.setFont(bold(13));
+        t.setForeground(new Color(0x64748B));
+        t.setAlignmentX(CENTER_ALIGNMENT);
+        JLabel m = new JLabel(moTa);
+        m.setFont(font(11));
+        m.setForeground(MUTED);
+        m.setAlignmentX(CENTER_ALIGNMENT);
+        inner.add(icon);
+        inner.add(Box.createVerticalStrut(6));
+        inner.add(t);
+        inner.add(Box.createVerticalStrut(3));
+        inner.add(m);
+        box.add(inner);
+        return box;
+    }
+
     private void addEvents() {
-        btnXem.addActionListener(e -> taiDuLieu());
-        btnSort.addActionListener(e -> {
-            sortDesc = !sortDesc;
-            apDungSapXep();
+        // Ràng buộc khoảng ngày ngay trên lịch: ngày không hợp lệ bị làm mờ, không chọn được.
+        dpTu.addPropertyChangeListener("date", e -> {
+            if (dpTu.getDate() != null) {
+                dpDen.setMinSelectableDate(dpTu.getDate());
+            }
         });
+        dpDen.addPropertyChangeListener("date", e -> {
+            if (dpDen.getDate() != null) {
+                dpTu.setMaxSelectableDate(dpDen.getDate());
+            }
+        });
+        btnXem.addActionListener(e -> taiDuLieu());
         btnHomNay.addActionListener(e -> {
             datKhoang(LocalDate.now(ZONE), LocalDate.now(ZONE));
             taiDuLieu();
@@ -335,29 +360,22 @@ public class PnlThongKeBenhNhan extends JPanel {
                     "Thiếu dữ liệu", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if (den.isBefore(tu)) {
-            JOptionPane.showMessageDialog(this, "Đến ngày phải sau hoặc bằng từ ngày.",
-                    "Khoảng ngày không hợp lệ", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
         if (worker != null) {
             worker.cancel(true);
         }
         btnXem.setEnabled(false);
-        for (JLabel l : new JLabel[]{lblLuot, lblDoanhThu, lblMoi, lblDichVu}) {
+        for (JLabel l : new JLabel[]{lblLuot, lblDoanhThu, lblMoi}) {
             l.setText("—");
         }
         lblGhiChu.setText("Đang tải...");
         lblChartTrong.setVisible(false);
-        lblBangTrong.setVisible(false);
         worker = new SwingWorker<DuLieu, Void>() {
             @Override
             protected DuLieu doInBackground() {
-                List<TheoNgay> ds = dao.thongKe(tu, den);
+                List<TheoNgay> ds = dao.doanhThuTheoNgay(tu, den);
                 TomTat tt = dao.tongHop(tu, den);
-                DichVuTop top = dao.dichVuNhieuNhat(tu, den);
-                List<DichVuSuDung> dichVu = dao.dichVuSuDung(tu, den);
-                return new DuLieu(ds, tt, top, dichVu);
+                List<BenhNhanTrongKy> benhNhan = dao.danhSachBenhNhan(tu, den);
+                return new DuLieu(ds, tt, benhNhan);
             }
 
             @Override
@@ -370,7 +388,7 @@ public class PnlThongKeBenhNhan extends JPanel {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException e) {
                     HopThoaiLoi.hien(PnlThongKeBenhNhan.this, e.getCause(), "Không thể tải thống kê bệnh nhân.");
-                    for (JLabel l : new JLabel[]{lblLuot, lblDoanhThu, lblMoi, lblDichVu}) {
+                    for (JLabel l : new JLabel[]{lblLuot, lblDoanhThu, lblMoi}) {
                         l.setText("—");
                     }
                     lblGhiChu.setText("Không tải được dữ liệu");
@@ -401,16 +419,18 @@ public class PnlThongKeBenhNhan extends JPanel {
                 soNgayCoDuLieu++;
             }
         }
-        DichVuTop top = d.top();
-        lblDichVu.setText(top == null ? "—"
-                : "<html><b>" + escapeHtml(top.tenDV()) + "</b><br><span style='color:#7B8BA5'>"
-                + top.soLuong() + " lần</span></html>");
+        hienTai = d.benhNhan();
         model.setRowCount(0);
-        for (DichVuSuDung dv : d.dichVu()) {
-            model.addRow(new Object[]{dv.tenDV(), dv.soLuong()});
+        for (BenhNhanTrongKy bn : d.benhNhan()) {
+            String ten = "<html><b>" + escapeHtml(bn.tenKH()) + "</b><br>"
+                    + "<span style='color:#7B8BA5'>"
+                    + (bn.sdt() == null || bn.sdt().isBlank() ? "Chưa có SĐT" : escapeHtml(bn.sdt()))
+                    + "</span></html>";
+            String ngay = bn.ngayKham() == null ? "—" : bn.ngayKham().format(NGAY);
+            model.addRow(new Object[]{ten, ngay, chanDoanNgan(bn.chanDoan())});
         }
         boolean co = tt.soLuotKham() > 0 || tt.soBenhNhan() > 0;
-        boolean coDichVu = !d.dichVu().isEmpty();
+        boolean coBenhNhan = !d.benhNhan().isEmpty();
         lblGhiChu.setText(co
                 ? soNgayCoDuLieu + " ngày có khám · " + tt.soLuotKham() + " lượt · "
                   + tt.soBenhNhan() + " bệnh nhân (" + tt.soBenhNhanMoi() + " mới)"
@@ -418,15 +438,30 @@ public class PnlThongKeBenhNhan extends JPanel {
         bieuDo.setPoints(chart);
         lblChartTrong.setText(" ");
         lblChartTrong.setVisible(false);
-        lblBangTrong.setText(coDichVu ? " " : "Chưa có dữ liệu dịch vụ");
-        lblBangTrong.setVisible(!coDichVu);
-        apDungSapXep();
+        ((java.awt.CardLayout) pnlBang.getLayout()).show(pnlBang, coBenhNhan ? "bang" : "trong");
     }
 
-    private void apDungSapXep() {
-        btnSort.setText(sortDesc ? "Sắp xếp ↓" : "Sắp xếp ↑");
-        sorter.setSortKeys(List.of(new RowSorter.SortKey(1,
-                sortDesc ? SortOrder.DESCENDING : SortOrder.ASCENDING)));
+    private void moThongTin(int row) {
+        if (row < 0 || row >= hienTai.size()) {
+            return;
+        }
+        DlgThongTinBenhNhan.hien(javax.swing.SwingUtilities.getWindowAncestor(this), hienTai.get(row));
+    }
+
+    private static String chanDoanNgan(String s) {
+        if (s == null || s.isBlank()) {
+            return "—";
+        }
+        for (String d : s.split("\r?\n")) {
+            String t = d.trim();
+            if (t.startsWith("Chẩn đoán:")) {
+                t = t.substring("Chẩn đoán:".length()).trim();
+            }
+            if (!t.isBlank()) {
+                return t;
+            }
+        }
+        return "—";
     }
 
     private static String money(double v) {
@@ -440,8 +475,8 @@ public class PnlThongKeBenhNhan extends JPanel {
                 : chooser.getDate().toInstant().atZone(ZONE).toLocalDate();
     }
 
-    private record DuLieu(List<TheoNgay> ds, TomTat tomTat, DichVuTop top,
-            List<DichVuSuDung> dichVu) {
+    private record DuLieu(List<TheoNgay> ds, TomTat tomTat,
+            List<BenhNhanTrongKy> benhNhan) {
     }
 
     private static String escapeHtml(String s) {
@@ -453,6 +488,45 @@ public class PnlThongKeBenhNhan extends JPanel {
         l.setFont(font(11));
         l.setForeground(MUTED);
         return l;
+    }
+
+    private static DefaultTableCellRenderer headerRenderer(int align) {
+        DefaultTableCellRenderer h = new DefaultTableCellRenderer();
+        h.setOpaque(true);
+        h.setBackground(new Color(0xF7F9FB));
+        h.setForeground(MUTED);
+        h.setFont(bold(9));
+        h.setHorizontalAlignment(align);
+        h.setBorder(new EmptyBorder(8, 12, 8, 10));
+        return h;
+    }
+
+    /** Ô bệnh nhân trong bảng: căn lề, giãn cách thoáng, nền chọn bo gọn. */
+    private static final class OBenhNhan extends DefaultTableCellRenderer {
+
+        private final int align;
+        private final Color fg;
+        private final java.awt.Font f;
+
+        OBenhNhan(int align, Color fg, java.awt.Font f) {
+            this.align = align;
+            this.fg = fg;
+            this.f = f;
+        }
+
+        @Override
+        public java.awt.Component getTableCellRendererComponent(JTable t, Object v,
+                boolean sel, boolean foc, int r, int c) {
+            JLabel l = (JLabel) super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+            l.setHorizontalAlignment(align);
+            l.setVerticalAlignment(SwingConstants.CENTER);
+            l.setFont(f);
+            l.setBorder(new EmptyBorder(0, 12, 0, 10));
+            if (!sel) {
+                l.setForeground(fg);
+            }
+            return l;
+        }
     }
 
     private static final class BieuDoBenhNhan extends JPanel {
@@ -468,6 +542,20 @@ public class PnlThongKeBenhNhan extends JPanel {
         void setPoints(List<TheoNgay> points) {
             this.points = List.copyOf(points);
             repaint();
+        }
+
+        /** Rút gọn số tiền cho nhãn biểu đồ: 700000 → 700K, 1200000 → 1,2tr. */
+        private static String tienGon(long v) {
+            if (v >= 1_000_000) {
+                double tr = v / 1_000_000.0;
+                return (tr == Math.floor(tr)
+                        ? String.format(Locale.of("vi", "VN"), "%.0f", tr)
+                        : String.format(Locale.of("vi", "VN"), "%.1f", tr)) + "tr";
+            }
+            if (v >= 1000) {
+                return (v / 1000) + "K";
+            }
+            return String.valueOf(v);
         }
 
         @Override
@@ -488,7 +576,7 @@ public class PnlThongKeBenhNhan extends JPanel {
                 int y = top + chartH - chartH * i / 4;
                 g.setColor(new Color(0xEDF2F5));
                 g.drawLine(left, y, left + chartW, y);
-                String nhan = String.valueOf(Math.round(max * i / 4.0));
+                String nhan = tienGon(Math.round(max * i / 4.0));
                 g.setColor(MUTED);
                 g.drawString(nhan, left - 7 - fmY.stringWidth(nhan), y + 3);
             }
@@ -520,7 +608,7 @@ public class PnlThongKeBenhNhan extends JPanel {
                 g.setColor(p.soBenhNhan() > 0 ? new Color(0x7FC7C4) : new Color(0xE6EEF2));
                 g.fill(new RoundRectangle2D.Double(x, y, barW, Math.max(2, h), 3, 3));
                 if (p.soBenhNhan() > 0) {
-                    String value = String.valueOf(p.soBenhNhan());
+                    String value = tienGon(p.soBenhNhan());
                     g.setColor(TEAL_DARK);
                     g.drawString(value, x + (barW - fm.stringWidth(value)) / 2, Math.max(10, y - 4));
                 }

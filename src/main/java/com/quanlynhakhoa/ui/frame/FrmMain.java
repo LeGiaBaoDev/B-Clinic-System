@@ -3,6 +3,7 @@ package com.quanlynhakhoa.ui.frame;
 import com.quanlynhakhoa.dao.NhatKyHeThongDAO;
 import com.quanlynhakhoa.entity.TaiKhoan;
 import com.quanlynhakhoa.entity.enums.VaiTro;
+import com.quanlynhakhoa.ui.dialog.DlgXacNhan;
 import com.quanlynhakhoa.ui.panel.PnlLeTan;
 import com.quanlynhakhoa.ui.panel.PnlLichNhaSi;
 import com.quanlynhakhoa.ui.panel.PnlQuanLy;
@@ -66,10 +67,9 @@ public class FrmMain extends JFrame {
             return;
         }
         dangDangXuat = true;
-        int luaChon = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc chắn muốn đăng xuất?", "Đăng xuất",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (luaChon != JOptionPane.YES_OPTION) {
+        boolean dongY = DlgXacNhan.hoi(this, "Đăng xuất",
+                "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", "Đăng xuất");
+        if (!dongY) {
             dangDangXuat = false;
             return;
         }
