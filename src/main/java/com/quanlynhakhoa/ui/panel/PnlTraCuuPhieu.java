@@ -83,11 +83,13 @@ public class PnlTraCuuPhieu extends JPanel {
         @Override
         public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
             Component c = super.prepareRenderer(renderer, row, column);
-            if (!isRowSelected(row)) {
-                int modelRow = convertRowIndexToModel(row);
-                boolean choKham = modelRow >= 0 && modelRow < dsPhieu.size()
-                        && dsPhieu.get(modelRow).getTrangThai() == TrangThaiPhieuKham.CHO_KHAM;
-                c.setBackground(choKham ? new Color(0xE7F4F3) : Color.WHITE);
+            int modelRow = convertRowIndexToModel(row);
+            boolean choKham = modelRow >= 0 && modelRow < dsPhieu.size()
+                    && dsPhieu.get(modelRow).getTrangThai() == TrangThaiPhieuKham.CHO_KHAM;
+            if (choKham) {
+                c.setBackground(new Color(0xDDF2E9));
+            } else if (!isRowSelected(row)) {
+                c.setBackground(Color.WHITE);
             }
             return c;
         }
