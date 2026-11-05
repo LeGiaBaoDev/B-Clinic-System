@@ -1,6 +1,7 @@
 package com.quanlynhakhoa.dao;
 
 import com.quanlynhakhoa.dao.support.JdbcHelper;
+import com.quanlynhakhoa.dao.support.DocThongKe;
 import com.quanlynhakhoa.dao.support.PhanQuyen;
 import com.quanlynhakhoa.dao.support.PhanQuyen.Actor;
 import com.quanlynhakhoa.entity.enums.TrangThaiLichHen;
@@ -126,9 +127,9 @@ public class TongQuanQuanLyDAO {
     public TongQuanQuanLy layTongQuanQuanLy(LocalDate ngay) {
         yeuCau(ngay != null && ngay.getYear() >= 1900 && ngay.getYear() <= 9998,
                 "Ngày xem phải trong khoảng năm 1900 đến 9998.");
-        LocalDateTime now = thoiDiemHienTai();
-        boolean homNay = ngay.equals(now.toLocalDate());
-        return JdbcHelper.doc(c -> {
+        return DocThongKe.quanLy(c -> {
+            LocalDateTime now = thoiDiemHienTai();
+            boolean homNay = ngay.equals(now.toLocalDate());
             Actor actor = PhanQuyen.quyen(c, VaiTro.QUANLY);
 
             List<LichHenTrongNgay> appointments = JdbcHelper.query(c, """

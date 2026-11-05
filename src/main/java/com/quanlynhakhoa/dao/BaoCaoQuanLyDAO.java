@@ -1,6 +1,7 @@
 package com.quanlynhakhoa.dao;
 
 import com.quanlynhakhoa.dao.support.JdbcHelper;
+import com.quanlynhakhoa.dao.support.DocThongKe;
 import com.quanlynhakhoa.dao.support.PhanQuyen;
 import com.quanlynhakhoa.entity.HoaDon;
 import com.quanlynhakhoa.entity.enums.VaiTro;
@@ -101,10 +102,8 @@ public class BaoCaoQuanLyDAO {
 
     public BaoCao taiBaoCao(KyBaoCao ky) {
         kiemTra(ky != null, "Thiếu kỳ báo cáo.");
-        return JdbcHelper.transaction(c -> {
+        return DocThongKe.quanLy(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
-            // HikariCP reset mức cô lập về mặc định khi trả connection; helper commit/rollback.
-            c.setTransactionIsolation(java.sql.Connection.TRANSACTION_SERIALIZABLE);
             KhoangNgay current = ky.hienTai(), previous = ky.kyTruoc();
             var daily = JdbcHelper.query(c, TONG + """
                     SELECT CAST(hd.ngayThanhToan AS DATE),COUNT_BIG(*),

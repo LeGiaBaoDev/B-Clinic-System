@@ -1,3 +1,13 @@
+## H4 — Toàn luồng, snapshot đồng thời và hiệu năng (05/11/2026)
+
+[Báo cáo và checklist kiểm thử chéo](../../../docs/H4/H4_TEST_REPORT.md). Test `H4ToanLuongIntegrationTest` tạo DB UUID/JVM riêng, gọi DAO tạo KH/đặt lịch/tiếp nhận/khám/voucher/thanh toán thật; kiểm rollback và Tổng quan/Báo cáo khi thanh toán đang cập nhật. Đã tái hiện lỗi snapshot ghép trước/sau commit và sửa bằng `DocThongKe`. Không sửa dữ liệu BClinic_Dev.
+
+```powershell
+mvn -o '-Dbclinic.integration=true' '-Dtest=H4ToanLuongIntegrationTest,H4TongQuanIntegrationTest,BaoCaoQuanLyIntegrationTest' test
+```
+
+Test toàn luồng cần chạy trước khoảng 15:35 giờ Việt Nam để còn khung đặt/tiếp nhận cùng ngày trong ca 07:00–17:30; không tự giả đổi ngày để vượt điều kiện. Cần quyền tạo/xóa DB test và truy cập SQL Server. Mặc định opt-in bị bỏ qua; khi bật lỗi phải fail thật. Fixture khối lượng 1.443 hóa đơn/4.329 chi tiết chỉ ở DB UUID. 3 test SQL riêng đạt; hồi quy 275 test/0 lỗi/6 skipped. Đo panel Tổng quan 1.224 ms/Báo cáo 953 ms trên máy hiện tại; số DAO/giới hạn phép đo trong báo cáo. Chưa thay review/kiểm thử chéo hoặc tải cao điểm.
+
 ## Báo cáo hoạt động Quản lý (05/11/2026)
 
 [Hướng dẫn/công thức/API/kết quả](../../../docs/H4/BAO_CAO_QUAN_LY.md). Mở Báo cáo từ menu Quản lý hoặc Xem báo cáo trên Tổng quan; panel đã gắn thật, không còn placeholder. Bộ lọc Ngày/Tuần/Tháng/Tùy chọn, so sánh kỳ liền trước và Excel 4 sheet.
