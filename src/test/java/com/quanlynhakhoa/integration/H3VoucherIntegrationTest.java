@@ -8,6 +8,11 @@ import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 
 import com.quanlynhakhoa.util.*;
+import com.quanlynhakhoa.ui.dialog.DlgVoucher;
+import javax.swing.*;
+import java.awt.Component;
+import java.awt.Container;
+import java.util.concurrent.atomic.AtomicReference;
 
 import java.nio.file.*;
 import java.sql.*;
@@ -91,6 +96,7 @@ class H3VoucherIntegrationTest {
                 history(c);
                 rollback(c);
                 concurrentCreation();
+                uiLuuVoucher();
                 System.out.println("H3_VOUCHER_INTEGRATION_OK");
             } finally {
                 SessionManager.getInstance().logout();
@@ -99,8 +105,12 @@ class H3VoucherIntegrationTest {
         }
 
         private static void crud(Connection c) throws Exception {
+            assertEquals("VC001", DAO.layMaDuKien());
+            assertEquals("VC001", DAO.layMaDuKien(), "Xem mã không giữ chỗ hoặc tạo voucher");
             Voucher a = voucher();
             assertTrue(DAO.them(a));
+            assertEquals("VC001", a.getMaVoucher());
+            assertEquals("VC002", DAO.layMaDuKien());
             assertTrue(a.getMaVoucher().matches("VC\\d{3}"));
             assertEquals("NULL", scalar(c, "SELECT COALESCE(CONVERT(varchar,giaTriGiamToiDa),'NULL') FROM Voucher WHERE maVoucher='" + a.getMaVoucher() + "'"));
             assertEquals(0, DAO.layTheoMa(a.getMaVoucher()).getGiaTriGiamToiDa());
@@ -130,6 +140,8 @@ class H3VoucherIntegrationTest {
             for (VaiTro role : new VaiTro[]{VaiTro.LETAN, VaiTro.NHASI}) {
                 login(role);
                 assertThrows(BusinessException.class, DAO::layTatCa);
+                assertThrows(BusinessException.class, DAO::layMaDaSuDung);
+                assertThrows(BusinessException.class, DAO::layMaDuKien);
                 assertThrows(BusinessException.class, () -> DAO.them(voucher()));
                 Voucher update = voucher(); update.setMaVoucher("VC001");
                 assertThrows(BusinessException.class, () -> DAO.capNhat(update));
@@ -164,6 +176,8 @@ class H3VoucherIntegrationTest {
             assertThrows(BusinessException.class, () -> DAO.capNhat(used));
             assertEquals("Ưu đãi kiểm thử", DAO.layTheoMa(used.getMaVoucher()).getTenVoucher());
             assertTrue(DAO.xoa(used.getMaVoucher()));
+            assertTrue(DAO.layMaDaSuDung().contains(used.getMaVoucher()));
+            assertFalse(DAO.layMaDaSuDung().contains("VC001"));
             assertEquals(used.getMaVoucher(), scalar(c, "SELECT maVoucher FROM HoaDon WHERE maHD='HD261105001'"));
             assertEquals("10000.00", scalar(c, "SELECT tongKhuyenMai FROM HoaDon WHERE maHD='HD261105001'"));
             assertFalse(DAO.layConHieuLuc(DAY).contains(used));
@@ -221,6 +235,56 @@ class H3VoucherIntegrationTest {
 
         private static Voucher voucher() {
             return new Voucher(null, "Ưu đãi kiểm thử", true, 10, 0, DAY, DAY.plusDays(10), true);
+        }
+
+        private static void uiLuuVoucher() throws Exception {
+            AtomicReference<Voucher> saved = new AtomicReference<>();
+            AtomicReference<DlgVoucher> dialog = new AtomicReference<>();
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    DlgVoucher form = new DlgVoucher(null, null, false, DAO::them, saved::set);
+                    dialog.set(form);
+                    ((JTextField) find(form.getContentPane(), "tenVoucher")).setText("Ưu đãi từ giao diện");
+                    ((JTextField) find(form.getContentPane(), "giaGiamVoucher")).setText("50000");
+                    ((JButton) find(form.getContentPane(), "luuVoucher")).doClick();
+                });
+                waitSaved(saved);
+                Voucher created = DAO.layTheoMa(saved.get().getMaVoucher());
+                assertEquals("Ưu đãi từ giao diện", created.getTenVoucher());
+                assertEquals(50000, created.getGiaGiam());
+                assertFalse(created.isLoaiGiam());
+                SwingUtilities.invokeAndWait(() -> dialog.get().dispose());
+                saved.set(null);
+                SwingUtilities.invokeAndWait(() -> {
+                    DlgVoucher form = new DlgVoucher(null, created, false, DAO::capNhat, saved::set);
+                    dialog.set(form);
+                    ((JTextField) find(form.getContentPane(), "tenVoucher")).setText("Cập nhật từ giao diện");
+                    ((JButton) find(form.getContentPane(), "luuVoucher")).doClick();
+                });
+                waitSaved(saved);
+                assertEquals(created.getMaVoucher(), saved.get().getMaVoucher());
+                assertEquals("Cập nhật từ giao diện", DAO.layTheoMa(created.getMaVoucher()).getTenVoucher());
+                System.out.println("UI_CREATE_UPDATE_SQL_OK");
+            } finally {
+                SwingUtilities.invokeAndWait(() -> { if (dialog.get() != null) dialog.get().dispose(); });
+            }
+        }
+
+        private static void waitSaved(AtomicReference<Voucher> saved) throws InterruptedException {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+            while (saved.get() == null && System.nanoTime() < deadline) Thread.sleep(25);
+            assertNotNull(saved.get(), "Form chưa lưu voucher thành công");
+        }
+
+        private static Component find(Container root, String name) {
+            for (Component child : root.getComponents()) {
+                if (name.equals(child.getName())) return child;
+                if (child instanceof Container container) {
+                    Component match = find(container, name);
+                    if (match != null) return match;
+                }
+            }
+            return null;
         }
         private static void login(VaiTro role) {
             SessionManager.getInstance().login(new TaiKhoanDAO().dangNhap("hieu." + role.name().toLowerCase(Locale.ROOT), "Clinic@123"));
