@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
 
 /*
  * UC029 – thẻ lịch hẹn trong trang Báo cáo của Quản lý (không cần DB, nguồn giả)
- * [x] thẻ hoàn tất: số, tỷ lệ chuyển đổi, so với kỳ trước
- * [x] thẻ hủy / không đến: số, chi tiết, so với kỳ trước (tăng = đỏ vì xấu hơn)
+ * [x] thẻ hoàn tất: số, tỷ lệ chuyển đổi, so với tuần trước
+ * [x] thẻ hủy / không đến: số, chi tiết, so với tuần trước (tăng = đỏ vì xấu hơn)
  * [x] biểu đồ tròn + chú thích 5 trạng thái; lọc theo nha sĩ; không dữ liệu / lỗi -> thông báo
  */
 class PnlThongKeLichHenKyTest {
@@ -62,32 +62,32 @@ class PnlThongKeLichHenKyTest {
     @Test
     void theHoanTat_soTyLeChuyenDoiVaSoVoiKyTruoc() throws Exception {
         tao(PnlThongKeLichHenKyTest::mau);
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() -> the.lblHoanTat.getText().equals("5"));
         SwingUtilities.invokeAndWait(() -> {
             assertEquals("Chuyển đổi 50,0% tổng 10 lịch", the.lblChuyenDoi.getText());
-            assertEquals("↑ 25,0% · Kỳ trước: 4", the.lblHoanTatSoVoiTruoc.getText(), "Hoàn tất tăng 4 -> 5");
+            assertEquals("↑ 25,0% so với tuần trước (4 lịch)", the.lblHoanTatSoVoiTruoc.getText(), "Hoàn tất tăng 4 -> 5");
         });
     }
 
     @Test
     void theHuyKhongDen_bangKyTruoc_hienKhongPhanTram() throws Exception {
         tao(PnlThongKeLichHenKyTest::mau);
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() -> the.lblHuyKhongDen.getText().equals("3"));
         SwingUtilities.invokeAndWait(() -> {
             assertEquals("Hủy 2 · Không đến 1", the.lblChiTietHuy.getText());
-            assertEquals("0,0% · Kỳ trước: 3", the.lblHuySoVoiTruoc.getText(), "Cùng 3 nên thay đổi 0,0%");
+            assertEquals("0,0% so với tuần trước (3 lịch)", the.lblHuySoVoiTruoc.getText(), "Cùng 3 nên thay đổi 0,0%");
         });
     }
 
     @Test
     void theHuyKhongDen_tangSoVoiKyTruoc_toDo() throws Exception {
         tao((tu, den, ns) -> tu.equals(NAY.tu()) ? new TongHop(10, 0, 0, 5, 3, 2) : new TongHop(8, 0, 0, 5, 1, 2));
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() -> the.lblHuyKhongDen.getText().equals("5"));
         SwingUtilities.invokeAndWait(() -> {
-            assertEquals("↑ 66,7% · Kỳ trước: 3", the.lblHuySoVoiTruoc.getText());
+            assertEquals("↑ 66,7% so với tuần trước (3 lịch)", the.lblHuySoVoiTruoc.getText());
             assertEquals(DO, the.lblHuySoVoiTruoc.getForeground());
         });
     }
@@ -95,21 +95,21 @@ class PnlThongKeLichHenKyTest {
     @Test
     void bieuDoTronVaChuThich_namTrangThai() throws Exception {
         tao(PnlThongKeLichHenKyTest::mau);
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() -> the.duLieuBieuDo.getItemCount() == 5);
         SwingUtilities.invokeAndWait(() -> {
             assertEquals(5.0, the.duLieuBieuDo.getValue("Hoàn tất").doubleValue());
             assertEquals(2.0, the.duLieuBieuDo.getValue("Đã hủy").doubleValue());
             assertEquals("5 · 50,0%", the.lblSoLuong[0].getText());
             assertEquals("2 · 20,0%", the.lblSoLuong[3].getText());
-            assertEquals("10 lịch hẹn trong kỳ", the.lblTongDaKetThuc.getText());
+            assertEquals("10 lịch hẹn trong tuần", the.lblTongDaKetThuc.getText());
         });
     }
 
     @Test
     void trangThaiBangKhong_khongCoLatCatTrenBieuDo() throws Exception {
         tao((tu, den, ns) -> new TongHop(3, 0, 0, 2, 1, 0));
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() -> the.duLieuBieuDo.getItemCount() == 2);
         SwingUtilities.invokeAndWait(() -> assertEquals("0 · 0,0%", the.lblSoLuong[1].getText()));
     }
@@ -117,11 +117,11 @@ class PnlThongKeLichHenKyTest {
     @Test
     void khongCoDuLieu_baoKhongCoDuLieu() throws Exception {
         tao((tu, den, ns) -> new TongHop(0, 0, 0, 0, 0, 0));
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
-        PnlThongKeDichVuTest.choDen(() -> the.lblThongBao.getText().equals(PnlThongKeLichHenKy.KHONG_CO_DU_LIEU));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
+        PnlThongKeDichVuTest.choDen(() -> the.lblThongBao.getText().equals(PnlThongKeLichHenKy.khongCoDuLieu(PnlBaoCao.Ky.TUAN)));
         SwingUtilities.invokeAndWait(() -> {
             assertEquals("0", the.lblHoanTat.getText());
-            assertEquals("Kỳ trước: 0", the.lblHoanTatSoVoiTruoc.getText());
+            assertEquals("Tuần trước: 0 lịch", the.lblHoanTatSoVoiTruoc.getText());
             assertEquals(0, the.duLieuBieuDo.getItemCount());
         });
     }
@@ -129,7 +129,7 @@ class PnlThongKeLichHenKyTest {
     @Test
     void locTheoNhaSi_truyenMaNhaSiChoNguon() throws Exception {
         tao(PnlThongKeLichHenKyTest::mau);
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() -> the.cboNhaSi.getItemCount() == 3);
         SwingUtilities.invokeAndWait(() -> {
             assertEquals(PnlThongKeLichHenKy.TAT_CA, the.cboNhaSi.getItemAt(0).toString());
@@ -150,13 +150,13 @@ class PnlThongKeLichHenKyTest {
         tao((tu, den, ns) -> {
             throw new BusinessException("Khoảng ngày không hợp lệ.");
         });
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() -> the.lblThongBao.getText().equals("Khoảng ngày không hợp lệ."));
 
         tao((tu, den, ns) -> {
             throw new DataAccessException("secret-sql", null);
         });
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() ->
                 the.lblThongBao.getText().equals("Không thể tải lịch hẹn. Vui lòng thử lại."));
         SwingUtilities.invokeAndWait(() -> assertEquals("—", the.lblHoanTat.getText()));
@@ -165,7 +165,7 @@ class PnlThongKeLichHenKyTest {
     @Test
     void baoLoi_xoaSoLieuVaBieuDo() throws Exception {
         tao(PnlThongKeLichHenKyTest::mau);
-        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC));
+        SwingUtilities.invokeAndWait(() -> the.taiDuLieu(NAY, TRUOC, PnlBaoCao.Ky.TUAN));
         PnlThongKeDichVuTest.choDen(() -> the.duLieuBieuDo.getItemCount() == 5);
         SwingUtilities.invokeAndWait(() -> {
             the.baoLoi("Vui lòng chọn đủ ngày bắt đầu và ngày kết thúc.");
