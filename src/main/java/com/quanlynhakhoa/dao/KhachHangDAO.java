@@ -46,7 +46,7 @@ public class KhachHangDAO {
 
     /** Bản ghi tra cứu kèm lịch gần nhất và trạng thái hồ sơ để hiển thị danh sách. */
     public record TomTat(KhachHang khachHang, LocalDateTime lichGanNhat, int soLanKham,
-            boolean coLichSapToi) {
+            boolean coLichSapToi, boolean dangChoKham) {
 
         public String trangThaiHoSo() {
             if (lichGanNhat == null) {
@@ -88,11 +88,21 @@ public class KhachHangDAO {
                                 r.getInt("soLanKham"), r.getInt("soLichSapToi")));
                         return Boolean.TRUE;
                     }, LocalDateTime.now(), xemTatCa, maNV);
+            LocalDate homNay = LocalDate.now();
+            Set<String> dangCho = new HashSet<>(JdbcHelper.query(c,
+                    "SELECT DISTINCT hs.maKH FROM PhieuKham pk"
+                    + " JOIN HoSoBenhAn hs ON hs.maHSBA=pk.maHSBA"
+                    + " JOIN LichHen lh ON lh.maLH=pk.maLH"
+                    + " WHERE pk.trangThai IN('CHO_KHAM','DANG_KHAM')"
+                    + " AND pk.ngayLap>=? AND pk.ngayLap<? AND (?=1 OR lh.maNV=?)",
+                    r -> r.getString(1), homNay.atStartOfDay(),
+                    homNay.plusDays(1).atStartOfDay(), xemTatCa, maNV));
             List<TomTat> ketQua = new ArrayList<>(ds.size());
             for (KhachHang kh : ds) {
                 ThongKeLich t = thongKe.get(kh.getMaKH());
                 ketQua.add(new TomTat(kh, t == null ? null : t.lichGanNhat(),
-                        t == null ? 0 : t.soLanKham(), t != null && t.soLichSapToi() > 0));
+                        t == null ? 0 : t.soLanKham(), t != null && t.soLichSapToi() > 0,
+                        dangCho.contains(kh.getMaKH())));
             }
             return ketQua;
         });

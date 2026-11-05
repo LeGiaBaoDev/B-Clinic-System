@@ -101,7 +101,6 @@ public class PnlQuanLy extends JPanel {
         addMenu(top, "Lịch của tôi", LineIcon.Type.CALENDAR);
         addMenu(top, "Báo cáo", LineIcon.Type.CHART);
         addMenu(top, "Voucher", LineIcon.Type.VOUCHER);
-        addMenu(top, "Cài đặt", LineIcon.Type.SETTINGS);
         JScrollPane scrollMenu=new JScrollPane(top);
         scrollMenu.setBorder(BorderFactory.createEmptyBorder());
         scrollMenu.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);

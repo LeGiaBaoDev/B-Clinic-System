@@ -145,8 +145,6 @@ public class PnlLeTan extends JPanel {
         top.add(menuItem("Hóa đơn", LineIcon.Type.INVOICE, () -> moTrang("Hóa đơn")));
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Báo cáo", LineIcon.Type.CHART, () -> moTrang("Báo cáo"))); // doanh thu trong ngày
-        top.add(Box.createVerticalStrut(5));
-        top.add(menuItem("Cài đặt", LineIcon.Type.SETTINGS, () -> thongBaoChuaCo("Cài đặt tài khoản")));
         JScrollPane scrollMenu=new JScrollPane(top);
         scrollMenu.setBorder(BorderFactory.createEmptyBorder());
         scrollMenu.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
