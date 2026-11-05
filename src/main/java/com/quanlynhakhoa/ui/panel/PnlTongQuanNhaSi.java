@@ -325,16 +325,7 @@ public class PnlTongQuanNhaSi extends JPanel {
         dongLink.setOpaque(false);
         lblLoi.setFont(font(9));
         lblLoi.setForeground(MUTED);
-        btnLamMoi.setText("Xem tất cả →");
-        btnLamMoi.setFont(font(10));
-        btnLamMoi.setForeground(TEAL);
-        btnLamMoi.setContentAreaFilled(false);
-        btnLamMoi.setBorderPainted(false);
-        btnLamMoi.setFocusPainted(false);
-        btnLamMoi.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-        btnLamMoi.addActionListener(e -> lamMoi());
         dongLink.add(lblLoi);
-        dongLink.add(btnLamMoi);
         right.add(dongLink);
         header.add(right, BorderLayout.EAST);
         card.add(header, BorderLayout.NORTH);
