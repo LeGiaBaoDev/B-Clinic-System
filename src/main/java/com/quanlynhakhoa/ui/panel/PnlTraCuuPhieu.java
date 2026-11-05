@@ -49,6 +49,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JComboBox;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
@@ -73,6 +74,8 @@ public class PnlTraCuuPhieu extends JPanel {
 
     private final JTextField txtTimKiem = new JTextField();
     private final JButton btnTim = new JButton("Tìm kiếm");
+    private final JComboBox<String> cboTrangThai = new JComboBox<>(
+            new String[]{"Tất cả trạng thái", "Chờ khám", "Đang khám", "Hoàn tất"});
     private final DefaultTableModel modelPhieu = new DefaultTableModel(COT, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -152,7 +155,13 @@ public class PnlTraCuuPhieu extends JPanel {
         btnTim.setFont(bold(12));
         btnTim.setBackground(TEAL);
         btnTim.setForeground(Color.WHITE);
-        tim.add(btnTim, BorderLayout.EAST);
+        cboTrangThai.setFont(font(12));
+        cboTrangThai.setPreferredSize(new Dimension(145, 30));
+        JPanel loc = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        loc.setOpaque(false);
+        loc.add(cboTrangThai);
+        loc.add(btnTim);
+        tim.add(loc, BorderLayout.EAST);
         dau.add(tim, BorderLayout.CENTER);
         add(dau, BorderLayout.NORTH);
 
@@ -278,6 +287,7 @@ public class PnlTraCuuPhieu extends JPanel {
 
     private void addEvents() {
         btnTim.addActionListener(e -> taiDanhSach(txtTimKiem.getText()));
+        cboTrangThai.addActionListener(e -> taiDanhSach(txtTimKiem.getText()));
         txtTimKiem.addActionListener(e -> taiDanhSach(txtTimKiem.getText()));
         tblPhieu.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -312,6 +322,8 @@ public class PnlTraCuuPhieu extends JPanel {
                         case DANG_KHAM -> 1;
                         default -> 2;
                     }).thenComparing(PhieuKham::getNgayLap, Comparator.reverseOrder()));
+                    String locTrangThai = (String) cboTrangThai.getSelectedItem();
+                    ds.removeIf(pk -> !khopTrangThai(pk, locTrangThai));
                     dsPhieu.clear();
                     dsPhieu.addAll(ds);
                     modelPhieu.setRowCount(0);
@@ -337,6 +349,18 @@ public class PnlTraCuuPhieu extends JPanel {
                 }
             }
         }.execute();
+    }
+
+    private static boolean khopTrangThai(PhieuKham pk, String loc) {
+        if (loc == null || loc.startsWith("Tất cả")) {
+            return true;
+        }
+        return switch (loc) {
+            case "Chờ khám" -> pk.getTrangThai() == TrangThaiPhieuKham.CHO_KHAM;
+            case "Đang khám" -> pk.getTrangThai() == TrangThaiPhieuKham.DANG_KHAM;
+            case "Hoàn tất" -> pk.getTrangThai() == TrangThaiPhieuKham.HOAN_TAT;
+            default -> true;
+        };
     }
 
     private PhieuKham phieuDangChon() {
