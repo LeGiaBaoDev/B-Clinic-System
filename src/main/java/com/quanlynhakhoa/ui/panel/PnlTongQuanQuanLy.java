@@ -1,10 +1,10 @@
 package com.quanlynhakhoa.ui.panel;
 
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO;
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.DoanhThuNgay;
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.LichHenTrongNgay;
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.NhaSiHienTai;
-import com.quanlynhakhoa.dao.ThongKeDoanhThuDAO.TongQuanQuanLy;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO.DoanhThuNgay;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO.LichHenTrongNgay;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO.NhaSiHienTai;
+import com.quanlynhakhoa.dao.TongQuanQuanLyDAO.TongQuanQuanLy;
 import com.quanlynhakhoa.entity.enums.TrangThaiLichHen;
 import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.ui.component.*;
@@ -62,7 +62,7 @@ public class PnlTongQuanQuanLy extends JPanel {
     private Boolean compactMode;
 
     public PnlTongQuanQuanLy(String tenQuanLy, Consumer<String> dieuHuong) {
-        this(tenQuanLy, dieuHuong, () -> new ThongKeDoanhThuDAO().layTongQuanQuanLy());
+        this(tenQuanLy, dieuHuong, () -> new TongQuanQuanLyDAO().layTongQuanQuanLy());
     }
 
     public PnlTongQuanQuanLy(String tenQuanLy, Consumer<String> dieuHuong, Supplier<TongQuanQuanLy> taiDuLieu) {
