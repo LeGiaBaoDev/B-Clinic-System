@@ -2,6 +2,7 @@ package com.quanlynhakhoa.entity;
 
 import com.quanlynhakhoa.entity.enums.CaTruc;
 import com.quanlynhakhoa.entity.enums.TrangThaiLichLamViec;
+import com.quanlynhakhoa.util.DinhDang;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -122,7 +123,7 @@ public class LichLamViec {
     }
 
     public void setGhiChuNghi(String ghiChuNghi) {
-        this.ghiChuNghi = (ghiChuNghi == null || ghiChuNghi.isBlank()) ? null : ghiChuNghi.trim();
+        this.ghiChuNghi = DinhDang.toiDa(ghiChuNghi, DinhDang.GHI_CHU_TOI_DA, "Lý do nghỉ");
     }
 
     public NhanVien getNhanVien() {

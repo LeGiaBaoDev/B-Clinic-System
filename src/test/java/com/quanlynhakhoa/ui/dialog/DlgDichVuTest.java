@@ -224,7 +224,7 @@ class DlgDichVuTest {
         assertEquals(300_000, DlgDichVu.NoiDung.docDonGia("300.000"));
         assertEquals(300_000, DlgDichVu.NoiDung.docDonGia("300,000 ₫"));
         assertEquals(1_500_000, DlgDichVu.NoiDung.docDonGia(" 1 500 000đ "));
-        assertEquals(-5, DlgDichVu.NoiDung.docDonGia("-5"));
+        assertNull(DlgDichVu.NoiDung.docDonGia("-5"));
         assertNull(DlgDichVu.NoiDung.docDonGia(""));
         assertNull(DlgDichVu.NoiDung.docDonGia("12a"));
     }

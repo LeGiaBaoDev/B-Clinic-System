@@ -350,7 +350,7 @@ public class DlgDichVu extends JDialog {
         /** Nhận "300000", "300.000", "300,000", "300.000 ₫"; không phải số nguyên dương thì null. */
         static Double docDonGia(String text) {
             String so = text == null ? "" : text.replace("₫", "").replace("đ", "").replaceAll("[\\s.,]", "");
-            if (so.isEmpty() || !so.matches("-?\\d{1,15}")) {
+            if (so.isEmpty() || !so.matches("\\d{1,15}")) {
                 return null;
             }
             return Double.valueOf(so);

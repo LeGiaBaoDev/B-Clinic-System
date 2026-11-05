@@ -687,7 +687,7 @@ public class PnlCapNhatDichVu extends JPanel {
 
     static Integer docSoNguyen(String text) {
         String so = text == null ? "" : text.trim();
-        return so.matches("-?\\d{1,6}") ? Integer.valueOf(so) : null;
+        return so.matches("\\d{1,6}") ? Integer.valueOf(so) : null;
     }
 
     /** 300000 -> "300.000" để hiện trong ô đơn giá. */
@@ -745,6 +745,6 @@ public class PnlCapNhatDichVu extends JPanel {
     /** Đọc đơn giá giống form Thêm ("300000", "300.000", "300,000 ₫"); không phải số nguyên thì null. */
     static Double docDonGia(String text) {
         String so = text == null ? "" : text.replace("₫", "").replace("đ", "").replaceAll("[\\s.,]", "");
-        return so.matches("-?\\d{1,15}") ? Double.valueOf(so) : null;
+        return so.matches("\\d{1,15}") ? Double.valueOf(so) : null;
     }
 }
