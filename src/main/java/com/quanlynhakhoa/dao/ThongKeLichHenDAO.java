@@ -22,10 +22,81 @@ public class ThongKeLichHenDAO {
         }
     }
 
+    /**
+     * Tổng hợp lịch hẹn trong một khoảng ngày. Mọi tỷ lệ tính theo phần trăm trên tổng số lịch;
+     * tổng bằng 0 thì mọi tỷ lệ bằng 0.
+     */
+    public record TongHop(long tong, long daDat, long daDen, long hoanTat, long daHuy, long khongDen) {
+
+        public boolean coDuLieu() {
+            return tong > 0;
+        }
+
+        public double tyLeDaDat() {
+            return tyLe(daDat);
+        }
+
+        public double tyLeDaDen() {
+            return tyLe(daDen);
+        }
+
+        public double tyLeHoanTat() {
+            return tyLe(hoanTat);
+        }
+
+        public double tyLeDaHuy() {
+            return tyLe(daHuy);
+        }
+
+        public double tyLeKhongDen() {
+            return tyLe(khongDen);
+        }
+
+        /** Tỷ lệ chuyển đổi = số lịch hoàn tất / tổng số lịch (UC029). */
+        public double tyLeChuyenDoi() {
+            return tyLeHoanTat();
+        }
+
+        private double tyLe(long soLuong) {
+            return tong == 0 ? 0 : 100.0 * soLuong / tong;
+        }
+
+        static TongHop cong(List<TheoNgay> ds) {
+            long tong = 0;
+            long daDat = 0;
+            long daDen = 0;
+            long hoanTat = 0;
+            long daHuy = 0;
+            long khongDen = 0;
+            for (TheoNgay n : ds) {
+                tong += n.tong();
+                daDat += n.daDat();
+                daDen += n.daDen();
+                hoanTat += n.hoanTat();
+                daHuy += n.daHuy();
+                khongDen += n.khongDen();
+            }
+            return new TongHop(tong, daDat, daDen, hoanTat, daHuy, khongDen);
+        }
+    }
+
+    /** UC029/UC034: tổng hợp theo khoảng ngày, có thể lọc theo nha sĩ ({@code null} = tất cả). */
+    public TongHop tongHop(LocalDate tu, LocalDate den, String maNhaSi) {
+        return TongHop.cong(thongKe(tu, den, maNhaSi));
+    }
+
+    /** UC032: tổng hợp của một ngày (mặc định lễ tân xem hôm nay). */
+    public TongHop theoNgay(LocalDate ngay) {
+        yeuCau(ngay != null, "Khoảng ngày không hợp lệ.");
+        return tongHop(ngay, ngay, null);
+    }
+
     public List<TheoNgay> thongKe(LocalDate tu, LocalDate den, String maNhaSi) {
         khoangNgay(tu, den);
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
+            yeuCau(actor.vaiTro() != VaiTro.LETAN || tu.equals(den),
+                    "Lễ tân chỉ được xem thống kê theo từng ngày.");
             String ns = maNhaSi;
             if (actor.vaiTro() == VaiTro.NHASI) {
                 yeuCau(ns == null || ns.equals(actor.maNV()),
