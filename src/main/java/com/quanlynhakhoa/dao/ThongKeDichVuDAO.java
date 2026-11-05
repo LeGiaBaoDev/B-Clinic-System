@@ -11,32 +11,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Thống kê dịch vụ được sử dụng nhiều nhất (chỉ Quản lý). Chỉ đọc; dữ liệu lấy từ các dòng
- * ChiTietPhieuKham của những hóa đơn ĐÃ THANH TOÁN, lọc theo ngày thanh toán.
- *
- * <h2>Cách tính (sửa ở đây nếu nhóm đổi quy định)</h2>
- * <ul>
- *   <li><b>Số lượt</b> = số phiếu khám khác nhau có dùng dịch vụ (Dương chốt 05/11, phương án "đếm phiếu").
+Thống kê dịch vụ được sử dụng nhiều nhất (chỉ Quản lý). Chỉ đọc; dữ liệu lấy từ các dòng
+ChiTietPhieuKham của những hóa đơn ĐÃ THANH TOÁN, lọc theo ngày thanh toán.
+Cách tính
+    Số lượt = số phiếu khám khác nhau có dùng dịch vụ .
  *       Một phiếu có 2 dòng cùng dịch vụ, hoặc mua số lượng 2, vẫn tính 1 lượt.
- *       Muốn đổi sang "cộng số lượng": thay {@code COUNT(DISTINCT d.maPK)} bằng {@code SUM(d.soLuong)}.</li>
- *   <li><b>Tiền của một dòng trước giảm</b> = thành tiền + thuế GTGT của dòng, trong đó thuế = ROUND(thành tiền ×
- *       mức thuế / 100, 0). Giống hệt cách HoaDonDAO (của Bảo) cộng tổng hóa đơn trước giảm, để số liệu khớp.</li>
- *   <li><b>Doanh thu (sau voucher)</b> — Dương chốt 05/11 tính SAU voucher. Báo cáo và bộ AGENTS chỉ định nghĩa
- *       tổng hóa đơn = Σ(thành tiền + thuế) − tiền giảm voucher (quy tắc R-HD-1), KHÔNG quy định chia tiền giảm
- *       cho từng dịch vụ. Voucher giảm trên cả hóa đơn nên ở đây <b>chia tiền giảm theo tỷ lệ</b>:
- *       <pre>
+ *       Muốn đổi sang "cộng số lượng": thay {@code COUNT(DISTINCT d.maPK)} bằng {@code SUM(d.soLuong)}.
+    Doanh thu = tổng số tiền khách THỰC TRẢ cho dịch vụ : GỒM thuế GTGT và ĐÃ TRỪ voucher.
+ *       Nhờ vậy cộng doanh thu các dịch vụ trong một hóa đơn ra đúng tổng tiền trên hóa đơn đó (= số tiền khách trả).
+ *       Hệ quả: dịch vụ chịu thuế có thể có doanh thu lớn hơn số lượt × đơn giá (vd Tẩy trắng 2.000.000, thuế 10%: 4 lượt không voucher = 8.800.000), vì đơn giá chưa gồm thuế.
+ *       Tiền của một dòng trước giảm = thành tiền + thuế GTGT của dòng, trong đó thuế = ROUND(thành tiền × mức thuế / 100, 0).
+ *       Giống hệt cách HoaDonDAO cộng tổng hóa đơn trước giảm, để số liệu khớp.
+    Trừ voucher: báo cáo và bộ AGENTS chỉ định nghĩa tổng hóa đơn = Σ(thành tiền + thuế) − tiền giảm voucher (quy tắc R-HD-1),
+ *       KHÔNG quy định chia tiền giảm cho từng dịch vụ.
+ *       Voucher giảm trên cả hóa đơn nên ở đây chia tiền giảm theo tỷ lệ tiền của từng dòng:
  *       tiền giảm của dòng = tongKhuyenMai của hóa đơn × (tiền dòng trước giảm / tổng tiền trước giảm của hóa đơn)
  *       doanh thu của dòng  = tiền dòng trước giảm − tiền giảm của dòng
  *       doanh thu dịch vụ   = tổng doanh thu các dòng của dịch vụ đó, làm tròn tới đồng (HALF_UP) sau khi cộng
- *       </pre>
+
  *       Ví dụ: hóa đơn có Cạo vôi 300.000 (KCT) + Tẩy trắng 2.500.000 + thuế 10% 250.000, voucher giảm 305.000.
  *       Tổng trước giảm 3.050.000 → Cạo vôi chịu 305.000 × 300.000/3.050.000 = 30.000, doanh thu 270.000;
  *       Tẩy trắng chịu 275.000, doanh thu 2.475.000. Cộng lại đúng 2.745.000 = tiền khách trả.
  *       Do làm tròn từng dịch vụ, tổng doanh thu các dịch vụ có thể lệch vài đồng so với tổng các hóa đơn.
- *       Muốn tính TRƯỚC voucher: bỏ phần trừ tiền giảm (chỉ cộng {@code tienDong}).</li>
- *   <li><b>Đơn giá</b> hiển thị là giá hiện tại trong danh mục DichVu (giá đã bán từng lượt có thể khác, nằm ở
- *       ChiTietPhieuKham.donGia).</li>
- * </ul>
+ *       Nếu nhóm đổi quy định: muốn KHÔNG gồm thuế thì trong CTE thay tiền dòng bằng {@code ct.thanhTien}
+ *       (cả {@code tienDong} lẫn {@code tongHoaDon}); muốn tính TRƯỚC voucher thì chỉ cộng {@code tienDong}.
+    Đơn giá hiển thị là giá hiện tại trong danh mục DichVu (giá đã bán từng lượt có thể khác, nằm ở ChiTietPhieuKham.donGia).
  */
 public class ThongKeDichVuDAO {
 

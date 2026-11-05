@@ -27,7 +27,8 @@ import javax.swing.table.DefaultTableModel;
  *
  * <p>Bảng tối đa 10 dịch vụ gồm Hạng, Mã, Dịch vụ, Số lượt, Đơn giá, Doanh thu, luôn xếp theo số lượt
  * (bằng nhau thì xét doanh thu). Không có nút đổi tiêu chí vì cột Doanh thu đã hiện sẵn trong bảng.
- * Cách tính số lượt và doanh thu (sau voucher, chia theo tỷ lệ) xem {@link ThongKeDichVuDAO}.</p>
+ * Doanh thu = số tiền khách thực trả cho dịch vụ (gồm thuế, đã trừ voucher chia theo tỷ lệ), cộng các dịch vụ
+ * của một hóa đơn ra đúng tổng tiền hóa đơn; chi tiết cách tính xem {@link ThongKeDichVuDAO}.</p>
  *
  * <p>Khoảng ngày do trang Báo cáo truyền vào qua {@link #taiDuLieu(LocalDate, LocalDate)}. Truy vấn chạy nền
  * bằng SwingWorker. Khi bảng trống (đang tải, không có dữ liệu, lỗi), thông báo hiện ngay giữa bảng.</p>
@@ -232,7 +233,8 @@ public class PnlThongKeDichVu extends JPanel {
             model.addRow(new Object[]{d.hang(), d.maDV(), d.tenDV(), d.soLuot(), tien(d.donGia()), tien(d.doanhThu())});
         }
         baoTinhTrang(ds.isEmpty() ? "Không có dữ liệu."
-                : "Top " + ds.size() + " dịch vụ · xếp theo số lượt sử dụng · doanh thu đã trừ voucher", MUTED);
+                : "Top " + ds.size() + " dịch vụ · xếp theo số lượt sử dụng · doanh thu = tiền khách trả (gồm thuế, đã trừ voucher)",
+                MUTED);
     }
 
     @Override
