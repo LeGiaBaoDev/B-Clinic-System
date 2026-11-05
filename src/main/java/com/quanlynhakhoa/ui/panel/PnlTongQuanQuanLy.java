@@ -632,6 +632,17 @@ public class PnlTongQuanQuanLy extends JPanel {
         return lichTiepTheo() != null;
     }
 
+    /** Danh sách lịch hẹn đang chờ/sắp tới trong ngày cho popup chuông. */
+    public List<LichHenTrongNgay> thongBaoLich() {
+        if (duLieu == null) {
+            return List.of();
+        }
+        return lichHen.stream()
+                .filter(lh -> lh.trangThai() == TrangThaiLichHen.DA_DAT
+                        || lh.trangThai() == TrangThaiLichHen.DA_DEN)
+                .toList();
+    }
+
     private boolean laLichTiep(JTable table, int row) {
         int index = table.convertRowIndexToModel(row);
         return index >= 0 && index < lichHen.size() && java.util.Objects.equals(maLichTiep, lichHen.get(index).maLH());

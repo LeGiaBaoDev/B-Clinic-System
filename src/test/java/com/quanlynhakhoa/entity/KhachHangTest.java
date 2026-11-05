@@ -68,6 +68,14 @@ class KhachHangTest {
     }
 
     @Test
+    void tuDuLieu_khongKiemTraDinhDang_deDocDuLieuCu() {
+        KhachHang kh = KhachHang.tuDuLieu("KH00001", "Bệnh nhân test UC023",
+                LocalDate.of(1995, 4, 16), false, "0972711898", null, null);
+        assertEquals("Bệnh nhân test UC023", kh.getTenKH());
+        assertEquals("0972711898", kh.getSdt());
+    }
+
+    @Test
     void setNgaySinh_ngayTuongLai_nemLoi() {
         KhachHang kh = new KhachHang();
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,

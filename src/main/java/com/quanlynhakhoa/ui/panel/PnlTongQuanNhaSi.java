@@ -109,7 +109,7 @@ public class PnlTongQuanNhaSi extends JPanel {
     private final JLabel lblTiepTheoLienHe = new JLabel(" ");
     private final JLabel lblTiepTheoGhiChu = new JLabel(" ");
     private final JButton btnMoPhieu = new JButton("Mở phiếu khám");
-    private final JButton btnLamMoi = new JButton("Làm mới");
+    private final JButton btnLamMoi = PnlTongQuanQuanLy.button("Làm mới", LineIcon.Type.CHART, false);
     private final DefaultTableModel model = new DefaultTableModel(
             new String[]{"GIỜ HẸN", "BỆNH NHÂN", "DỊCH VỤ", "TRẠNG THÁI"}, 0) {
         @Override
@@ -198,6 +198,7 @@ public class PnlTongQuanNhaSi extends JPanel {
         xemLich.addActionListener(e -> moLich.run());
         JButton traCuu = PnlTongQuanQuanLy.button("Tra cứu bệnh án", LineIcon.Type.SEARCH, true);
         traCuu.addActionListener(e -> moBenhAn.run());
+        actions.add(btnLamMoi);
         actions.add(xemLich);
         actions.add(traCuu);
         header.add(actions, BorderLayout.EAST);
