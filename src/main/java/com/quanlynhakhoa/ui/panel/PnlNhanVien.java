@@ -40,6 +40,7 @@ public class PnlNhanVien extends JPanel {
     private final JButton btnThem = new JButton("Thêm nhân viên");
     private final JButton btnCapNhat = new JButton("Cập nhật / Khóa");
     private boolean dangTai;
+    private final SurfacePanel pnlChiTiet = new SurfacePanel(new BorderLayout(0, 12));
     private final JLabel lblKetQua = new JLabel("Chưa tải danh sách nhân viên.");
     private final JLabel lblChiTiet = new JLabel("Chọn một nhân viên để xem thông tin chi tiết.");
     private final JLabel lblMaNV = new JLabel(" ");
@@ -130,7 +131,9 @@ public class PnlNhanVien extends JPanel {
     }
 
     private JPanel taoTheChiTiet() {
-        SurfacePanel card = new SurfacePanel(new BorderLayout(0, 12));
+        SurfacePanel card = pnlChiTiet;
+        card.setName("khungChiTietNhanVien");
+        card.setVisible(false);
         card.setBorder(new EmptyBorder(14, 18, 16, 18));
 
         JPanel top = new JPanel(new BorderLayout(16, 0));
@@ -466,6 +469,7 @@ public class PnlNhanVien extends JPanel {
     }
 
     private void xoaKetQua() {
+        pnlChiTiet.setVisible(false);
         tblNhanVien.clearSelection();
         modelNhanVien.setRowCount(0);
         nhanVien = List.of();
@@ -484,6 +488,9 @@ public class PnlNhanVien extends JPanel {
 
     private void hienChiTiet() {
         int viewRow = tblNhanVien.getSelectedRow();
+        pnlChiTiet.setVisible(viewRow >= 0);
+        revalidate();
+        repaint();
         if (viewRow < 0) {
             return;
         }
