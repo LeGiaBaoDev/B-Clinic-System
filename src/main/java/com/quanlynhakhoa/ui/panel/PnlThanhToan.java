@@ -96,7 +96,7 @@ public class PnlThanhToan extends JPanel {
         JLabel tieuDe = new JLabel("Hóa đơn chờ thanh toán");
         tieuDe.setFont(bold(21));
         tieuDe.setForeground(TEXT);
-        JLabel phuDe = new JLabel("Chọn hóa đơn do bác sĩ vừa hoàn tất để thu tiền và in phiếu thu.");
+        JLabel phuDe = new JLabel("Chọn hóa đơn do bác sĩ vừa hoàn tất để thanh toán và in hóa đơn.");
         phuDe.setFont(font(12));
         phuDe.setForeground(MUTED);
         title.add(tieuDe);
