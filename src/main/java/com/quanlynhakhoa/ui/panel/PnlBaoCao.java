@@ -56,6 +56,7 @@ public class PnlBaoCao extends JPanel {
 
     private final PnlThongKeDichVu theDichVu;
     private final PnlDoanhThuKy doanhThu;
+    private final PnlThongKeLichHenKy lichHen;
     private final Supplier<LocalDateTime> bayGio;
 
     final JLabel lblPhuDe = new JLabel();
@@ -85,13 +86,19 @@ public class PnlBaoCao extends JPanel {
     private boolean dangDatNgay;
 
     public PnlBaoCao() {
-        this(new PnlThongKeDichVu(), new PnlDoanhThuKy(), LocalDateTime::now);
+        this(new PnlThongKeDichVu(), new PnlDoanhThuKy(), new PnlThongKeLichHenKy(), LocalDateTime::now);
     }
 
     PnlBaoCao(PnlThongKeDichVu theDichVu, PnlDoanhThuKy doanhThu, Supplier<LocalDateTime> bayGio) {
+        this(theDichVu, doanhThu, new PnlThongKeLichHenKy(PnlThongKeLichHenKy.NGUON_RONG), bayGio);
+    }
+
+    PnlBaoCao(PnlThongKeDichVu theDichVu, PnlDoanhThuKy doanhThu, PnlThongKeLichHenKy lichHen,
+            Supplier<LocalDateTime> bayGio) {
         super(new BorderLayout(0, 16));
         this.theDichVu = Objects.requireNonNull(theDichVu);
         this.doanhThu = Objects.requireNonNull(doanhThu);
+        this.lichHen = Objects.requireNonNull(lichHen);
         this.bayGio = Objects.requireNonNull(bayGio);
         setName("Báo cáo");
         setBackground(BACKGROUND);
@@ -220,9 +227,9 @@ public class PnlBaoCao extends JPanel {
     private JScrollPane taoNoiDung() {
         pnlNoiDung.setName("noiDungBaoCao");
         pnlNoiDung.setOpaque(false);
-        datO(oLichHoanTat, theChiSo("Lịch hẹn hoàn tất", LineIcon.Type.CHECK));
-        datO(oHuyKhongDen, theChiSo("Đã hủy / Không đến", LineIcon.Type.CALENDAR));
-        datO(oKetQuaLichHen, theKetQuaLichHen());
+        datO(oLichHoanTat, lichHen.theHoanTat); // UC029: thẻ lịch hẹn của Long
+        datO(oHuyKhongDen, lichHen.theHuyKhongDen);
+        datO(oKetQuaLichHen, lichHen.theKetQua);
 
         JPanel hangChiSo = new JPanel(new GridLayout(1, 3, 16, 0));
         hangChiSo.setOpaque(false);
@@ -504,13 +511,16 @@ public class PnlBaoCao extends JPanel {
         lblPhuDe.setText("Doanh thu đã thu và hiệu quả vận hành · Dữ liệu đến " + bayGio.get().format(GIO_NGAY));
         if (tu == null || den == null || tu.isAfter(den)) {
             lblSoSanh.setText(" ");
-            doanhThu.baoLoi(tu == null || den == null ? "Vui lòng chọn đủ ngày bắt đầu và ngày kết thúc."
-                    : "Khoảng thời gian không hợp lệ: ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
+            String loi = tu == null || den == null ? "Vui lòng chọn đủ ngày bắt đầu và ngày kết thúc."
+                    : "Khoảng thời gian không hợp lệ: ngày bắt đầu phải trước hoặc bằng ngày kết thúc.";
+            doanhThu.baoLoi(loi);
+            lichHen.baoLoi(loi);
         } else {
             KhoangNgay nay = new KhoangNgay(tu, den);
             KhoangNgay truoc = kyTruoc(ky, nay);
             lblSoSanh.setText("So sánh: " + truoc.tu().format(NGAY_NGAN) + " – " + truoc.den().format(NGAY));
             doanhThu.taiDuLieu(nay, truoc);
+            lichHen.taiDuLieu(nay, truoc);
         }
         theDichVu.taiDuLieu(tu, den); // thẻ tự báo lỗi nếu khoảng ngày sai
     }

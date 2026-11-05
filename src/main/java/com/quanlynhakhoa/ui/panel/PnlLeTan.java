@@ -66,6 +66,7 @@ public class PnlLeTan extends JPanel {
     private final PnlTiepNhan pnlTiepNhan;
     private PnlLichCaNhan pnlLichCaNhan;
     private PnlDoanhThuNgay pnlDoanhThuNgay;
+    private PnlThongKeLichHenNgay pnlThongKeLich; // UC032, tạo khi mở lần đầu
     private final PnlTraCuuPhieu pnlPhieuKham;
     private final PnlLichHen pnlLichHen;
     private final PnlHoaDon pnlHoaDon;
@@ -153,6 +154,8 @@ public class PnlLeTan extends JPanel {
         top.add(menuItem("Hóa đơn", LineIcon.Type.INVOICE, () -> moTrang("Hóa đơn")));
         top.add(Box.createVerticalStrut(5));
         top.add(menuItem("Báo cáo", LineIcon.Type.CHART, () -> moTrang("Báo cáo"))); // doanh thu trong ngày
+        top.add(Box.createVerticalStrut(5));
+        top.add(menuItem("Thống kê lịch", LineIcon.Type.CHART, () -> moTrang("Thống kê lịch"))); // UC032
         JScrollPane scrollMenu=new JScrollPane(top);
         scrollMenu.setBorder(BorderFactory.createEmptyBorder());
         scrollMenu.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -236,6 +239,10 @@ public class PnlLeTan extends JPanel {
             if (pnlDoanhThuNgay == null) { pnlDoanhThuNgay = new PnlDoanhThuNgay(); pnlCards.add(pnlDoanhThuNgay, trang); }
             pnlDoanhThuNgay.lamMoi();
         }
+        if ("Thống kê lịch".equals(trang)) { // UC032: lịch hẹn trong ngày theo trạng thái
+            if (pnlThongKeLich == null) { pnlThongKeLich = new PnlThongKeLichHenNgay(); pnlCards.add(pnlThongKeLich, trang); }
+            pnlThongKeLich.lamMoi();
+        }
         cards.show(pnlCards, trang);
         lblTrang.setText(trang);
         if ("Tiếp nhận".equals(trang)) {
@@ -270,7 +277,7 @@ public class PnlLeTan extends JPanel {
                 LineIcon.Type.CLIPBOARD;
             case "Hóa đơn" ->
                 LineIcon.Type.INVOICE;
-            case "Báo cáo" ->
+            case "Báo cáo", "Thống kê lịch" ->
                 LineIcon.Type.CHART;
             default ->
                 LineIcon.Type.SETTINGS;
