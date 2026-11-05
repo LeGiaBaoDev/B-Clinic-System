@@ -252,8 +252,8 @@ public class DlgChiTietHoaDon extends JDialog {
             tong.add(lblTongCong, g);
             JPanel bocTong = new JPanel(new BorderLayout());
             bocTong.setOpaque(false);
-            tong.setPreferredSize(new Dimension(380, tong.getPreferredSize().height));
-            bocTong.add(tong, BorderLayout.EAST);
+            bocTong.setBorder(new EmptyBorder(14, 0, 0, 0));
+            bocTong.add(tong, BorderLayout.CENTER);
             than.add(bocTong, BorderLayout.SOUTH);
             return than;
         }
