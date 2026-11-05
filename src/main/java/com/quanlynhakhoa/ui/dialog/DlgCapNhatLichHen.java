@@ -200,7 +200,13 @@ public class DlgCapNhatLichHen extends JDialog {
         }
         LichHen moi = new LichHen(lich);
         moi.setDichVu(dv);
-        moi.setGhiChu(txtGhiChu.getText());
+        try {
+            moi.setGhiChu(txtGhiChu.getText());
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Dữ liệu chưa hợp lệ",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         boolean khongDoi = Objects.equals(moi.getDichVu().getMaDV(), lich.getDichVu().getMaDV())
                 && Objects.equals(moi.getGhiChu(), lich.getGhiChu());
         if (khongDoi) {

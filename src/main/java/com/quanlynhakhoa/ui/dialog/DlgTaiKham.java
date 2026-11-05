@@ -12,6 +12,7 @@ import com.quanlynhakhoa.dao.LichHenDAO;
 import com.quanlynhakhoa.entity.LichHen;
 import com.quanlynhakhoa.entity.PhieuKham;
 import com.quanlynhakhoa.exception.BusinessException;
+import com.quanlynhakhoa.util.DinhDang;
 import com.toedter.calendar.JDateChooser;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -311,6 +312,12 @@ public class DlgTaiKham extends JDialog {
             return;
         }
         String ghiChu = txtGhiChu.getText();
+        if (ghiChu != null && ghiChu.trim().length() > DinhDang.GHI_CHU_TOI_DA) {
+            JOptionPane.showMessageDialog(this,
+                    "Ghi chú tối đa " + DinhDang.GHI_CHU_TOI_DA + " ký tự.",
+                    "Dữ liệu chưa hợp lệ", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         datDangXuLy(true);
         new SwingWorker<LichHen, Void>() {
             @Override

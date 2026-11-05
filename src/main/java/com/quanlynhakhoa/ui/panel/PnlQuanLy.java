@@ -1,6 +1,7 @@
 package com.quanlynhakhoa.ui.panel;
 
 import com.quanlynhakhoa.entity.TaiKhoan;
+import com.quanlynhakhoa.entity.enums.TrangThaiLichHen;
 import com.quanlynhakhoa.ui.component.*;
 import static com.quanlynhakhoa.ui.component.UiConstants.*;
 import java.awt.*;
@@ -16,13 +17,16 @@ import javax.swing.event.*;
 
 public class PnlQuanLy extends JPanel {
 
+    private static final DateTimeFormatter GIO = DateTimeFormatter.ofPattern("HH:mm");
+    private static final Color AMBER = new Color(0xB26B00);
+    private static final Color AMBER_LIGHT = new Color(0xFFF4DE);
+
     private final TaiKhoan taiKhoan;
     private final Runnable dangXuat;
     private final CardLayout cards = new CardLayout();
     private final JPanel pnlCards = new JPanel(cards);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
     private final JLabel lblTrang = label("Tổng quan", bold(18), TEXT);
-    private final JTextField txtTimKiem = new JTextField();
     private final PnlTongQuanQuanLy pnlTongQuan;
     private PnlNhanVien pnlNhanVien;
     private PnlLichLamViec pnlLichLamViec;
@@ -54,12 +58,6 @@ public class PnlQuanLy extends JPanel {
         pnlTongQuan.langNgheTaiDuLieu(this::capNhatTrangThaiTai);
         capNhatDongHo();
         moTrang("Tổng quan");
-        getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK), "search");
-        getActionMap().put("search", new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                txtTimKiem.requestFocusInWindow();
-            }
-        });
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "refresh");
         getActionMap().put("refresh", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
@@ -131,7 +129,7 @@ public class PnlQuanLy extends JPanel {
         help.setFont(font(12));
         help.setAlignmentX(LEFT_ALIGNMENT);
         help.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "Ctrl + K: tìm nhanh lịch hẹn trong ngày.\nF5: tải lại dữ liệu tổng quan. Dữ liệu tự làm mới mỗi phút.\nChọn tài khoản ở góc phải để đăng xuất.", "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE));
+                "F5: tải lại dữ liệu tổng quan. Dữ liệu tự làm mới mỗi phút.\nChọn tài khoản ở góc phải để đăng xuất.", "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE));
         bottom.add(help);
         sidebar.add(bottom, BorderLayout.SOUTH);
         return sidebar;
@@ -159,35 +157,6 @@ public class PnlQuanLy extends JPanel {
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 0));
         controls.setOpaque(false);
 
-        SurfacePanel search = new SurfacePanel(new BorderLayout(10, 0));
-        search.setPreferredSize(new Dimension(290, 38));
-        search.setBorder(new EmptyBorder(4, 12, 4, 10));
-        search.add(new JLabel(new LineIcon(LineIcon.Type.SEARCH, MUTED, 17)), BorderLayout.WEST);
-        txtTimKiem.setBorder(BorderFactory.createEmptyBorder());
-        txtTimKiem.setOpaque(false);
-        txtTimKiem.setFont(font(12));
-        txtTimKiem.putClientProperty("JTextField.placeholderText", "Tìm kiếm nhanh...");
-        txtTimKiem.setToolTipText("Tìm tên bệnh nhân hoặc bác sĩ trong lịch hẹn hôm nay.");
-        search.add(txtTimKiem, BorderLayout.CENTER);
-        controls.add(search);
-        txtTimKiem.getDocument().addDocumentListener(new DocumentListener() {
-            private void search() {
-                moTrang("Tổng quan");
-                pnlTongQuan.timKiem(txtTimKiem.getText());
-            }
-
-            public void insertUpdate(DocumentEvent e) {
-                search();
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                search();
-            }
-
-            public void changedUpdate(DocumentEvent e) {
-                search();
-            }
-        });
         JButton bell = new JButton(new LineIcon(LineIcon.Type.BELL, MUTED, 23)) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -202,13 +171,7 @@ public class PnlQuanLy extends JPanel {
         stylePlain(bell);
         bell.setPreferredSize(new Dimension(32, 38));
         bell.setToolTipText("Lịch hẹn đang chờ và sắp tới");
-        bell.addActionListener(e -> {
-            JPopupMenu popup = new JPopupMenu();
-            JMenuItem item = new JMenuItem(pnlTongQuan.thongBaoLichTiep());
-            item.addActionListener(a -> moTrang("Tổng quan"));
-            popup.add(item);
-            popup.show(bell, 0, bell.getHeight());
-        });
+        bell.addActionListener(e -> hienThongBao());
         controls.add(bell);
         JSeparator separator = new JSeparator(SwingConstants.VERTICAL);
         separator.setPreferredSize(new Dimension(1, 30));
@@ -220,6 +183,24 @@ public class PnlQuanLy extends JPanel {
         center.add(controls);
         header.add(center, BorderLayout.EAST);
         return header;
+    }
+
+    private void hienThongBao() {
+        var ds = pnlTongQuan.thongBaoLich().stream().map(lh -> {
+            boolean daDen = lh.trangThai() == TrangThaiLichHen.DA_DEN;
+            String nhaSi = lh.nhaSi() == null || lh.nhaSi().isBlank()
+                    ? "Chưa phân công nha sĩ" : "Nha sĩ: " + lh.nhaSi();
+            return new PopupThongBao.Dong(
+                    lh.ngayGio().format(GIO),
+                    lh.benhNhan(),
+                    nhaSi,
+                    daDen ? "Đã đến" : "Đã đặt",
+                    daDen ? GREEN : AMBER,
+                    daDen ? new Color(0xE7F7EF) : AMBER_LIGHT,
+                    () -> moTrang("Tổng quan"));
+        }).toList();
+        PopupThongBao.hien(btnThongBao, "Lịch hẹn đang chờ hôm nay", ds,
+                "Không có lịch hẹn đang chờ hoặc sắp tới.");
     }
 
     private JButton taoTaiKhoan() {

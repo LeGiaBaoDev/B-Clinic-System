@@ -93,7 +93,7 @@ public class NhanVienDAO {
     }
 
     private NhanVien mapRow(ResultSet r) throws SQLException {
-        return new NhanVien(
+        return NhanVien.tuDuLieu(
                 r.getString("maNV"),
                 r.getString("hoTenNV"),
                 r.getBoolean("gioiTinh"),
