@@ -29,6 +29,7 @@ public class PnlQuanLy extends JPanel {
     private PnlLichCaNhan pnlLichCaNhan;
     private PnlDichVu pnlDichVu;
     private PnlVoucher pnlVoucher;
+    private PnlBaoCaoQuanLy pnlBaoCao;
     private final JLabel lblCaHienTai = label("Đang tải ca làm việc...", font(11), MUTED);
     private final JLabel lblKetNoi = label("● Đang tải dữ liệu", font(10), MUTED);
     private final JLabel lblDongBo = label("Đang tải dữ liệu...", font(10), MUTED);
@@ -172,6 +173,10 @@ public class PnlQuanLy extends JPanel {
         controls.add(search);
         txtTimKiem.getDocument().addDocumentListener(new DocumentListener() {
             private void search() {
+                if ("Báo cáo".equals(lblTrang.getText()) && pnlBaoCao != null) {
+                    pnlBaoCao.timKiem(txtTimKiem.getText());
+                    return;
+                }
                 moTrang("Tổng quan");
                 pnlTongQuan.timKiem(txtTimKiem.getText());
             }
@@ -346,6 +351,8 @@ public class PnlQuanLy extends JPanel {
             pnlLichLamViec.lamMoiDuLieu();
         } else if ("Dịch vụ".equals(lblTrang.getText()) && pnlDichVu != null) {
             pnlDichVu.lamMoiDuLieu();
+        } else if ("Báo cáo".equals(lblTrang.getText()) && pnlBaoCao != null) {
+            pnlBaoCao.lamMoiDuLieu();
         } else if ("Voucher".equals(lblTrang.getText()) && pnlVoucher != null) {
             pnlVoucher.lamMoiDuLieu();
         } else {
@@ -378,6 +385,10 @@ public class PnlQuanLy extends JPanel {
         }
         if ("Dịch vụ".equals(name)) {
             pnlDichVu.lamMoiDuLieu();
+        }
+        if ("Báo cáo".equals(name)) {
+            if (pnlBaoCao == null) { pnlBaoCao = new PnlBaoCaoQuanLy(); pnlCards.add(pnlBaoCao, name); }
+            pnlBaoCao.lamMoiDuLieu();
         }
         if ("Voucher".equals(name)) {
             if (pnlVoucher == null) { pnlVoucher = new PnlVoucher(); pnlCards.add(pnlVoucher, name); }
