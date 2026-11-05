@@ -56,6 +56,23 @@ public class ThongKeBenhNhanDAO {
         });
     }
 
+    /** Doanh thu (tổng thành tiền, đơn vị đồng) theo từng ngày — dùng cho biểu đồ. */
+    public List<TheoNgay> doanhThuTheoNgay(LocalDate tu, LocalDate den) {
+        khoangNgay(tu, den);
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c, VaiTro.NHASI, VaiTro.QUANLY);
+            return JdbcHelper.query(c,
+                    "SELECT CAST(pk.ngayLap AS DATE), CAST(COALESCE(SUM(ct.thanhTien),0) AS BIGINT)"
+                    + " FROM ChiTietPhieuKham ct JOIN PhieuKham pk ON pk.maPK=ct.maPK"
+                    + " JOIN LichHen lh ON lh.maLH=pk.maLH"
+                    + " WHERE pk.trangThai='HOAN_TAT' AND pk.ngayLap>=? AND pk.ngayLap<? AND (?=1 OR lh.maNV=?)"
+                    + " GROUP BY CAST(pk.ngayLap AS DATE) ORDER BY CAST(pk.ngayLap AS DATE)",
+                    r -> new TheoNgay(r.getObject(1, LocalDate.class), r.getLong(2)),
+                    tu.atStartOfDay(), den.plusDays(1).atStartOfDay(),
+                    actor.vaiTro() == VaiTro.QUANLY, actor.maNV());
+        });
+    }
+
     public long demBenhNhanKhacNhau(LocalDate tu, LocalDate den) {
         khoangNgay(tu, den);
         return JdbcHelper.doc(c -> {
