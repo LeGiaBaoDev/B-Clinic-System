@@ -1,3 +1,24 @@
+## H3 — T501: nền tảng voucher (05/11/2026)
+
+Kiểm thử entity không cần SQL Server:
+
+```powershell
+mvn -o '-Dtest=VoucherTest' test
+```
+
+Kiểm thử DAO trên SQL Server riêng:
+
+```powershell
+mvn -o '-Dbclinic.integration=true' '-Dtest=VoucherTest,H3VoucherIntegrationTest' test
+```
+
+- Cần quyền tạo/xóa database test. Test tạo `BClinic_Test_<uuid>`, migrate V1–V3, chạy DAO trong JVM con có cấu hình riêng và xác nhận `DB_NAME()` trước khi thao tác. Database tạm và file cấu hình được xóa trong `finally`; không migrate hoặc nạp dữ liệu vào DB ứng dụng.
+- Log: `target/h3-voucher-*/result.log`. Khi bật cờ integration, lỗi kết nối/quyền/test là lỗi thật; không tự skip. `mvn test` mặc định bỏ qua test tích hợp này.
+- Entity: tên/mã, giá trị giảm và giới hạn, chặn NaN/vô cực, đổi loại giảm, thứ tự ngày, hiệu lực gồm hai đầu, vô hiệu, tính giảm không vượt tổng.
+- DAO: sinh `VC###`, thêm/đọc/cập nhật/vô hiệu, `giaTriGiamToiDa` NULL ↔ 0, lọc thời hạn/trạng thái, mã không tồn tại; Quản lý/Lễ tân/Nha sĩ, chưa đăng nhập, giả vai trò session và tài khoản khóa; giữ tham chiếu/số giảm trên hóa đơn; rollback thêm/sửa/vô hiệu khi nhật ký lỗi, không gán mã trước commit và thử lại; bốn yêu cầu thêm đồng thời không trùng mã.
+- API giữ nguyên: Quản lý dùng `layTatCa`, `them`, `capNhat`, `xoa`; Quản lý/Lễ tân dùng `layTheoMa`, `layConHieuLuc`. `xoa` là vô hiệu, không xóa vật lý. Voucher đã gắn vào bất kỳ hóa đơn nào không được cập nhật nội dung, kể cả hóa đơn chưa thanh toán. Các thao tác ghi dùng chung khóa `BClinic:thanh-toan` với HoaDonDAO.
+- T501 là nền tảng DAO; chưa có UI UC036–038, chưa nghiệm thu toàn H3 hoặc kiểm thử chéo. Kiểm thử này chưa thay thế kiểm thử thanh toán UC025 toàn luồng tại T503.
+
 ## Hồ sơ chốt kỹ thuật H2 (04/11/2026)
 
 - [Báo cáo và phiếu kiểm thử chéo](../../docs/H2_TEST_REPORT.md)
