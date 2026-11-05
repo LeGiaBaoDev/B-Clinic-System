@@ -79,7 +79,6 @@ public class PnlThongKeBenhNhan extends JPanel {
     private final JLabel lblGhiChu = new JLabel("Chưa có dữ liệu");
     private final JLabel lblKhoang = new JLabel(" ");
     private final JLabel lblChartTrong = new JLabel(" ", SwingConstants.CENTER);
-    private final JLabel lblBangTrong = new JLabel(" ", SwingConstants.CENTER);
     private final BieuDoBenhNhan bieuDo = new BieuDoBenhNhan();
     private final DefaultTableModel model = new DefaultTableModel(
             new String[]{"BỆNH NHÂN", "NGÀY KHÁM", "BỆNH / CHẨN ĐOÁN"}, 0) {
@@ -259,8 +258,16 @@ public class PnlThongKeBenhNhan extends JPanel {
         table.setSelectionForeground(TEXT);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getColumnModel().getColumn(0).setPreferredWidth(150);
-        table.getColumnModel().getColumn(1).setPreferredWidth(90);
+        table.getColumnModel().getColumn(1).setPreferredWidth(96);
         table.getColumnModel().getColumn(2).setPreferredWidth(280);
+        table.getColumnModel().getColumn(0).setCellRenderer(new OBenhNhan(SwingConstants.LEFT, TEXT, font(12)));
+        table.getColumnModel().getColumn(1).setCellRenderer(new OBenhNhan(SwingConstants.CENTER, MUTED, font(11)));
+        table.getColumnModel().getColumn(2).setCellRenderer(new OBenhNhan(SwingConstants.LEFT, TEXT, font(12)));
+        DefaultTableCellRenderer headTrai = headerRenderer(SwingConstants.LEFT);
+        DefaultTableCellRenderer headGiua = headerRenderer(SwingConstants.CENTER);
+        table.getColumnModel().getColumn(0).setHeaderRenderer(headTrai);
+        table.getColumnModel().getColumn(1).setHeaderRenderer(headGiua);
+        table.getColumnModel().getColumn(2).setHeaderRenderer(headTrai);
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -273,18 +280,56 @@ public class PnlThongKeBenhNhan extends JPanel {
         JScrollPane scr = new JScrollPane(table);
         scr.setBorder(BorderFactory.createLineBorder(BORDER));
         scr.getViewport().setBackground(Color.WHITE);
+        pnlBang.setLayout(new java.awt.CardLayout());
         pnlBang.setOpaque(false);
-        pnlBang.add(scr, BorderLayout.CENTER);
-        lblBangTrong.setFont(font(11));
-        lblBangTrong.setForeground(MUTED);
-        lblBangTrong.setHorizontalAlignment(SwingConstants.CENTER);
-        lblBangTrong.setVisible(false);
-        pnlBang.add(lblBangTrong, BorderLayout.SOUTH);
+        pnlBang.add(scr, "bang");
+        pnlBang.add(oTrong("Không có dữ liệu",
+                "Chưa có bệnh nhân khám trong khoảng thời gian này."), "trong");
         card.add(pnlBang, BorderLayout.CENTER);
         return card;
     }
 
+    /** Ô trống hiển thị gọn gàng, căn giữa ngay trong khung bảng. */
+    private static JPanel oTrong(String tieuDe, String moTa) {
+        JPanel box = new JPanel(new java.awt.GridBagLayout());
+        box.setBackground(Color.WHITE);
+        box.setBorder(BorderFactory.createLineBorder(BORDER));
+        JPanel inner = new JPanel();
+        inner.setOpaque(false);
+        inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
+        JLabel icon = new JLabel("—");
+        icon.setFont(bold(28));
+        icon.setForeground(new Color(0xCBD5E1));
+        icon.setAlignmentX(CENTER_ALIGNMENT);
+        JLabel t = new JLabel(tieuDe);
+        t.setFont(bold(13));
+        t.setForeground(new Color(0x64748B));
+        t.setAlignmentX(CENTER_ALIGNMENT);
+        JLabel m = new JLabel(moTa);
+        m.setFont(font(11));
+        m.setForeground(MUTED);
+        m.setAlignmentX(CENTER_ALIGNMENT);
+        inner.add(icon);
+        inner.add(Box.createVerticalStrut(6));
+        inner.add(t);
+        inner.add(Box.createVerticalStrut(3));
+        inner.add(m);
+        box.add(inner);
+        return box;
+    }
+
     private void addEvents() {
+        // Ràng buộc khoảng ngày ngay trên lịch: ngày không hợp lệ bị làm mờ, không chọn được.
+        dpTu.addPropertyChangeListener("date", e -> {
+            if (dpTu.getDate() != null) {
+                dpDen.setMinSelectableDate(dpTu.getDate());
+            }
+        });
+        dpDen.addPropertyChangeListener("date", e -> {
+            if (dpDen.getDate() != null) {
+                dpTu.setMaxSelectableDate(dpDen.getDate());
+            }
+        });
         btnXem.addActionListener(e -> taiDuLieu());
         btnHomNay.addActionListener(e -> {
             datKhoang(LocalDate.now(ZONE), LocalDate.now(ZONE));
@@ -315,11 +360,6 @@ public class PnlThongKeBenhNhan extends JPanel {
                     "Thiếu dữ liệu", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if (den.isBefore(tu)) {
-            JOptionPane.showMessageDialog(this, "Đến ngày phải sau hoặc bằng từ ngày.",
-                    "Khoảng ngày không hợp lệ", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
         if (worker != null) {
             worker.cancel(true);
         }
@@ -329,7 +369,6 @@ public class PnlThongKeBenhNhan extends JPanel {
         }
         lblGhiChu.setText("Đang tải...");
         lblChartTrong.setVisible(false);
-        lblBangTrong.setVisible(false);
         worker = new SwingWorker<DuLieu, Void>() {
             @Override
             protected DuLieu doInBackground() {
@@ -399,8 +438,7 @@ public class PnlThongKeBenhNhan extends JPanel {
         bieuDo.setPoints(chart);
         lblChartTrong.setText(" ");
         lblChartTrong.setVisible(false);
-        lblBangTrong.setText(coBenhNhan ? " " : "Chưa có bệnh nhân trong khoảng này");
-        lblBangTrong.setVisible(!coBenhNhan);
+        ((java.awt.CardLayout) pnlBang.getLayout()).show(pnlBang, coBenhNhan ? "bang" : "trong");
     }
 
     private void moThongTin(int row) {
@@ -450,6 +488,45 @@ public class PnlThongKeBenhNhan extends JPanel {
         l.setFont(font(11));
         l.setForeground(MUTED);
         return l;
+    }
+
+    private static DefaultTableCellRenderer headerRenderer(int align) {
+        DefaultTableCellRenderer h = new DefaultTableCellRenderer();
+        h.setOpaque(true);
+        h.setBackground(new Color(0xF7F9FB));
+        h.setForeground(MUTED);
+        h.setFont(bold(9));
+        h.setHorizontalAlignment(align);
+        h.setBorder(new EmptyBorder(8, 12, 8, 10));
+        return h;
+    }
+
+    /** Ô bệnh nhân trong bảng: căn lề, giãn cách thoáng, nền chọn bo gọn. */
+    private static final class OBenhNhan extends DefaultTableCellRenderer {
+
+        private final int align;
+        private final Color fg;
+        private final java.awt.Font f;
+
+        OBenhNhan(int align, Color fg, java.awt.Font f) {
+            this.align = align;
+            this.fg = fg;
+            this.f = f;
+        }
+
+        @Override
+        public java.awt.Component getTableCellRendererComponent(JTable t, Object v,
+                boolean sel, boolean foc, int r, int c) {
+            JLabel l = (JLabel) super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+            l.setHorizontalAlignment(align);
+            l.setVerticalAlignment(SwingConstants.CENTER);
+            l.setFont(f);
+            l.setBorder(new EmptyBorder(0, 12, 0, 10));
+            if (!sel) {
+                l.setForeground(fg);
+            }
+            return l;
+        }
     }
 
     private static final class BieuDoBenhNhan extends JPanel {
