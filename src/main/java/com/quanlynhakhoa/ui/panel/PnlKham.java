@@ -1,5 +1,6 @@
 package com.quanlynhakhoa.ui.panel;
 
+import com.quanlynhakhoa.config.QuyDinhLichHen;
 import com.quanlynhakhoa.dao.DichVuDAO;
 import com.quanlynhakhoa.dao.PhieuKhamDAO;
 import com.quanlynhakhoa.entity.ChiTietPhieuKham;
@@ -1184,9 +1185,12 @@ public class PnlKham extends JPanel {
      */
     private JPanel taoONgay() {
         dpTaiKham.setDateFormatString("dd/MM/yyyy");
-        LocalDate min = LocalDate.now(ZONE);
+        QuyDinhLichHen quyDinh = QuyDinhLichHen.macDinh();
+        LocalDate homNay = LocalDate.now(ZONE);
+        LocalDate min = homNay.plusDays(quyDinh.taiKhamMinNgay());
+        LocalDate max = homNay.plusDays(quyDinh.taiKhamMaxNgay());
         dpTaiKham.setMinSelectableDate(Date.from(min.atStartOfDay(ZONE).toInstant()));
-        dpTaiKham.setMaxSelectableDate(Date.from(min.plusMonths(6).atTime(23, 59, 59).atZone(ZONE).toInstant()));
+        dpTaiKham.setMaxSelectableDate(Date.from(max.atTime(23, 59, 59).atZone(ZONE).toInstant()));
         dpTaiKham.setDate(null);
         dpTaiKham.setFont(font(11));
         dpTaiKham.setOpaque(false);
