@@ -26,6 +26,7 @@ import com.quanlynhakhoa.ui.dialog.DlgTaiKham;
 import com.quanlynhakhoa.ui.dialog.DlgThanhToan;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
@@ -35,6 +36,7 @@ import java.awt.event.KeyEvent;
 import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CancellationException;
@@ -56,6 +58,7 @@ import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 
 public class PnlTraCuuPhieu extends JPanel {
 
@@ -76,7 +79,19 @@ public class PnlTraCuuPhieu extends JPanel {
             return false;
         }
     };
-    private final JTable tblPhieu = new JTable(modelPhieu);
+    private final JTable tblPhieu = new JTable(modelPhieu) {
+        @Override
+        public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
+            Component c = super.prepareRenderer(renderer, row, column);
+            if (!isRowSelected(row)) {
+                int modelRow = convertRowIndexToModel(row);
+                boolean choKham = modelRow >= 0 && modelRow < dsPhieu.size()
+                        && dsPhieu.get(modelRow).getTrangThai() == TrangThaiPhieuKham.CHO_KHAM;
+                c.setBackground(choKham ? new Color(0xE7F4F3) : Color.WHITE);
+            }
+            return c;
+        }
+    };
     private final JLabel lblTen = new JLabel(" ");
     private final JLabel lblMa = new JLabel(" ");
     private final JLabel lblNgay = new JLabel(" ");
@@ -289,8 +304,14 @@ public class PnlTraCuuPhieu extends JPanel {
             @Override
             protected void done() {
                 try {
+                    List<PhieuKham> ds = new ArrayList<>(get());
+                    ds.sort(Comparator.comparingInt((PhieuKham p) -> switch (p.getTrangThai()) {
+                        case CHO_KHAM -> 0;
+                        case DANG_KHAM -> 1;
+                        default -> 2;
+                    }).thenComparing(PhieuKham::getNgayLap, Comparator.reverseOrder()));
                     dsPhieu.clear();
-                    dsPhieu.addAll(get());
+                    dsPhieu.addAll(ds);
                     modelPhieu.setRowCount(0);
                     for (PhieuKham pk : dsPhieu) {
                         modelPhieu.addRow(new Object[]{
