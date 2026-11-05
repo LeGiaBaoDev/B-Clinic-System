@@ -54,7 +54,7 @@ public class VoucherDAO {
     public boolean capNhat(Voucher v) { return luu(v, false); }
 
     private boolean luu(Voucher v, boolean themMoi) {
-        return JdbcHelper.transaction(c -> {
+        String maDaLuu = JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:thanh-toan");
             new Voucher(v.getMaVoucher(), v.getTenVoucher(), v.isLoaiGiam(), v.getGiaGiam(),
@@ -81,11 +81,14 @@ public class VoucherDAO {
                             + "ngayBatDau=?,ngayKetThuc=?,trangThai=? WHERE maVoucher=?",
                     args);
             if (rows == 1) {
-                v.setMaVoucher(ma);
                 NhatKy.ghi(c, themMoi ? "THEM_VOUCHER" : "CAP_NHAT_VOUCHER", ma);
             }
-            return rows == 1;
+            return rows == 1 ? ma : null;
         });
+        // Chỉ công bố mã sau khi cả dữ liệu và nhật ký đã commit thành công.
+        if (maDaLuu == null) { return false; }
+        v.setMaVoucher(maDaLuu);
+        return true;
     }
 
     public boolean xoa(String ma) {
