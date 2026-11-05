@@ -58,6 +58,7 @@ public class PnlLichLamViec extends JPanel {
     private final JPanel pnlLich = new JPanel(cheDoLich);
     private List<TaiKhoan> taiKhoan = List.of();
     private List<LichLamViec> lich = List.of();
+    private javax.swing.JLabel lblTieuDeTrang;
     private boolean dangTai, dangLuu, dangCapNhatBoLoc;
     private final javax.swing.Timer dongBoMauCa=new javax.swing.Timer(60_000,e -> {
         if(isShowing()) hienLich();
@@ -66,6 +67,14 @@ public class PnlLichLamViec extends JPanel {
 
     public PnlLichLamViec() {
         this(new TaiKhoanDAO()::layTatCa, new LichLamViecDAO()::layTatCa, new LichLamViecDAO()::them);
+    }
+
+    /** Đổi tiêu đề hiển thị (dùng khi màn cha gọi tên trang khác). */
+    void datTieuDe(String tieuDe) {
+        setName(tieuDe);
+        if (lblTieuDeTrang != null) {
+            lblTieuDeTrang.setText(tieuDe);
+        }
     }
 
     PnlLichLamViec(Supplier<List<TaiKhoan>> layTaiKhoan, Supplier<List<LichLamViec>> layLich, Predicate<LichLamViec> luu) {
@@ -84,7 +93,7 @@ public class PnlLichLamViec extends JPanel {
         setBorder(new EmptyBorder(18, 18, 18, 18));
         JPanel header = new JPanel(new BorderLayout(16, 0)); header.setOpaque(false);
         JPanel titles = new JPanel(); titles.setLayout(new BoxLayout(titles,BoxLayout.Y_AXIS)); titles.setOpaque(false);
-        JLabel title = new JLabel(chiXemCaNhan?"Lịch của tôi":"Lịch làm việc"); title.setFont(bold(23)); title.setForeground(TEXT);
+        lblTieuDeTrang = new JLabel(chiXemCaNhan?"Lịch của tôi":"Lịch làm việc"); JLabel title = lblTieuDeTrang; title.setFont(bold(23)); title.setForeground(TEXT);
         JLabel subtitle = new JLabel(chiXemCaNhan?"Lịch làm việc và nghỉ phép cá nhân · Chỉ xem":"Phân công và theo dõi ca làm việc của nhân viên"); subtitle.setFont(font(12)); subtitle.setForeground(MUTED);
         titles.add(title); titles.add(Box.createVerticalStrut(5)); titles.add(subtitle); header.add(titles,BorderLayout.CENTER);
         btnPhanCa.setName("moPhanCa"); btnPhanCa.setBackground(TEAL); btnPhanCa.setForeground(Color.WHITE); btnPhanCa.setFont(bold(13));

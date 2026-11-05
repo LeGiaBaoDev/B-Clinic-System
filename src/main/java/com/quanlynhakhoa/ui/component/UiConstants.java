@@ -14,6 +14,8 @@ public final class UiConstants {
     public static final Color TEAL_DARK = new Color(0x007B83);
     public static final Color TEAL_LIGHT = new Color(0xE7F4F3);
     public static final Color GREEN = new Color(0x16875D);
+    public static final Color RED = new Color(0xC0392B);
+    public static final Color RED_LIGHT = new Color(0xFDECEA);
 
     private UiConstants() {
     }

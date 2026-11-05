@@ -151,12 +151,11 @@ public class PnlLichNhaSi extends JPanel {
     private final CardLayout theTrang = new CardLayout();
     private final JPanel pnlTrang = new JPanel(theTrang);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
-    private final JLabel lblTrang = new JLabel("Lịch trực");
+    private final JLabel lblTrang = new JLabel("Lịch hẹn");
     private PnlKham pnlKham;
     private PnlTraCuuHoSo pnlTraCuu;
     private PnlLichCaNhan pnlLichCaNhan;
     private PnlThongKeBenhNhan pnlThongKe;
-    private PnlThongKeLichHenNhaSi pnlThongKeLich; // UC034, tạo khi mở lần đầu
     private PnlTongQuanNhaSi pnlTongQuan;
     private final CardLayout theNoiDung = new CardLayout();
     private final JPanel pnlNoiDung = new JPanel(theNoiDung);
@@ -196,10 +195,10 @@ public class PnlLichNhaSi extends JPanel {
         pnlTraCuu = new PnlTraCuuHoSo(taiKhoan, this::moKhamTuTraCuu);
         pnlThongKe = new PnlThongKeBenhNhan();
         pnlTongQuan = new PnlTongQuanNhaSi(taiKhoan, this::moKhamTuTraCuu,
-                () -> moTrang("Lịch trực"), () -> moTrang("Bệnh án"), this::moHoSoBenhAn);
+                () -> moTrang("Lịch hẹn"), () -> moTrang("Bệnh án"), this::moHoSoBenhAn);
         pnlTrang.setOpaque(false);
         pnlTrang.add(pnlTongQuan, "Tổng quan");
-        pnlTrang.add(taoNoiDung(), "Lịch trực");
+        pnlTrang.add(taoNoiDung(), "Lịch hẹn");
         pnlTrang.add(pnlTraCuu, "Bệnh án");
         pnlTrang.add(pnlKham, "Khám");
         pnlTrang.add(pnlThongKe, "Thống kê");
@@ -244,17 +243,15 @@ public class PnlLichNhaSi extends JPanel {
 
         top.add(menuItem("Tổng quan", LineIcon.Type.GRID, () -> moTrang("Tổng quan")));
         top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Lịch hẹn", LineIcon.Type.CALENDAR, () -> moTrang("Lịch trực")));
+        top.add(menuItem("Lịch hẹn", LineIcon.Type.CALENDAR, () -> moTrang("Lịch hẹn")));
         top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Lịch trực", LineIcon.Type.CALENDAR, () -> moTrang("Lịch của tôi")));
+        top.add(menuItem("Lịch trực", LineIcon.Type.CALENDAR, () -> moTrang("Lịch trực")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Khám", LineIcon.Type.CHECK, () -> moTrang("Khám")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Bệnh án", LineIcon.Type.CLIPBOARD, () -> moTrang("Bệnh án")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Thống kê", LineIcon.Type.CHART, () -> moTrang("Thống kê")));
-        top.add(Box.createVerticalStrut(4));
-        top.add(menuItem("Thống kê lịch", LineIcon.Type.CHART, () -> moTrang("Thống kê lịch"))); // UC034
         sidebar.add(top, BorderLayout.NORTH);
 
         JPanel bottom = new JPanel();
@@ -352,9 +349,10 @@ public class PnlLichNhaSi extends JPanel {
     }
 
     private void moTrang(String trang) {
-        if ("Lịch của tôi".equals(trang)) {
+        if ("Lịch trực".equals(trang)) {
             if (pnlLichCaNhan == null) {
                 pnlLichCaNhan = new PnlLichCaNhan();
+                pnlLichCaNhan.datTieuDe("Lịch trực");
                 pnlTrang.add(pnlLichCaNhan, trang);
             }
             pnlLichCaNhan.lamMoiDuLieu();
@@ -364,13 +362,6 @@ public class PnlLichNhaSi extends JPanel {
         }
         if ("Thống kê".equals(trang) && pnlThongKe != null) {
             pnlThongKe.lamMoi();
-        }
-        if ("Thống kê lịch".equals(trang)) { // UC034: lịch hẹn của nha sĩ theo trạng thái
-            if (pnlThongKeLich == null) {
-                pnlThongKeLich = new PnlThongKeLichHenNhaSi();
-                pnlTrang.add(pnlThongKeLich, trang);
-            }
-            pnlThongKeLich.lamMoi();
         }
         theTrang.show(pnlTrang, trang);
         lblTrang.setText(trang);
@@ -414,13 +405,13 @@ public class PnlLichNhaSi extends JPanel {
         return switch (ten) {
             case "Tổng quan" ->
                 LineIcon.Type.GRID;
-            case "Lịch trực", "Lịch của tôi" ->
+            case "Lịch hẹn", "Lịch trực" ->
                 LineIcon.Type.CALENDAR;
             case "Khám" ->
                 LineIcon.Type.CHECK;
             case "Bệnh án" ->
                 LineIcon.Type.CLIPBOARD;
-            case "Thống kê", "Thống kê lịch" ->
+            case "Thống kê" ->
                 LineIcon.Type.CHART;
             default ->
                 LineIcon.Type.SETTINGS;
@@ -1165,7 +1156,7 @@ public class PnlLichNhaSi extends JPanel {
         getActionMap().put("lamMoi", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                if ("Lịch của tôi".equals(lblTrang.getText()) && pnlLichCaNhan != null) { pnlLichCaNhan.lamMoiDuLieu(); }
+                if ("Lịch trực".equals(lblTrang.getText()) && pnlLichCaNhan != null) { pnlLichCaNhan.lamMoiDuLieu(); }
                 else taiDuLieu();
             }
         });

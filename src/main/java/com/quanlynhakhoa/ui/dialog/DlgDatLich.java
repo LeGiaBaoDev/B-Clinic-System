@@ -34,10 +34,14 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
+import java.util.ArrayList;
 import java.util.Date;
 import com.toedter.calendar.JDateChooser;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
@@ -89,6 +93,7 @@ public class DlgDatLich extends JDialog {
     private final JDateChooser dpNgay = new JDateChooser();
     private final JTextField txtGhiChu = new JTextField();
     private final JButton btnTimKhung = new JButton("Tìm khung giờ trống");
+    private final JButton btnLamMoi = new JButton("Làm mới");
     private final DefaultListModel<LocalDateTime> modelKhung = new DefaultListModel<>();
     private final JList<LocalDateTime> lstKhung = new JList<>(modelKhung);
     private final JLabel lblKhung = new JLabel(" ");
@@ -96,6 +101,8 @@ public class DlgDatLich extends JDialog {
     private final JButton btnXacNhan = new JButton("Xác nhận");
     private final JButton btnHuy = new JButton("Đóng");
 
+    private final Map<LocalDateTime, List<NhanVien>> nhaSiTheoKhung = new HashMap<>();
+    private final List<NhanVien> tatCaNhaSi = new ArrayList<>();
     private final Timer henGioTim = new Timer(300, e -> timBenhNhan());
     private SwingWorker<List<KhachHang>, Void> workerBenhNhan;
     private LichHen ketQua;
@@ -176,8 +183,7 @@ public class DlgDatLich extends JDialog {
         pnlBenhNhan.add(pnlDuoi, BorderLayout.SOUTH);
         themDong(form, dong++, "Bệnh nhân *", pnlBenhNhan);
 
-        themDong(form, dong++, "Dịch vụ *", cboDichVu);
-        themDong(form, dong++, "Nha sĩ *", cboNhaSi);
+        themDong(form, dong++, "Triệu chứng", txtGhiChu);
 
         JPanel pnlNgay = new JPanel(new BorderLayout(8, 0));
         pnlNgay.setOpaque(false);
@@ -189,7 +195,11 @@ public class DlgDatLich extends JDialog {
         dpNgay.setFont(font(13));
         dpNgay.setPreferredSize(new Dimension(190, 34));
         pnlNgay.add(dpNgay, BorderLayout.CENTER);
-        pnlNgay.add(btnTimKhung, BorderLayout.EAST);
+        JPanel pnlNutNgay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        pnlNutNgay.setOpaque(false);
+        pnlNutNgay.add(btnLamMoi);
+        pnlNutNgay.add(btnTimKhung);
+        pnlNgay.add(pnlNutNgay, BorderLayout.EAST);
         themDong(form, dong++, "Ngày hẹn * (dd/MM/yyyy)", pnlNgay);
 
         lstKhung.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -218,10 +228,8 @@ public class DlgDatLich extends JDialog {
         lblKhung.setForeground(MUTED);
         pnlKhung.add(lblKhung, BorderLayout.SOUTH);
         themDong(form, dong++, "Khung giờ trống *", pnlKhung);
+        themDong(form, dong++, "Nha sĩ phù hợp *", cboNhaSi);
 
-        if (cheDo == CheDo.DAT_MOI) {
-            themDong(form, dong++, "Ghi chú", txtGhiChu);
-        }
         root.add(form, BorderLayout.CENTER);
 
         lblCanhBao.setFont(bold(12));
@@ -234,6 +242,7 @@ public class DlgDatLich extends JDialog {
         btnXacNhan.setPreferredSize(new Dimension(110, 36));
         btnHuy.setPreferredSize(new Dimension(86, 36));
         btnTimKhung.setFont(bold(12));
+        btnLamMoi.setFont(font(12));
         pnlNut.add(btnHuy);
         pnlNut.add(btnXacNhan);
         JPanel pnlSouth = new JPanel(new BorderLayout());
@@ -313,7 +322,15 @@ public class DlgDatLich extends JDialog {
             }
             timBenhNhan();
         }
+        taiNhaSiVaDichVu();
+    }
+
+    private void taiNhaSiVaDichVu() {
         datDangXuLy(true);
+        xoaKhung();
+        cboDichVu.removeAllItems();
+        cboNhaSi.removeAllItems();
+        tatCaNhaSi.clear();
         new SwingWorker<Object[], Void>() {
             @Override
             protected Object[] doInBackground() {
@@ -329,12 +346,14 @@ public class DlgDatLich extends JDialog {
                         cboDichVu.addItem(d);
                     }
                     for (NhanVien n : (List<NhanVien>) kq[1]) {
+                        tatCaNhaSi.add(n);
                         cboNhaSi.addItem(n);
                     }
                     if (cheDo == CheDo.DOI_LICH) {
                         chonDichVu(lichCu.getDichVu());
-                        cboDichVu.setEnabled(false);
                         chonNhaSi(lichCu.getNhaSi());
+                    } else {
+                        chonDichVuMacDinh();
                     }
                     if (cboNhaSi.getItemCount() == 0) {
                         lblKhung.setForeground(DO);
@@ -347,6 +366,26 @@ public class DlgDatLich extends JDialog {
                 }
             }
         }.execute();
+    }
+
+    /** Lịch hẹn không còn chọn dịch vụ; dùng dịch vụ khám mặc định để tính khung giờ. */
+    private void chonDichVuMacDinh() {
+        if (cboDichVu.getItemCount() == 0) {
+            return;
+        }
+        for (int i = 0; i < cboDichVu.getItemCount(); i++) {
+            if ("DV001".equals(cboDichVu.getItemAt(i).getMaDV())) {
+                cboDichVu.setSelectedIndex(i);
+                return;
+            }
+        }
+        for (int i = 0; i < cboDichVu.getItemCount(); i++) {
+            if (cboDichVu.getItemAt(i).getTenDV().toLowerCase().contains("khám")) {
+                cboDichVu.setSelectedIndex(i);
+                return;
+            }
+        }
+        cboDichVu.setSelectedIndex(0);
     }
 
     private void chonDichVu(DichVu dv) {
@@ -370,6 +409,7 @@ public class DlgDatLich extends JDialog {
     }
 
     private void addEvents() {
+        btnLamMoi.addActionListener(e -> taiNhaSiVaDichVu());
         henGioTim.setRepeats(false);
         txtTimBenhNhan.getDocument().addDocumentListener(new DocumentListener() {
             @Override
@@ -392,6 +432,11 @@ public class DlgDatLich extends JDialog {
         txtTimBenhNhan.addActionListener(e -> timBenhNhan());
         btnThemKhach.addActionListener(e -> themKhachMoi());
         btnTimKhung.addActionListener(e -> timKhung());
+        lstKhung.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                capNhatNhaSiTheoKhung();
+            }
+        });
         btnXacNhan.addActionListener(e -> xacNhan());
         btnHuy.addActionListener(e -> dispose());
         getRootPane().registerKeyboardAction(e -> dispose(),
@@ -465,13 +510,12 @@ public class DlgDatLich extends JDialog {
     private void timKhung() {
         KhachHang kh = (KhachHang) cboBenhNhan.getSelectedItem();
         DichVu dv = (DichVu) cboDichVu.getSelectedItem();
-        NhanVien ns = (NhanVien) cboNhaSi.getSelectedItem();
         if (kh == null) {
             baoThieu("Vui lòng chọn bệnh nhân.", txtTimBenhNhan);
             return;
         }
-        if (dv == null || ns == null) {
-            baoThieu("Vui lòng chọn dịch vụ và nha sĩ.", cboDichVu);
+        if (dv == null) {
+            baoThieu("Chưa tải được dịch vụ mặc định. Bấm Làm mới rồi thử lại.", btnLamMoi);
             return;
         }
         if (dpNgay.getDate() == null) {
@@ -483,16 +527,26 @@ public class DlgDatLich extends JDialog {
             baoThieu("Ngày hẹn phải từ hôm nay trở đi.", dpNgay);
             return;
         }
+        List<NhanVien> dsNhaSi = List.copyOf(tatCaNhaSi);
+        if (dsNhaSi.isEmpty()) {
+            baoThieu("Chưa có nha sĩ đang hoạt động.", btnLamMoi);
+            return;
+        }
         String boQua = cheDo == CheDo.DOI_LICH ? lichCu.getMaLH() : null;
         datDangXuLy(true);
         xoaKhung();
         new SwingWorker<Object[], Void>() {
             @Override
             protected Object[] doInBackground() {
-                List<LocalDateTime> khung = lichHenDAO.goiYKhungTrong(kh.getMaKH(), ns.getMaNV(),
-                        dv.getMaDV(), ngay, boQua);
+                Map<LocalDateTime, List<NhanVien>> theoKhung = new TreeMap<>();
+                for (NhanVien ns : dsNhaSi) {
+                    for (LocalDateTime gio : lichHenDAO.goiYKhungTrong(kh.getMaKH(), ns.getMaNV(),
+                            dv.getMaDV(), ngay, boQua)) {
+                        theoKhung.computeIfAbsent(gio, k -> new ArrayList<>()).add(ns);
+                    }
+                }
                 int huy = lichHenDAO.demSoLanHuyTrongThang(kh.getMaKH(), ngay);
-                return new Object[] {khung, huy};
+                return new Object[] {theoKhung, huy};
             }
 
             @Override
@@ -500,16 +554,22 @@ public class DlgDatLich extends JDialog {
             protected void done() {
                 try {
                     Object[] kq = get();
-                    List<LocalDateTime> khung = (List<LocalDateTime>) kq[0];
+                    Map<LocalDateTime, List<NhanVien>> theoKhung =
+                            (Map<LocalDateTime, List<NhanVien>>) kq[0];
                     int huy = (Integer) kq[1];
-                    khung.forEach(modelKhung::addElement);
-                    if (khung.isEmpty()) {
+                    nhaSiTheoKhung.clear();
+                    nhaSiTheoKhung.putAll(theoKhung);
+                    modelKhung.clear();
+                    theoKhung.keySet().forEach(modelKhung::addElement);
+                    if (theoKhung.isEmpty()) {
                         lblKhung.setForeground(DO);
-                        lblKhung.setText("Không có khung giờ trống. Hãy chọn nha sĩ, dịch vụ hoặc ngày khác.");
+                        lblKhung.setText("Không có khung giờ trống. Hãy chọn ngày khác.");
                     } else {
                         lblKhung.setForeground(MUTED);
-                        lblKhung.setText(khung.size() + " khung giờ trống ngày " + ngay.format(NGAY));
+                        lblKhung.setText(theoKhung.size() + " khung giờ có nha sĩ trống ngày "
+                                + ngay.format(NGAY));
                         lstKhung.setSelectedIndex(0);
+                        capNhatNhaSiTheoKhung();
                     }
                     lblCanhBao.setText(huy >= 3
                             ? "Bệnh nhân đã hủy " + huy + " lần trong tháng: chỉ có khung đầu/cuối ngày."
@@ -523,8 +583,37 @@ public class DlgDatLich extends JDialog {
         }.execute();
     }
 
+    /** Sau khi chọn khung giờ, chỉ hiện các nha sĩ còn trống đúng khung đó. */
+    private void capNhatNhaSiTheoKhung() {
+        LocalDateTime gio = lstKhung.getSelectedValue();
+        NhanVien dangChon = (NhanVien) cboNhaSi.getSelectedItem();
+        cboNhaSi.removeAllItems();
+        if (gio == null) {
+            return;
+        }
+        List<NhanVien> ds = nhaSiTheoKhung.get(gio);
+        if (ds == null) {
+            return;
+        }
+        for (NhanVien nv : ds) {
+            cboNhaSi.addItem(nv);
+        }
+        if (dangChon != null) {
+            for (int i = 0; i < cboNhaSi.getItemCount(); i++) {
+                if (cboNhaSi.getItemAt(i).getMaNV().equals(dangChon.getMaNV())) {
+                    cboNhaSi.setSelectedIndex(i);
+                    return;
+                }
+            }
+        }
+        if (cboNhaSi.getItemCount() > 0) {
+            cboNhaSi.setSelectedIndex(0);
+        }
+    }
+
     private void xoaKhung() {
         modelKhung.clear();
+        nhaSiTheoKhung.clear();
         lblKhung.setForeground(MUTED);
         lblKhung.setText(" ");
         lblCanhBao.setText(" ");
@@ -541,8 +630,8 @@ public class DlgDatLich extends JDialog {
         KhachHang kh = (KhachHang) cboBenhNhan.getSelectedItem();
         DichVu dv = (DichVu) cboDichVu.getSelectedItem();
         NhanVien ns = (NhanVien) cboNhaSi.getSelectedItem();
-        if (kh == null || dv == null || ns == null) {
-            baoThieu("Vui lòng chọn đủ bệnh nhân, dịch vụ và nha sĩ.", txtTimBenhNhan);
+        if (kh == null || ns == null || dv == null) {
+            baoThieu("Vui lòng chọn đủ bệnh nhân và nha sĩ.", txtTimBenhNhan);
             return;
         }
         LichHen lh;
