@@ -24,19 +24,19 @@ BEGIN TRY
     BEGIN COMMIT; RETURN; END;
 
     INSERT INTO NhanVien(maNV,hoTenNV,gioiTinh,sdt,email,chuyenMon) VALUES
-    ('NV101',N'Lê Mai Hương',0,'0918100101','demo.huong@example.com',N'Nha sĩ điều trị tổng quát'),
-    ('NV102',N'Trần Hoàng Nam',1,'0918100102','demo.nam@example.com',N'Nha sĩ phục hình và thẩm mỹ'),
-    ('NV103',N'Nguyễn Ngọc Lan',0,'0918100103','demo.lan@example.com',N'Nha sĩ răng hàm mặt'),
-    ('NV104',N'Phạm Quốc An',1,'0918100104','demo.an@example.com',N'Nha sĩ ca sáng'),
-    ('NV105',N'Vũ Thảo Vy',0,'0918100105','demo.vy@example.com',N'Nha sĩ - tài khoản khóa kiểm thử'),
-    ('NV106',N'Trần Thu Hà',0,'0918100106','demo.ha@example.com',N'Lễ tân và thu ngân');
+    ('NV101',N'Lê Mai Hương',0,'0918100101','demo.huong@example.com',N'Nha sĩ'),
+    ('NV102',N'Trần Hoàng Nam',1,'0918100102','demo.nam@example.com',N'Nha sĩ'),
+    ('NV103',N'Nguyễn Ngọc Lan',0,'0918100103','demo.lan@example.com',N'Nha sĩ'),
+    ('NV104',N'Phạm Quốc An',1,'0918100104','demo.an@example.com',N'Nha sĩ'),
+    ('NV105',N'Vũ Thảo Vy',0,'0918100105','demo.vy@example.com',N'Nha sĩ'),
+    ('NV106',N'Trần Thu Hà',0,'0918100106','demo.ha@example.com',N'Lễ tân');
     INSERT INTO TaiKhoan(maTK,maNV,tenTK,matKhau,vaiTro,trangThai) VALUES
-    ('TK101','NV101','demo.huong',@hash101,'NHASI',1),
-    ('TK102','NV102','demo.nam',@hash102,'NHASI',1),
-    ('TK103','NV103','demo.lan',@hash103,'NHASI',1),
-    ('TK104','NV104','demo.an',@hash104,'NHASI',1),
-    ('TK105','NV105','demo.vy.locked',@hash105,'NHASI',0),
-    ('TK106','NV106','demo.thuha',@hash106,'LETAN',1);
+    ('TK101','NV101','huong.nhasi',@hash101,'NHASI',1),
+    ('TK102','NV102','nam.nhasi',@hash102,'NHASI',1),
+    ('TK103','NV103','lan.nhasi',@hash103,'NHASI',1),
+    ('TK104','NV104','an.nhasi',@hash104,'NHASI',1),
+    ('TK105','NV105','vy.nhasi',@hash105,'NHASI',0),
+    ('TK106','NV106','ha.letan',@hash106,'LETAN',1);
 
     INSERT INTO DichVu(maDV,maLoaiDV,tenDV,donGia,thoiLuong,loTrinhDichVu,trangThai) VALUES
     ('DV101','LDV01',N'Điều trị viêm nướu',300000,30,NULL,1),

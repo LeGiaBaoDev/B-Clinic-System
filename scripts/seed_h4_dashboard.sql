@@ -30,13 +30,24 @@ BEGIN TRY
     IF EXISTS(SELECT 1 FROM LichLamViec WHERE maNV='NV103' AND ngayTruc BETWEEN @Start AND DATEADD(DAY,7,@Start))
         THROW 51404,N'Nha sĩ NV103 đã có ca; kiểm tra lại trước khi seed.',1;
 
+    DECLARE @TenKhach TABLE(stt INT,hoTen NVARCHAR(100),email VARCHAR(100),diaChi NVARCHAR(255));
+    INSERT INTO @TenKhach VALUES
+    (1,N'Nguyễn Minh Khang','nguyen.minh.khang@example.com',N'35 Đường Hoa Lan, TP. Hồ Chí Minh'),
+    (2,N'Trần Ngọc Mai','tran.ngoc.mai@example.com',N'82 Đường Nguyễn Văn Đậu, TP. Hồ Chí Minh'),
+    (3,N'Lê Hoàng Phúc','le.hoang.phuc@example.com',N'16 Đường Lê Văn Sỹ, TP. Hồ Chí Minh'),
+    (4,N'Phạm Thảo Nguyên','pham.thao.nguyen@example.com',N'47 Đường Phan Văn Trị, TP. Hồ Chí Minh'),
+    (5,N'Võ Đức Huy','vo.duc.huy@example.com',N'91 Đường Quang Trung, TP. Hồ Chí Minh'),
+    (6,N'Đặng Minh Anh','dang.minh.anh@example.com',N'28 Đường Nguyễn Oanh, TP. Hồ Chí Minh'),
+    (7,N'Bùi Thành Đạt','bui.thanh.dat@example.com',N'63 Đường Lê Đức Thọ, TP. Hồ Chí Minh'),
+    (8,N'Đỗ Khánh Linh','do.khanh.linh@example.com',N'14 Đường Phạm Văn Đồng, TP. Hồ Chí Minh');
+
     DECLARE @i INT=1;
     WHILE @i<=8
     BEGIN
         INSERT INTO KhachHang(maKH,tenKH,gioiTinh,ngaySinh,sdt,email,diaChi)
-        VALUES('KH88'+RIGHT('000'+CAST(@i AS VARCHAR(3)),3),N'Mẫu H4 - Khách '+CAST(@i AS NVARCHAR(3)),
-               @i%2,'19950101','09998800'+RIGHT('00'+CAST(@i AS VARCHAR(2)),2),
-               'h4.demo.'+CAST(@i AS VARCHAR(2))+'@example.com',N'Dữ liệu mô phỏng H4, không phải khách hàng thực');
+        SELECT 'KH88'+RIGHT('000'+CAST(@i AS VARCHAR(3)),3),hoTen,
+               @i%2,'19950101','09998800'+RIGHT('00'+CAST(@i AS VARCHAR(2)),2),email,diaChi
+        FROM @TenKhach WHERE stt=@i;
         INSERT INTO HoSoBenhAn(maHSBA,maKH,tienSuBenh)
         VALUES('HS88'+RIGHT('000'+CAST(@i AS VARCHAR(3)),3),'KH88'+RIGHT('000'+CAST(@i AS VARCHAR(3)),3),N'H4_DEMO_20261105 - hồ sơ mô phỏng');
         SET @i+=1;

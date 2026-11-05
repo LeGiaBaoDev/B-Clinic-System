@@ -660,8 +660,8 @@ public class PnlDichVu extends JPanel {
         javax.swing.table.TableColumn cot = tblDichVu.getColumnModel().getColumn(COT_THAO_TAC);
         if (hien) {
             cot.setMaxWidth(Integer.MAX_VALUE); // nới giới hạn trên trước rồi mới đặt giới hạn dưới
-            cot.setMinWidth(170);
-            cot.setPreferredWidth(200);
+            cot.setMinWidth(230);
+            cot.setPreferredWidth(240);
         } else {
             cot.setMinWidth(0);
             cot.setMaxWidth(0);
@@ -918,11 +918,15 @@ public class PnlDichVu extends JPanel {
         private final JLabel lblDoi = new JLabel();
 
         ThaoTacRenderer() {
-            super(new FlowLayout(FlowLayout.LEFT, 12, 13));
+            super(new FlowLayout(FlowLayout.LEFT, 8, 7));
             lblSua.setName(LINK_SUA);
             lblSua.setFont(bold(12));
             lblDoi.setFont(bold(12));
             lblDoi.setForeground(TEAL);
+            for (JLabel nut : new JLabel[]{lblSua, lblDoi}) {
+                nut.setOpaque(true);
+                nut.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            }
             add(lblSua);
             add(lblDoi);
         }
@@ -933,7 +937,15 @@ public class PnlDichVu extends JPanel {
             DichVu dv = row < trangHienTai.size() ? trangHienTai.get(table.convertRowIndexToModel(row)) : null;
             boolean dang = dv != null && dv.isTrangThai();
             lblSua.setForeground(dang ? TEAL : MUTED);
+            lblSua.setBackground(dang ? TEAL_LIGHT : XAM_NHAT);
+            lblSua.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(dang ? TEAL : BORDER), new EmptyBorder(6, 10, 6, 10)));
             lblDoi.setText(dang ? "Ngừng cung cấp" : "Mở lại cung cấp");
+            Color mauThaoTac = dang ? new Color(0xB42318) : TEAL;
+            lblDoi.setForeground(mauThaoTac);
+            lblDoi.setBackground(dang ? new Color(0xFEE4E2) : TEAL_LIGHT);
+            lblDoi.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(mauThaoTac), new EmptyBorder(6, 10, 6, 10)));
             lblDoi.setName(dang ? LINK_NGUNG : LINK_MO_LAI);
             setBackground(selected ? table.getSelectionBackground() : table.getBackground());
             return this;
