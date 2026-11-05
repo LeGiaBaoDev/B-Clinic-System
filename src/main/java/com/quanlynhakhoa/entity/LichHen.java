@@ -1,6 +1,7 @@
 package com.quanlynhakhoa.entity;
 
 import com.quanlynhakhoa.entity.enums.TrangThaiLichHen;
+import com.quanlynhakhoa.util.DinhDang;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -84,7 +85,7 @@ public class LichHen {
     }
 
     public void setGhiChu(String ghiChu) {
-        this.ghiChu = (ghiChu == null || ghiChu.isBlank()) ? null : ghiChu.trim();
+        this.ghiChu = DinhDang.toiDa(ghiChu, DinhDang.GHI_CHU_TOI_DA, "Ghi chú");
     }
 
     public String getLyDoHuy() {
@@ -92,7 +93,7 @@ public class LichHen {
     }
 
     public void setLyDoHuy(String lyDoHuy) {
-        this.lyDoHuy = (lyDoHuy == null || lyDoHuy.isBlank()) ? null : lyDoHuy.trim();
+        this.lyDoHuy = DinhDang.toiDa(lyDoHuy, DinhDang.GHI_CHU_TOI_DA, "Lý do hủy");
     }
 
     public KhachHang getKhachHang() {

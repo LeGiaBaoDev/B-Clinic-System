@@ -374,7 +374,12 @@ public class DlgKhachHang extends JDialog {
             baoLoiNhap(new LoiNhap("Email không hợp lệ", txtEmail));
             return;
         }
-        moi.setDiaChi(txtDiaChi.getText());
+        try {
+            moi.setDiaChi(txtDiaChi.getText());
+        } catch (IllegalArgumentException e) {
+            baoLoiNhap(new LoiNhap(e.getMessage(), txtDiaChi));
+            return;
+        }
 
         boolean khongDoi = Objects.equals(moi.getSdt(), goc.getSdt())
                 && Objects.equals(moi.getDiaChi(), goc.getDiaChi())

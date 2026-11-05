@@ -1,11 +1,9 @@
 package com.quanlynhakhoa.entity;
 
+import com.quanlynhakhoa.util.DinhDang;
 import java.util.Objects;
 
 public class NhanVien {
-    private static final String REGEX_SDT = "0[35789]\\d{8}";
-    private static final String REGEX_EMAIL = "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}";
-
     private String maNV;
     private String hoTenNV;
     private boolean gioiTinh;
@@ -23,6 +21,19 @@ public class NhanVien {
         setSdt(sdt);
         setEmail(email);
         setChuyenMon(chuyenMon);
+    }
+
+    /** Dựng từ dữ liệu đã lưu, bỏ qua kiểm tra định dạng. */
+    public static NhanVien tuDuLieu(String maNV, String hoTenNV, boolean gioiTinh,
+            String sdt, String email, String chuyenMon) {
+        NhanVien nv = new NhanVien();
+        nv.maNV = maNV;
+        nv.hoTenNV = hoTenNV;
+        nv.gioiTinh = gioiTinh;
+        nv.sdt = sdt;
+        nv.email = email;
+        nv.chuyenMon = chuyenMon;
+        return nv;
     }
 
     public NhanVien(NhanVien other) {
@@ -53,8 +64,9 @@ public class NhanVien {
         if (hoTenNV == null) {
             throw new IllegalArgumentException("Họ tên cần ít nhất 2 từ, tối đa 100 ký tự.");
         }
-        String ten = hoTenNV.replaceAll("(?U)\\s+", " ").trim();
-        if (ten.length() > 100 || ten.split(" ").length < 2) {
+        String ten = DinhDang.chuanHoaKhoangTrang(hoTenNV);
+        if (ten.length() > DinhDang.HO_TEN_TOI_DA || ten.split(" ").length < 2
+                || !ten.matches(DinhDang.HO_TEN)) {
             throw new IllegalArgumentException("Họ tên cần ít nhất 2 từ, tối đa 100 ký tự.");
         }
         this.hoTenNV = ten;
@@ -73,7 +85,7 @@ public class NhanVien {
     }
 
     public void setSdt(String sdt) {
-        if (sdt == null || !sdt.trim().matches(REGEX_SDT)) {
+        if (sdt == null || !sdt.trim().matches(DinhDang.SDT_NHAN_VIEN)) {
             throw new IllegalArgumentException("Số điện thoại không hợp lệ");
         }
         this.sdt = sdt.trim();
@@ -84,10 +96,11 @@ public class NhanVien {
     }
 
     public void setEmail(String email) {
-        if (email == null || !email.trim().matches(REGEX_EMAIL)) {
+        String mail = email == null ? null : email.trim();
+        if (mail == null || mail.length() > DinhDang.EMAIL_TOI_DA || !mail.matches(DinhDang.EMAIL)) {
             throw new IllegalArgumentException("Email không hợp lệ");
         }
-        this.email = email.trim();
+        this.email = mail;
     }
 
     public String getChuyenMon() {

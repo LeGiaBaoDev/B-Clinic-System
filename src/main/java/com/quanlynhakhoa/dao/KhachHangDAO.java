@@ -200,7 +200,7 @@ public class KhachHangDAO {
     }
 
     private KhachHang mapRow(ResultSet r) throws SQLException {
-        return new KhachHang(
+        return KhachHang.tuDuLieu(
                 r.getString("maKH"),
                 r.getString("tenKH"),
                 r.getObject("ngaySinh", LocalDate.class),

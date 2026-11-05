@@ -15,4 +15,11 @@ class NhanVienTest {
         assertDoesNotThrow(() -> nv.setHoTenNV("Nguyễn\u00a0Văn\tAnh"));
         assertThrows(IllegalArgumentException.class, () -> nv.setHoTenNV("Nguyễn " + "a".repeat(100)));
     }
+
+    @Test
+    void tuDuLieu_khongKiemTraDinhDang_deDocDuLieuCu() {
+        NhanVien nv = NhanVien.tuDuLieu("NV001", "An <Quản lý>", true,
+                "0912345678", "an@example.com", "Quản lý");
+        assertEquals("An <Quản lý>", nv.getHoTenNV());
+    }
 }

@@ -27,7 +27,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -42,7 +41,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,6 +72,10 @@ import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -460,6 +462,19 @@ public class DlgThanhToan extends JDialog {
         radTienMat.addActionListener(e -> capNhatHinhThuc());
         radChuyenKhoan.addActionListener(e -> capNhatHinhThuc());
         cboVoucher.addActionListener(e -> capNhatTong());
+        ((AbstractDocument) txtKhachDua.getDocument()).setDocumentFilter(new DocumentFilter() {
+            @Override
+            public void insertString(FilterBypass fb, int offset, String text, AttributeSet attr)
+                    throws BadLocationException {
+                super.insertString(fb, offset, chiGiuSoTien(text), attr);
+            }
+
+            @Override
+            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
+                    throws BadLocationException {
+                super.replace(fb, offset, length, chiGiuSoTien(text), attrs);
+            }
+        });
         txtKhachDua.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
@@ -933,6 +948,10 @@ public class DlgThanhToan extends JDialog {
         NumberFormat nf = NumberFormat.getNumberInstance(Locale.of("vi", "VN"));
         nf.setMaximumFractionDigits(0);
         return nf.format(v == null ? BigDecimal.ZERO : v.setScale(0, RoundingMode.HALF_UP));
+    }
+
+    private static String chiGiuSoTien(String text) {
+        return text == null ? "" : text.replaceAll("[^0-9.,]", "");
     }
 
     private BigDecimal soTienNhap() {

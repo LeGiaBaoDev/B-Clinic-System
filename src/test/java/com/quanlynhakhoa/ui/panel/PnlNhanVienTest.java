@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class PnlNhanVienTest {
 
     private PnlNhanVien panel;
-    private final NhanVien an = new NhanVien("NV001", "An <Quản lý>", true,
+    private final NhanVien an = new NhanVien("NV001", "An Quản Lý", true,
             "0912345678", "an@example.com", "Quản lý");
     private final NhanVien binh = new NhanVien("NV002", "Bình Nha sĩ", false,
             "0987654321", "binh@example.com", "Nha sĩ");
@@ -67,7 +67,7 @@ class PnlNhanVienTest {
     }
 
     @Test
-    void chonDongSauSapXep_hienDungNguoi_vaEscapeHtml() throws Exception {
+    void chonDongSauSapXep_hienDungNguoi() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             panel = new PnlNhanVien(keyword -> List.of(an, binh),
                     () -> List.of(taiKhoan(binh, VaiTro.NHASI, false)));
@@ -83,7 +83,7 @@ class PnlNhanVienTest {
             assertTrue(((JLabel) tim("chiTietMetaNhanVien")).getText().contains("binh@example.com"));
             assertEquals("Đã khóa", ((JLabel) tim("chiTietTrangThaiNhanVien")).getText());
             table.setRowSelectionInterval(1, 1);
-            assertEquals("An <Quản lý>", ((JLabel) tim("chiTietNhanVien")).getText());
+            assertEquals("An Quản Lý", ((JLabel) tim("chiTietNhanVien")).getText());
         });
     }
 

@@ -1,12 +1,10 @@
 package com.quanlynhakhoa.entity;
 
+import com.quanlynhakhoa.util.DinhDang;
 import java.time.LocalDate;
 import java.util.Objects;
 
 public class KhachHang {
-    private static final String REGEX_SDT = "0\\d{9}";
-    private static final String REGEX_EMAIL = "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}";
-
     private String maKH;
     private String tenKH;
     private LocalDate ngaySinh;
@@ -26,6 +24,23 @@ public class KhachHang {
         setSdt(sdt);
         setDiaChi(diaChi);
         setEmail(email);
+    }
+
+    /**
+     * Dựng từ dữ liệu đã lưu, bỏ qua kiểm tra định dạng để không chặn hồ sơ cũ
+     * (ví dụ tên có số do dữ liệu thử nghiệm trước đây).
+     */
+    public static KhachHang tuDuLieu(String maKH, String tenKH, LocalDate ngaySinh,
+            boolean gioiTinh, String sdt, String diaChi, String email) {
+        KhachHang kh = new KhachHang();
+        kh.maKH = maKH;
+        kh.tenKH = tenKH;
+        kh.ngaySinh = ngaySinh;
+        kh.gioiTinh = gioiTinh;
+        kh.sdt = sdt;
+        kh.diaChi = diaChi;
+        kh.email = email;
+        return kh;
     }
 
     public KhachHang(KhachHang other) {
@@ -57,7 +72,12 @@ public class KhachHang {
         if (tenKH == null || tenKH.isBlank()) {
             throw new IllegalArgumentException("Tên khách hàng không được rỗng");
         }
-        this.tenKH = tenKH.trim();
+        String ten = DinhDang.chuanHoaKhoangTrang(tenKH);
+        if (ten.length() > DinhDang.HO_TEN_TOI_DA || !ten.matches(DinhDang.HO_TEN)) {
+            throw new IllegalArgumentException(
+                    "Tên khách hàng chỉ gồm chữ cái, tối đa " + DinhDang.HO_TEN_TOI_DA + " ký tự");
+        }
+        this.tenKH = ten;
     }
 
     public LocalDate getNgaySinh() {
@@ -84,7 +104,7 @@ public class KhachHang {
     }
 
     public void setSdt(String sdt) {
-        if (sdt == null || !sdt.trim().matches(REGEX_SDT)) {
+        if (sdt == null || !sdt.trim().matches(DinhDang.SDT)) {
             throw new IllegalArgumentException("Số điện thoại phải gồm đúng 10 chữ số");
         }
         this.sdt = sdt.trim();
@@ -95,7 +115,7 @@ public class KhachHang {
     }
 
     public void setDiaChi(String diaChi) {
-        this.diaChi = (diaChi == null || diaChi.isBlank()) ? null : diaChi.trim();
+        this.diaChi = DinhDang.toiDa(diaChi, DinhDang.DIA_CHI_TOI_DA, "Địa chỉ");
     }
 
     public String getEmail() {
@@ -107,10 +127,11 @@ public class KhachHang {
             this.email = null;
             return;
         }
-        if (!email.trim().matches(REGEX_EMAIL)) {
+        String mail = email.trim();
+        if (mail.length() > DinhDang.EMAIL_TOI_DA || !mail.matches(DinhDang.EMAIL)) {
             throw new IllegalArgumentException("Email không hợp lệ");
         }
-        this.email = email.trim();
+        this.email = mail;
     }
 
     @Override

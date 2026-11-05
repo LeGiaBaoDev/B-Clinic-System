@@ -1,5 +1,6 @@
 package com.quanlynhakhoa.entity;
 
+import com.quanlynhakhoa.util.DinhDang;
 import java.util.Objects;
 
 public class ChiTietPhieuKham {
@@ -62,7 +63,7 @@ public class ChiTietPhieuKham {
         if (trieuChung == null || trieuChung.isBlank()) {
             throw new IllegalArgumentException("Vui lòng nhập triệu chứng và chẩn đoán");
         }
-        this.trieuChung = trieuChung.trim();
+        this.trieuChung = DinhDang.toiDa(trieuChung, DinhDang.NOI_DUNG_TOI_DA, "Triệu chứng");
     }
 
     public String getChanDoan() {
@@ -73,7 +74,7 @@ public class ChiTietPhieuKham {
         if (chanDoan == null || chanDoan.isBlank()) {
             throw new IllegalArgumentException("Vui lòng nhập triệu chứng và chẩn đoán");
         }
-        this.chanDoan = chanDoan.trim();
+        this.chanDoan = DinhDang.toiDa(chanDoan, DinhDang.NOI_DUNG_TOI_DA, "Chẩn đoán");
     }
 
     public double getDonGia() {
