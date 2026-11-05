@@ -1,5 +1,16 @@
 # Dữ liệu mẫu nghiệp vụ
 
+## Bổ sung H4 — 05 đến 12/11/2026
+
+`seed_h4_dashboard.sql` dành riêng cho **BClinic_Dev** đang có dữ liệu nền. Mặc định `@Preview=1` thực hiện trong transaction rồi rollback; kiểm tra kết quả trước khi đổi thành 0 để lưu. Không đặt trong Flyway migration. `verify_h4_dashboard.sql` chỉ đọc để kiểm tra sau khi lưu.
+
+- Thêm 8 khách “Mẫu H4”/hồ sơ (`KH88001`–`KH88008`), 8 ca NV103, 29 lịch, 19 phiếu và 17 hóa đơn. Không thay tài khoản/mật khẩu hoặc dữ liệu cũ. Dừng khi mã/ca xung đột; lỗi rollback toàn bộ.
+- Hôm nay 05/11: 8 lịch đủ 5 trạng thái, 3 hóa đơn với tạm tính 600.000 ₫, đã trả 2 hóa đơn tổng 350.000 ₫, chưa trả 1 hóa đơn 250.000 ₫; có phiếu đang khám/chờ khám.
+- 06–12/11: mỗi ngày 3 lịch và 2 hóa đơn **mô phỏng tương lai chưa trả**, tạm tính từ 390.000 đến 630.000 ₫. Đây là fixture để xem trước dashboard, không phải giao dịch khám thực hoặc khoản đã thu. Không có thanh toán tương lai giả.
+- Giá 150.000–340.000 ₫ trên từng dòng là giá giả lập có chủ đích, không sửa bảng giá dịch vụ. Nha sĩ dùng NV103, không đụng ca nghỉ NV002 hoặc các ca đã có của nha sĩ khác.
+- Ghi chú `H4_DEMO_20261105` trên lịch/phiếu/hồ sơ và marker nhật ký `NK880005` ngăn nạp trùng. Chạy lại không thêm. Các tổng trên chỉ là phần mới; màn hình có thể cộng dữ liệu cũ cùng ngày (ví dụ lịch 09/11 đã có từ trước).
+- Đã preview rollback, lưu và xác minh trực tiếp ngày 05/11/2026. Chọn ngày trên Tổng quan rồi F5 để xem. Không tự chạy seed lúc mở ứng dụng hoặc dịch ngày dữ liệu đã lưu.
+
 Đã có bộ bổ sung nhiều tình huống `SeedScenarios.java` + `seed_scenarios.sql` dành cho database đã nạp dữ liệu nền.
 
 `seed_demo.sql` là script chạy thủ công trên **BClinic_Dev**, sau khi ứng dụng chạy Flyway V1/V2. Mở file bằng SSMS, chọn đúng database, chạy toàn bộ một lần. Sau đó chạy `verify_demo.sql` để kiểm tra. Không đưa các file này vào thư mục migration.

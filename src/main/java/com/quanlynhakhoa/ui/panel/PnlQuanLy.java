@@ -347,6 +347,8 @@ public class PnlQuanLy extends JPanel {
             pnlLichLamViec.lamMoiDuLieu();
         } else if ("Dịch vụ".equals(lblTrang.getText()) && pnlDichVu != null) {
             pnlDichVu.lamMoiDuLieu();
+        } else if ("Báo cáo".equals(lblTrang.getText()) && pnlBaoCao != null) {
+            pnlBaoCao.lamMoi();
         } else if ("Voucher".equals(lblTrang.getText()) && pnlVoucher != null) {
             pnlVoucher.lamMoiDuLieu();
         } else {
