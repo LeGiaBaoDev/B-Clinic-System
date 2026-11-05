@@ -1,0 +1,10 @@
+SET NOCOUNT ON;
+SELECT maNV,hoTenNV,chuyenMon FROM NhanVien;
+SELECT maTK,maNV,tenTK,vaiTro,trangThai FROM TaiKhoan;
+SELECT * FROM LoaiDichVu;
+SELECT maDV,tenDV,donGia,thoiLuong,trangThai,loTrinhDichVu FROM DichVu;
+SELECT * FROM Voucher;
+SELECT * FROM LichLamViec WHERE ngayTruc BETWEEN '20261106' AND '20261109';
+SELECT maLH,maKH,maNV,maDV,ngayGioHen,trangThai,maPKNguon FROM LichHen WHERE ngayGioHen>='20261106' AND ngayGioHen<'20261110';
+SELECT hd.maHD,hd.maPK,hd.ngayLap FROM HoaDon hd WHERE SUBSTRING(hd.maHD,3,9)<>SUBSTRING(hd.maPK,3,9);
+SELECT name FROM sys.tables;
