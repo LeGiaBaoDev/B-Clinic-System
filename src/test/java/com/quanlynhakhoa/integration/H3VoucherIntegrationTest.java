@@ -97,6 +97,7 @@ class H3VoucherIntegrationTest {
                 rollback(c);
                 concurrentCreation();
                 uiLuuVoucher();
+                H3ThanhToanScenario.run(c);
                 System.out.println("H3_VOUCHER_INTEGRATION_OK");
             } finally {
                 SessionManager.getInstance().logout();
