@@ -78,7 +78,7 @@ class PnlCapNhatDichVuTest {
         taoTrang(dv -> true);
         SwingUtilities.invokeAndWait(() -> {
             trang.txtThoiLuong.setText("-15");
-            assertEquals("Thời lượng phải lớn hơn 0 phút.", trang.lblLoiThoiLuong.getText());
+            assertEquals("Thời lượng phải là số phút (số nguyên).", trang.lblLoiThoiLuong.getText());
             assertTrue(trang.pnlCanhBao.isVisible());
             assertTrue(trang.lblCanhBao.getText().contains("Giá trị đã lưu vẫn là 30 phút"));
             assertFalse(trang.btnLuu.isEnabled());

@@ -22,9 +22,11 @@ import com.quanlynhakhoa.exception.BusinessException;
 import com.quanlynhakhoa.exception.DataAccessException;
 import com.quanlynhakhoa.ui.component.LineIcon;
 import com.quanlynhakhoa.ui.component.SurfacePanel;
+import com.quanlynhakhoa.ui.dialog.DlgTaiKham;
 import com.quanlynhakhoa.ui.dialog.DlgThanhToan;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
@@ -34,6 +36,7 @@ import java.awt.event.KeyEvent;
 import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CancellationException;
@@ -55,6 +58,7 @@ import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 
 public class PnlTraCuuPhieu extends JPanel {
 
@@ -75,7 +79,21 @@ public class PnlTraCuuPhieu extends JPanel {
             return false;
         }
     };
-    private final JTable tblPhieu = new JTable(modelPhieu);
+    private final JTable tblPhieu = new JTable(modelPhieu) {
+        @Override
+        public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
+            Component c = super.prepareRenderer(renderer, row, column);
+            int modelRow = convertRowIndexToModel(row);
+            boolean choKham = modelRow >= 0 && modelRow < dsPhieu.size()
+                    && dsPhieu.get(modelRow).getTrangThai() == TrangThaiPhieuKham.CHO_KHAM;
+            if (choKham) {
+                c.setBackground(new Color(0xDDF2E9));
+            } else if (!isRowSelected(row)) {
+                c.setBackground(Color.WHITE);
+            }
+            return c;
+        }
+    };
     private final JLabel lblTen = new JLabel(" ");
     private final JLabel lblMa = new JLabel(" ");
     private final JLabel lblNgay = new JLabel(" ");
@@ -84,6 +102,7 @@ public class PnlTraCuuPhieu extends JPanel {
     private final JLabel lblLoiDan = new JLabel(" ");
     private final JLabel lblTong = new JLabel("0 đ");
     private final JButton btnThanhToan = new JButton("Thanh toán");
+    private final JButton btnTaiKham = new JButton("Đặt tái khám");
     private final DefaultTableModel modelDichVu = new DefaultTableModel();
     private final JTable tblDichVu = new JTable(modelDichVu);
     private final JLabel lblKhongCo = new JLabel("Chưa chọn phiếu khám", SwingConstants.CENTER);
@@ -242,7 +261,15 @@ public class PnlTraCuuPhieu extends JPanel {
         btnThanhToan.setPreferredSize(new Dimension(116, 34));
         btnThanhToan.setVisible(!xemDayDu);
         btnThanhToan.setEnabled(false);
-        footer.add(btnThanhToan, BorderLayout.EAST);
+        btnTaiKham.setFont(bold(12));
+        btnTaiKham.setPreferredSize(new Dimension(116, 34));
+        btnTaiKham.setVisible(!xemDayDu);
+        btnTaiKham.setEnabled(false);
+        JPanel nut = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        nut.setOpaque(false);
+        nut.add(btnTaiKham);
+        nut.add(btnThanhToan);
+        footer.add(nut, BorderLayout.EAST);
         card.add(footer, BorderLayout.SOUTH);
         lblKhongCo.setFont(font(12));
         lblKhongCo.setForeground(MUTED);
@@ -258,6 +285,7 @@ public class PnlTraCuuPhieu extends JPanel {
             }
         });
         btnThanhToan.addActionListener(e -> moThanhToan());
+        btnTaiKham.addActionListener(e -> moDatTaiKham());
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "lamMoi");
         getActionMap().put("lamMoi", new javax.swing.AbstractAction() {
@@ -278,8 +306,14 @@ public class PnlTraCuuPhieu extends JPanel {
             @Override
             protected void done() {
                 try {
+                    List<PhieuKham> ds = new ArrayList<>(get());
+                    ds.sort(Comparator.comparingInt((PhieuKham p) -> switch (p.getTrangThai()) {
+                        case CHO_KHAM -> 0;
+                        case DANG_KHAM -> 1;
+                        default -> 2;
+                    }).thenComparing(PhieuKham::getNgayLap, Comparator.reverseOrder()));
                     dsPhieu.clear();
-                    dsPhieu.addAll(get());
+                    dsPhieu.addAll(ds);
                     modelPhieu.setRowCount(0);
                     for (PhieuKham pk : dsPhieu) {
                         modelPhieu.addRow(new Object[]{
@@ -323,6 +357,7 @@ public class PnlTraCuuPhieu extends JPanel {
             lblTong.setText("0 đ");
             modelDichVu.setRowCount(0);
             btnThanhToan.setEnabled(false);
+            btnTaiKham.setEnabled(false);
             return;
         }
         lblTen.setText(pk.getLichHen() == null ? "—" : pk.getLichHen().getKhachHang().getTenKH());
@@ -333,6 +368,16 @@ public class PnlTraCuuPhieu extends JPanel {
         lblLoiDan.setText(xemDayDu && pk.getLoiDan() != null ? "Lời dặn: " + pk.getLoiDan() : " ");
         taiDongDichVu(pk);
         capNhatNutThanhToan(pk);
+        btnTaiKham.setEnabled(pk.getTrangThai() == TrangThaiPhieuKham.HOAN_TAT && pk.getLichHen() != null);
+    }
+
+    /** UC017: lễ tân đặt lịch tái khám từ phiếu đã hoàn tất. */
+    private void moDatTaiKham() {
+        PhieuKham pk = phieuDangChon();
+        if (pk == null || pk.getTrangThai() != TrangThaiPhieuKham.HOAN_TAT) {
+            return;
+        }
+        DlgTaiKham.datTaiKham(javax.swing.SwingUtilities.getWindowAncestor(this), pk);
     }
 
     private void capNhatNutThanhToan(PhieuKham pk) {

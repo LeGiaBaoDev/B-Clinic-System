@@ -168,7 +168,7 @@ public class DlgInHoSo extends JDialog {
         if (logoUrl != null) {
             ImageIcon logo = new ImageIcon(logoUrl);
             brand.add(new JLabel(new ImageIcon(logo.getImage()
-                    .getScaledInstance(68, 48, java.awt.Image.SCALE_SMOOTH))), BorderLayout.WEST);
+                    .getScaledInstance(-1, 46, java.awt.Image.SCALE_SMOOTH))), BorderLayout.WEST);
         }
         JPanel clinic = new JPanel();
         clinic.setOpaque(false);
@@ -223,6 +223,8 @@ public class DlgInHoSo extends JDialog {
         title.setFont(bold(17));
         title.setForeground(TEXT);
         title.setAlignmentX(LEFT_ALIGNMENT);
+        title.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        title.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
         title.setBorder(new EmptyBorder(14, 0, 6, 0));
         panel.add(title);
 
