@@ -44,6 +44,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -275,6 +276,8 @@ public class PnlTraCuuHoSo extends JPanel {
                 hienThi.add(t);
             }
         }
+        hienThi.sort(Comparator.comparing((KhachHangDAO.TomTat t) -> !t.dangChoKham())
+                .thenComparing(t -> t.khachHang().getTenKH()));
         for (KhachHangDAO.TomTat t : hienThi) {
             CardBenhNhan card = new CardBenhNhan(t);
             theCard.put(t.khachHang().getMaKH(), card);
@@ -873,10 +876,12 @@ public class PnlTraCuuHoSo extends JPanel {
     private final class CardBenhNhan extends JPanel {
 
         private boolean chon;
+        private final boolean choKham;
 
         CardBenhNhan(KhachHangDAO.TomTat t) {
             super(new BorderLayout(8, 0));
             KhachHang kh = t.khachHang();
+            this.choKham = t.dangChoKham();
             setOpaque(false);
             setAlignmentX(LEFT_ALIGNMENT);
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 92));
@@ -901,7 +906,7 @@ public class PnlTraCuuHoSo extends JPanel {
             sdt.setAlignmentX(LEFT_ALIGNMENT);
             JLabel tt = new JLabel(dongTrangThai(t));
             tt.setFont(font(10));
-            tt.setForeground(t.coLichSapToi() ? TEAL : MUTED);
+            tt.setForeground(t.dangChoKham() ? GREEN : t.coLichSapToi() ? TEAL : MUTED);
             tt.setAlignmentX(LEFT_ALIGNMENT);
             info.add(ten);
             info.add(Box.createVerticalStrut(3));
@@ -931,15 +936,18 @@ public class PnlTraCuuHoSo extends JPanel {
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(chon ? TEAL_LIGHT : Color.WHITE);
+            g2.setColor(chon ? TEAL_LIGHT : choKham ? new Color(0xE7F4F3) : Color.WHITE);
             g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
-            g2.setColor(chon ? TEAL : BORDER);
+            g2.setColor(chon ? TEAL : choKham ? GREEN : BORDER);
             g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
             g2.dispose();
             super.paintComponent(g);
         }
 
         private String dongTrangThai(KhachHangDAO.TomTat t) {
+            if (t.dangChoKham()) {
+                return "Đang chờ khám";
+            }
             if (t.lichGanNhat() != null && t.coLichSapToi()) {
                 return "Lịch hẹn: " + t.lichGanNhat().format(NGAY_GIO);
             }
