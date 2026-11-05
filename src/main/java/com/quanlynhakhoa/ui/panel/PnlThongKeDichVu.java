@@ -185,6 +185,18 @@ public class PnlThongKeDichVu extends JPanel {
         taiLai();
     }
 
+    /** Trang Báo cáo gọi khi ngày chọn sai (thiếu ngày, ngày tương lai...): xóa bảng, hiện thông báo đỏ. */
+    public void baoLoi(String thongBao) {
+        if (worker != null) {
+            worker.cancel(true);
+            worker = null;
+        }
+        tu = null;
+        den = null;
+        model.setRowCount(0);
+        baoTinhTrang(thongBao, DO);
+    }
+
     /** Tải lại với khoảng ngày hiện tại (chạy nền). */
     private void taiLai() {
         if (tu == null || den == null) {

@@ -27,6 +27,8 @@ import javax.swing.border.EmptyBorder;
  *   <li>Năm: không có ô lịch, xem năm nay.</li>
  *   <li>Khoảng: chọn Từ ngày – Đến ngày.</li>
  * </ul>
+ * <p>Không chọn được ngày sau hôm nay (lịch khóa, gõ tay thì báo lỗi). Tuần / tháng / năm đang dở chỉ tính tới
+ * hôm nay và so với đúng các ngày tương ứng của tuần / tháng / năm trước.</p>
  * <p>Mỗi lựa chọn so với ngày trước / tuần trước / tháng trước / năm trước / khoảng cùng số ngày ngay trước đó.
  * Bên dưới là lưới thẻ:</p>
  * <pre>
@@ -364,7 +366,10 @@ public class PnlBaoCao extends JPanel {
         repaint();
     }
 
-    /** Khoảng đang xem theo nút và ô lịch; {@code null} nếu chưa chọn đủ ngày. */
+    /**
+     * Khoảng đang xem theo nút và ô lịch; {@code null} nếu chưa chọn đủ ngày. Tuần / Tháng / Năm đang dở chỉ tính
+     * tới hôm nay (xem {@link #toiHomNay}).
+     */
     private KhoangNgay khoangHienTai() {
         if (ky == Ky.KHOANG) {
             LocalDate tu = sangLocalDate(dcTu.getDate());
@@ -372,7 +377,37 @@ public class PnlBaoCao extends JPanel {
             return tu == null || den == null ? null : new KhoangNgay(tu, den);
         }
         LocalDate ngay = ky == Ky.NAM ? homNay() : sangLocalDate(dcNgay.getDate());
-        return ngay == null ? null : khoangCua(ky, ngay);
+        return ngay == null ? null : toiHomNay(khoangCua(ky, ngay), homNay());
+    }
+
+    /**
+     * Cắt phần sau hôm nay: tuần / tháng / năm đang dở chỉ tính tới hôm nay, để so với đúng các ngày tương ứng
+     * của tuần / tháng / năm trước (vd thứ Hai → thứ Sáu tuần này so với thứ Hai → thứ Sáu tuần trước).
+     */
+    static KhoangNgay toiHomNay(KhoangNgay k, LocalDate homNay) {
+        return k.den().isAfter(homNay) && !k.tu().isAfter(homNay) ? new KhoangNgay(k.tu(), homNay) : k;
+    }
+
+    /** Ngày được chọn (ô một ngày hoặc ô Từ / Đến) nằm sau hôm nay. */
+    private boolean coNgayTuongLai() {
+        LocalDate homNay = homNay();
+        JDateChooser[] o = ky == Ky.KHOANG ? new JDateChooser[]{dcTu, dcDen}
+                : ky == Ky.NAM ? new JDateChooser[0] : new JDateChooser[]{dcNgay};
+        for (JDateChooser dc : o) {
+            LocalDate d = sangLocalDate(dc.getDate());
+            if (d != null && d.isAfter(homNay)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Lịch chỉ cho chọn tới hôm nay; gọi mỗi lần tải vì qua nửa đêm thì "hôm nay" đổi. */
+    private void khoaNgayTuongLai() {
+        Date toiDa = sangDate(homNay());
+        for (JDateChooser dc : new JDateChooser[]{dcNgay, dcTu, dcDen}) {
+            dc.setMaxSelectableDate(toiDa);
+        }
     }
 
     /**
@@ -430,11 +465,14 @@ public class PnlBaoCao extends JPanel {
 
     /** Tính khoảng đang xem, cập nhật dòng mô tả rồi giao cho từng thẻ tải. */
     private void taiDuLieu() {
+        khoaNgayTuongLai();
         KhoangNgay nay = khoangHienTai();
         String capNhat = "Dữ liệu đến " + bayGio.get().format(GIO_NGAY);
         String loi = null;
         if (nay == null) {
             loi = ky == Ky.KHOANG ? "Vui lòng chọn đủ ngày bắt đầu và ngày kết thúc." : "Vui lòng chọn ngày xem.";
+        } else if (coNgayTuongLai()) {
+            loi = "Không được chọn ngày trong tương lai.";
         } else if (nay.tu().isAfter(nay.den())) {
             loi = "Khoảng thời gian không hợp lệ: ngày bắt đầu phải trước hoặc bằng ngày kết thúc.";
         }
@@ -442,9 +480,7 @@ public class PnlBaoCao extends JPanel {
             lblPhuDe.setText(capNhat);
             doanhThu.baoLoi(loi);
             lichHen.baoLoi(loi);
-            if (nay != null) {
-                theDichVu.taiDuLieu(nay.tu(), nay.den()); // thẻ tự báo khoảng ngày sai
-            }
+            theDichVu.baoLoi(loi);
             return;
         }
         KhoangNgay truoc = kyTruoc(ky, nay);
