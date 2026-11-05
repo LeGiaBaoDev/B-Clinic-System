@@ -255,6 +255,16 @@ public class LichHenDAO {
         });
     }
 
+    public int demSoLanHuyTrongThangChoNhaSi(String maKH, LocalDate ngay) {
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c, VaiTro.NHASI, VaiTro.QUANLY);
+            yeuCau(actor.vaiTro() == VaiTro.QUANLY || JdbcHelper.exists(c,
+                    "SELECT 1 FROM LichHen WHERE maKH=? AND maNV=?", maKH, actor.maNV()),
+                    "Bạn không được xem lịch sử hủy của bệnh nhân này.");
+            return demHuy(c, maKH, ngay);
+        });
+    }
+
     public boolean huy(String ma, String lyDo) {
         yeuCau(lyDo != null && !lyDo.isBlank(), "Vui lòng nhập lý do hủy.");
         return JdbcHelper.transaction(c -> {
