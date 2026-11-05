@@ -151,7 +151,7 @@ public class PnlKham extends JPanel {
     private final JTextField txtTimDichVu = new JTextField();
     private final JComboBox<String> cboLoaiDichVu = new JComboBox<>();
     private final DefaultTableModel modelDichVu = new DefaultTableModel(
-            new String[]{"Chọn", "Dịch vụ", "Đơn giá", "Đơn vị"}, 0) {
+            new String[]{"Chọn", "Dịch vụ", "Lộ trình", "Đơn giá", "Đơn vị"}, 0) {
         @Override
         public Class<?> getColumnClass(int column) {
             return column == 0 ? Boolean.class : String.class;
@@ -707,7 +707,7 @@ public class PnlKham extends JPanel {
     }
 
     private void cauHinhBangDichVu() {
-        tblDichVu.setRowHeight(36);
+        tblDichVu.setRowHeight(48);
         tblDichVu.setFont(font(11));
         tblDichVu.setShowVerticalLines(false);
         tblDichVu.setGridColor(new Color(0xEDF1F5));
@@ -718,14 +718,15 @@ public class PnlKham extends JPanel {
         tblDichVu.getTableHeader().setBackground(new Color(0xF7F9FB));
         tblDichVu.getTableHeader().setForeground(MUTED);
         tblDichVu.getTableHeader().setReorderingAllowed(false);
-        int[] rong = {52, 300, 110, 70};
+        int[] rong = {48, 210, 250, 90, 60};
         for (int i = 0; i < rong.length; i++) {
             tblDichVu.getColumnModel().getColumn(i).setPreferredWidth(rong[i]);
-            tblDichVu.getColumnModel().getColumn(i).setMaxWidth(i == 1 ? Integer.MAX_VALUE : rong[i] + 20);
+            tblDichVu.getColumnModel().getColumn(i).setMaxWidth(
+                    i == 1 || i == 2 ? Integer.MAX_VALUE : rong[i] + 20);
         }
         DefaultTableCellRenderer phai = new DefaultTableCellRenderer();
         phai.setHorizontalAlignment(SwingConstants.RIGHT);
-        tblDichVu.getColumnModel().getColumn(2).setCellRenderer(phai);
+        tblDichVu.getColumnModel().getColumn(3).setCellRenderer(phai);
         modelDichVu.addTableModelListener(e -> {
             if (!dangDungBang && e.getColumn() == 0) {
                 dongBoChon();
@@ -996,9 +997,18 @@ public class PnlKham extends JPanel {
                     && loai.equals(dv.getLoaiDichVu().getTenLoaiDV()));
             if (hopKhoa && hopLoai) {
                 dsHienThi.add(dv);
+                String loTrinh = dv.getLoTrinhDichVu();
+                String ten = "<html><b>" + escapeHtml(dv.getTenDV()) + "</b>";
+                if (loTrinh != null) {
+                    ten += "<br><span style='color:#007B83;font-size:9px'>Nhiều buổi</span>";
+                }
+                ten += "</html>";
+                String lo = loTrinh == null ? "—"
+                        : "<html><div style='width:230px'>" + escapeHtml(loTrinh) + "</div></html>";
                 modelDichVu.addRow(new Object[]{
                     daChon.contains(dv),
-                    "<html><b>" + dv.getTenDV() + "</b></html>",
+                    ten,
+                    lo,
                     money(dv.getDonGia()),
                     "Lần"});
             }
@@ -1031,7 +1041,8 @@ public class PnlKham extends JPanel {
             dong.setOpaque(false);
             dong.setAlignmentX(LEFT_ALIGNMENT);
             dong.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
-            JLabel ten = new JLabel(dv.getTenDV() + " × 1");
+            JLabel ten = new JLabel(dv.getTenDV()
+                    + (dv.getLoTrinhDichVu() == null ? "" : " (nhiều buổi)") + " × 1");
             ten.setFont(font(11));
             ten.setForeground(TEXT);
             JLabel gia = new JLabel(money(dv.getDonGia()));
@@ -1141,6 +1152,10 @@ public class PnlKham extends JPanel {
             JOptionPane.showMessageDialog(this, "Đã xảy ra lỗi, vui lòng thử lại.", "Lỗi",
                     JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private static String escapeHtml(String s) {
+        return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static String cat(int max, String text) {
