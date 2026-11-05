@@ -212,10 +212,12 @@ public class PnlDoanhThuKy {
                 return this;
             }
         });
-        int[] rong = {96, 86, 86, 74};
+        bang.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        int[] rong = {118, 86, 86, 48};
         for (int i = 0; i < rong.length; i++) {
             bang.getColumnModel().getColumn(i).setPreferredWidth(rong[i]);
         }
+        bang.getColumnModel().getColumn(0).setMinWidth(118);
         for (String ct : CHI_TIEU) {
             model.addRow(new Object[]{ct, "—", "—", "—"});
         }
