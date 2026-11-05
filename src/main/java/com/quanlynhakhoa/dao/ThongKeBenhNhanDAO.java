@@ -19,6 +19,45 @@ public class ThongKeBenhNhanDAO {
 
     }
 
+    public record BenhNhanTrongKy(String maKH, String tenKH, LocalDate ngaySinh,
+            boolean gioiTinh, String sdt, String diaChi, String maPK, LocalDate ngayKham,
+            String chanDoan, String nhaSi) {
+
+    }
+
+    public List<BenhNhanTrongKy> danhSachBenhNhan(LocalDate tu, LocalDate den) {
+        khoangNgay(tu, den);
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c, VaiTro.NHASI, VaiTro.QUANLY);
+            return JdbcHelper.query(c, """
+                    WITH LanKham AS (
+                        SELECT kh.maKH,kh.tenKH,kh.ngaySinh,kh.gioiTinh,kh.sdt,kh.diaChi,
+                               pk.maPK,pk.ngayLap,nv.hoTenNV,
+                               (SELECT TOP 1 ct.chanDoan FROM ChiTietPhieuKham ct
+                                WHERE ct.maPK=pk.maPK ORDER BY ct.maCTPK) AS chanDoan,
+                               ROW_NUMBER() OVER(PARTITION BY kh.maKH
+                                   ORDER BY pk.ngayLap DESC,pk.maPK DESC) AS rn
+                        FROM PhieuKham pk
+                        JOIN HoSoBenhAn hs ON hs.maHSBA=pk.maHSBA
+                        JOIN KhachHang kh ON kh.maKH=hs.maKH
+                        JOIN LichHen lh ON lh.maLH=pk.maLH
+                        JOIN NhanVien nv ON nv.maNV=lh.maNV
+                        WHERE pk.trangThai='HOAN_TAT' AND pk.ngayLap>=? AND pk.ngayLap<?
+                          AND (?=1 OR lh.maNV=?)
+                    )
+                    SELECT maKH,tenKH,ngaySinh,gioiTinh,sdt,diaChi,maPK,
+                           CAST(ngayLap AS DATE),chanDoan,hoTenNV
+                    FROM LanKham WHERE rn=1 ORDER BY ngayLap DESC,tenKH
+                    """,
+                    r -> new BenhNhanTrongKy(r.getString(1), r.getString(2),
+                            r.getObject(3, LocalDate.class), r.getBoolean(4), r.getString(5),
+                            r.getString(6), r.getString(7), r.getObject(8, LocalDate.class),
+                            r.getString(9), r.getString(10)),
+                    tu.atStartOfDay(), den.plusDays(1).atStartOfDay(),
+                    actor.vaiTro() == VaiTro.QUANLY, actor.maNV());
+        });
+    }
+
     public List<TheoNgay> thongKe(LocalDate tu, LocalDate den) {
         khoangNgay(tu, den);
         return JdbcHelper.doc(c -> {
