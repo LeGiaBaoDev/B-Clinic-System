@@ -223,8 +223,14 @@ public class DlgInHoSo extends JDialog {
         title.setFont(bold(17));
         title.setForeground(TEXT);
         title.setAlignmentX(LEFT_ALIGNMENT);
-        title.setBorder(new EmptyBorder(14, 0, 2, 0));
+        title.setBorder(new EmptyBorder(14, 0, 6, 0));
         panel.add(title);
+
+        JPanel canhBao = canhBaoYTe();
+        if (canhBao != null) {
+            panel.add(canhBao);
+            panel.add(Box.createVerticalStrut(2));
+        }
 
         panel.add(mucPhu("I. THÔNG TIN BỆNH NHÂN"));
         panel.add(hang("Họ và tên", kh.getTenKH()));
@@ -264,11 +270,18 @@ public class DlgInHoSo extends JDialog {
         String bs = pk.getLichHen() != null && pk.getLichHen().getNhaSi() != null
                 ? "BS. " + pk.getLichHen().getNhaSi().getHoTenNV() : "—";
         p.add(dong("• Ngày " + pk.getNgayLap().format(NGAY)
-                + "  —  " + trangThai(pk.getTrangThai()), bold(12), TEXT, 0));
-        p.add(dong(bs, font(10), MUTED, 12));
+                + "  —  " + trangThai(pk.getTrangThai()) + "  ·  " + bs, bold(12), TEXT, 0));
+        ChiTietPhieuKham ct0 = ds == null || ds.isEmpty() ? null : ds.get(0);
+        if (ct0 != null) {
+            p.add(dong("Triệu chứng: "
+                    + clean(sauNhan(ct0.getTrieuChung(), "Triệu chứng:"), ct0.getTrieuChung()),
+                    font(10), MUTED, 12));
+            p.add(dong("Chẩn đoán: " + chanDoanText(ct0.getChanDoan()), font(10), MUTED, 12));
+        }
         p.add(Box.createVerticalStrut(5));
         p.add(taoBangDichVu(ds));
         if (pk.getLoiDan() != null && !pk.getLoiDan().isBlank()) {
+            p.add(Box.createVerticalStrut(4));
             p.add(dong("Lời dặn: " + motDong(pk.getLoiDan()), font(11), TEXT, 12));
         }
         return p;
@@ -280,28 +293,65 @@ public class DlgInHoSo extends JDialog {
         p.setBackground(Color.WHITE);
         p.setAlignmentX(LEFT_ALIGNMENT);
         p.setBorder(BorderFactory.createMatteBorder(1, 1, 0, 0, new Color(0xB9C5D1)));
-        double[] w = {0.05, 0.25, 0.20, 0.16, 0.11, 0.07, 0.16};
-        String[] header = {"STT", "Triệu chứng / Chẩn đoán", "Tên dịch vụ điều trị",
-            "Nha sĩ", "Đơn giá", "SL", "Thành tiền"};
+        double[] w = {0.08, 0.44, 0.18, 0.10, 0.20};
+        String[] header = {"STT", "Dịch vụ điều trị", "Đơn giá", "SL", "Thành tiền"};
         themDongBang(p, 0, header, w, true);
-        if (ds == null || ds.isEmpty()) {
-            themDongBang(p, 1, new String[]{"", "Chưa có chi tiết điều trị.", "", "", "", "", ""}, w, false);
+        double tong = 0;
+        int n = ds == null ? 0 : ds.size();
+        if (n == 0) {
+            themDongBang(p, 1, new String[]{"", "Chưa có dịch vụ điều trị.", "", "", ""}, w, false);
         } else {
-            for (int i = 0; i < ds.size(); i++) {
+            for (int i = 0; i < n; i++) {
                 ChiTietPhieuKham ct = ds.get(i);
-                String nhaSi = ct.getNhaSi() == null ? "—" : ct.getNhaSi().getHoTenNV();
-                String[] row = {
+                tong += ct.getThanhTien();
+                themDongBang(p, i + 1, new String[]{
                     String.valueOf(i + 1),
-                    gach(ct.getTrieuChung()) + " / " + gach(ct.getChanDoan()),
                     ct.getDichVu() == null ? "—" : ct.getDichVu().getTenDV(),
-                    nhaSi,
                     money(ct.getDonGia()),
                     String.valueOf(ct.getSoLuong()),
-                    money(ct.getThanhTien())};
-                themDongBang(p, i + 1, row, w, false);
+                    money(ct.getThanhTien())}, w, false);
             }
         }
+        themDongTong(p, n + 1, w, tong);
         return p;
+    }
+
+    /** Dòng TỔNG CỘNG: nhãn gộp 4 cột đầu, giá trị ở cột Thành tiền. */
+    private void themDongTong(JPanel p, int y, double[] w, double tong) {
+        JLabel nhan = new JLabel("TỔNG CỘNG");
+        nhan.setFont(bold(9));
+        nhan.setForeground(TEXT);
+        nhan.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        JPanel cNhan = new JPanel(new BorderLayout());
+        cNhan.setBackground(new Color(0xF1F6F7));
+        cNhan.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(0xB9C5D1)),
+                new EmptyBorder(5, 6, 5, 6)));
+        cNhan.add(nhan, BorderLayout.CENTER);
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.gridx = 0;
+        gc.gridy = y;
+        gc.gridwidth = 4;
+        gc.weightx = w[0] + w[1] + w[2] + w[3];
+        gc.fill = GridBagConstraints.BOTH;
+        p.add(cNhan, gc);
+
+        JLabel gt = new JLabel(money(tong));
+        gt.setFont(bold(10));
+        gt.setForeground(TEAL);
+        gt.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        JPanel cGt = new JPanel(new BorderLayout());
+        cGt.setBackground(new Color(0xF1F6F7));
+        cGt.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(0xB9C5D1)),
+                new EmptyBorder(5, 3, 5, 3)));
+        cGt.add(gt, BorderLayout.CENTER);
+        GridBagConstraints gg = new GridBagConstraints();
+        gg.gridx = 4;
+        gg.gridy = y;
+        gg.weightx = w[4];
+        gg.fill = GridBagConstraints.BOTH;
+        p.add(cGt, gg);
     }
 
     private void themDongBang(JPanel p, int y, String[] giaTri, double[] w, boolean header) {
@@ -312,8 +362,9 @@ public class DlgInHoSo extends JDialog {
             l.setFont(header ? bold(9) : font(9));
             l.setForeground(TEXT);
             l.setVerticalAlignment(javax.swing.SwingConstants.TOP);
-            l.setHorizontalAlignment(i == 1 || i == 2 || i == 3
-                    ? javax.swing.SwingConstants.LEFT : javax.swing.SwingConstants.CENTER);
+            l.setHorizontalAlignment(i == 1 ? javax.swing.SwingConstants.LEFT
+                    : (i == 2 || i == 4) ? javax.swing.SwingConstants.RIGHT
+                    : javax.swing.SwingConstants.CENTER);
             JPanel cell = new JPanel(new BorderLayout());
             cell.setBackground(header ? new Color(0xF1F6F7) : Color.WHITE);
             cell.setBorder(BorderFactory.createCompoundBorder(
@@ -339,6 +390,62 @@ public class DlgInHoSo extends JDialog {
         NumberFormat nf = NumberFormat.getNumberInstance(Locale.of("vi", "VN"));
         nf.setMaximumFractionDigits(0);
         return nf.format(BigDecimal.valueOf(v).setScale(0, RoundingMode.HALF_UP)) + " đ";
+    }
+
+    /** Hộp cảnh báo y tế (dị ứng/bệnh nền) khi có; null nếu "chưa ghi nhận". */
+    private JPanel canhBaoYTe() {
+        String t = hs == null ? null : hs.getTienSuBenh();
+        if (t == null || t.isBlank() || t.toLowerCase(Locale.ROOT).contains("chưa ghi nhận")) {
+            return null;
+        }
+        JPanel p = new JPanel(new BorderLayout(8, 0));
+        p.setBackground(new Color(0xFFF2DB));
+        p.setAlignmentX(LEFT_ALIGNMENT);
+        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 54));
+        p.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 3, 0, 0, new Color(0xD9930A)),
+                new EmptyBorder(7, 10, 7, 10)));
+        JLabel l = new JLabel("<html><div style='width:560px'><b>LƯU Ý Y TẾ:</b> "
+                + escape(t.trim()) + "</div></html>");
+        l.setFont(font(10));
+        l.setForeground(new Color(0x7A4A00));
+        p.add(l, BorderLayout.CENTER);
+        return p;
+    }
+
+    private static String sauNhan(String blob, String nhan) {
+        if (blob == null) {
+            return null;
+        }
+        for (String d : blob.split("\\r?\\n")) {
+            String t = d.trim();
+            if (t.startsWith(nhan)) {
+                String v = t.substring(nhan.length()).trim();
+                return v.isBlank() ? null : v;
+            }
+        }
+        return null;
+    }
+
+    private static String clean(String v, String blob) {
+        String s = v != null ? v : motDong(blob);
+        return s == null || s.isBlank() ? "—" : s;
+    }
+
+    private static String chanDoanText(String blob) {
+        String ma = sauNhan(blob, "ICD-10:");
+        String cd = sauNhan(blob, "Chẩn đoán:");
+        if (ma != null && cd != null) {
+            return ma + " · " + cd;
+        }
+        if (cd != null) {
+            return cd;
+        }
+        if (ma != null) {
+            return ma;
+        }
+        String s = motDong(blob);
+        return s.isBlank() ? "—" : s;
     }
 
     private JPanel taoCuoiPhieu() {

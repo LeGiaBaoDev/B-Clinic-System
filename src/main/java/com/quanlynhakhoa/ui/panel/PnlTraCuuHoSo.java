@@ -90,6 +90,7 @@ public class PnlTraCuuHoSo extends JPanel {
     private final transient List<KhachHangDAO.TomTat> dsTomTat = new ArrayList<>();
     private final Map<String, CardBenhNhan> theCard = new LinkedHashMap<>();
     private String maChon;
+    private String chonKhiNap;
     private transient ChiTiet chiTietHienTai;
 
     // trái
@@ -133,6 +134,15 @@ public class PnlTraCuuHoSo extends JPanel {
     }
 
     /** Tải lại danh sách khi chuyển vào trang. */
+    /** Chọn sẵn một bệnh nhân ở lần nạp danh sách kế tiếp (gọi từ Lịch trực → "Xem bệnh án"). */
+    public void chuanBiChon(String maKH) {
+        chonKhiNap = maKH;
+        if (cboLoc.getSelectedIndex() != 0) {
+            cboLoc.setSelectedIndex(0);
+        }
+        txtTim.setText("");
+    }
+
     public void lamMoi() {
         taiDanhSach();
     }
@@ -280,8 +290,14 @@ public class PnlTraCuuHoSo extends JPanel {
             maChon = null;
             trangThaiRong();
         } else {
-            String giuChon = maChon != null && theCard.containsKey(maChon)
-                    ? maChon : hienThi.get(0).khachHang().getMaKH();
+            String giuChon;
+            if (chonKhiNap != null && theCard.containsKey(chonKhiNap)) {
+                giuChon = chonKhiNap;
+                chonKhiNap = null;
+            } else {
+                giuChon = maChon != null && theCard.containsKey(maChon)
+                        ? maChon : hienThi.get(0).khachHang().getMaKH();
+            }
             chonBenhNhan(giuChon);
         }
     }

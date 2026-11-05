@@ -8,7 +8,7 @@ public final class LineIcon implements Icon {
 
     public enum Type {
         GRID, PEOPLE, CLIPBOARD, CALENDAR, CLOCK, CHART, VOUCHER, SETTINGS, SEARCH,
-        BELL, CHEVRON, CHECK, INVOICE, PRINTER, PLUS, HELP, ARROW, LOGOUT
+        BELL, CHEVRON, CHECK, CLOSE, INVOICE, PRINTER, PLUS, HELP, ARROW, LOGOUT
     }
     private final Type type;
     private final Color color;
@@ -41,6 +41,10 @@ public final class LineIcon implements Icon {
                 g.draw(new RoundRectangle2D.Double(14, 3, 7, 7, 1, 1));
                 g.draw(new RoundRectangle2D.Double(3, 14, 7, 7, 1, 1));
                 g.draw(new RoundRectangle2D.Double(14, 14, 7, 7, 1, 1));
+            }
+            case CLOSE -> {
+                g.drawLine(7, 7, 17, 17);
+                g.drawLine(17, 7, 7, 17);
             }
             case PEOPLE -> {
                 g.draw(new Ellipse2D.Double(6, 3, 7, 7));
