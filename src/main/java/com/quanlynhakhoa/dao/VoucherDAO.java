@@ -11,8 +11,28 @@ import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 public class VoucherDAO {
+
+    /** Xem mã còn trống, không giữ chỗ; them() vẫn cấp lại mã trong transaction lưu. */
+    public String layMaDuKien() {
+        return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY);
+            return MaSinh.maMoi(c, MaSinh.Bang.VOUCHER, null);
+        });
+    }
+
+    /** Dùng để khóa chỉnh sửa nội dung trên UI; DAO vẫn kiểm tra lại khi lưu. */
+    public Set<String> layMaDaSuDung() {
+        return JdbcHelper.doc(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY);
+            return new HashSet<>(JdbcHelper.query(c,
+                    "SELECT DISTINCT maVoucher FROM HoaDon WHERE maVoucher IS NOT NULL",
+                    r -> r.getString(1)));
+        });
+    }
 
     private static final String SQL_SELECT = """
             SELECT maVoucher, tenVoucher, loaiGiam, giaGiam, giaTriGiamToiDa,

@@ -1,3 +1,40 @@
+## H3 — T502: giao diện voucher (05/11/2026)
+
+Quản lý mở **Voucher** từ menu. Danh sách có tìm mã/tên không phân biệt dấu/hoa thường, lọc loại giảm giá, năm trạng thái, 8 dòng/trang, sắp xếp bảng, F5 tải lại và Ctrl+F tìm kiếm. **Xuất danh sách** tạo Excel của toàn bộ kết quả đang lọc, không chỉ trang hiện tại; xác nhận nếu ghi đè file.
+
+Cập nhật giao diện: trạng thái chỉ lọc qua tab phía trên, đã bỏ dropdown “Tất cả trạng thái” và nút “Xóa lọc”. Chọn tab Tất cả, loại giảm giá Tất cả và xóa từ khóa để xem lại toàn bộ. Nhãn Chưa hiệu lực màu xanh dương/nền xanh nhạt; Hết hạn màu vàng nâu/nền vàng nhạt, khác với Hoạt động xanh lá và Đã khóa đỏ.
+
+Chuyển trang nhanh: nhập số vào ô giữa hai nút ‹/› rồi nhấn Enter. Chỉ nhận số nguyên từ 1 đến tổng số trang; nhập sai không đổi dữ liệu và báo lỗi tại ô. Esc khôi phục trang hiện tại. Ô tự đồng bộ khi bấm nút/chọn bộ lọc và bị vô hiệu khi chưa có dữ liệu.
+
+- **Thêm voucher**: mã tự cấp `VC###`, tên 2–100 ký tự, giảm tiền hoặc phần trăm (0 < giá trị ≤ 100), giảm tối đa chỉ cho phần trăm (trống/0 là không giới hạn), ngày kết thúc phải sau ngày bắt đầu. Nhập số không dấu ngăn nghìn, tối đa 2 số thập phân, dùng dấu phẩy hoặc chấm làm dấu thập phân. Chọn lịch hoặc nhập `dd/MM/yyyy`.
+- Mở form thêm sẽ tải và hiển thị mã dự kiến từ `VoucherDAO.layMaDuKien()` trên nền, không giữ chỗ hoặc tạo bản ghi. Ô mã chỉ đọc. Khi lưu, DAO vẫn cấp mã trong transaction; mã thực lưu có thể khác nếu người khác vừa dùng mã dự kiến. Form sửa giữ nguyên mã đã lưu.
+- **Sửa / nhấn đúp**: thay đổi trên bản sao; Hủy không ghi dữ liệu. Voucher đã gắn vào hóa đơn chỉ có **Chi tiết**, không được sửa hoặc mở khóa. Kiểm tra DAO khi lưu vẫn là nguồn quyết định nếu voucher vừa được dùng ở máy khác.
+- **Khóa**: xác nhận trước, chỉ vô hiệu hóa, giữ lịch sử hóa đơn. **Mở khóa** dành cho voucher chưa dùng; sửa lại thời hạn nếu đã hết hạn. Lỗi lưu giữ form và cho thử lại, lỗi kỹ thuật không hiện chi tiết SQL. Enter lưu, Esc/Hủy đóng; khi đang lưu thì khóa nhập/nút đóng để tránh gửi trùng.
+- Bám ảnh tham chiếu nhưng dùng cột **Giảm tối đa** thay cho **Đã dùng / Giới hạn**, vì schema không có giới hạn lượt dùng. Thêm trạng thái **Chưa hiệu lực**. Không tạo chi nhánh/cài đặt hoặc số liệu giả từ ảnh.
+- `VoucherDAO.layMaDaSuDung()` mới: Quản lý đọc tập mã đã gắn vào bất kỳ hóa đơn nào; dùng để quyết định chế độ chỉ xem. Không đổi API thanh toán hoặc schema.
+
+```powershell
+mvn -o '-Dtest=VoucherTest,PnlVoucherTest,DlgVoucherTest' test
+mvn -o '-Dbclinic.integration=true' '-Dtest=H3VoucherIntegrationTest' test
+```
+
+Test tích hợp còn kiểm tra form `DlgVoucher` thật → SwingWorker → VoucherDAO → SQL Server UUID riêng cho cả thêm và cập nhật (`UI_CREATE_UPDATE_SQL_OK`). Đây là thao tác component tự động, không phải kiểm thử chuột thủ công. Tạo ảnh render khi cần: thêm `'-Dbclinic.preview=true'` cho test UI; ảnh ở `target/voucher-preview.png` và `target/voucher-form-preview.png`, dữ liệu giả lập trong test.
+
+Checklist kiểm thử chéo T502 (chờ người khác ghi người/ngày/kết quả; chưa tự nghiệm thu):
+
+| Mã | Thao tác | Kết quả mong đợi | Kết quả |
+|---|---|---|---|
+| H3-M01 | Quản lý mở Voucher, F5, lọc/tab/tìm không dấu, chuyển trang | Dữ liệu và số đếm đúng; không đứng UI | Chờ |
+| H3-M02 | Thêm giảm tiền/phần trăm có/không giới hạn | Tự cấp mã, lưu đúng giá trị, danh sách tải lại | Chờ |
+| H3-M03 | Tên trống/quá dài, phần trăm >100, ngày 31/02 hoặc ngày kết thúc bằng bắt đầu | Báo lỗi đúng ô, không lưu | Chờ |
+| H3-M04 | Sửa voucher chưa dùng rồi Hủy; sửa lại và Lưu | Hủy giữ dữ liệu cũ, Lưu cập nhật | Chờ |
+| H3-M05 | Mở voucher đã dùng trên hóa đơn | Chỉ xem; không có Lưu/Mở khóa, lịch sử giữ nguyên | Chờ |
+| H3-M06 | Khóa: hủy/xác nhận; mở lại voucher chưa dùng | Hủy không ghi; xác nhận đổi trạng thái và tải lại | Chờ |
+| H3-M07 | Mất kết nối khi tải/lưu; nhấn Lưu nhiều lần | Lỗi chung, có thể thử lại, không tạo bản ghi trùng | Chờ |
+| H3-M08 | Xuất khi lọc nhiều trang, hủy chọn file, hủy/đồng ý ghi đè | Đúng toàn bộ kết quả lọc; không ghi khi hủy | Chờ |
+| H3-M09 | Cửa sổ 1366×768 và thu nhỏ; mở form, Enter/Esc | Bộ lọc/nút dùng được; bảng/form cuộn khi cần | Chờ |
+| H3-M10 | Lễ tân/Nha sĩ, voucher hết hạn/bị khóa ở thanh toán | Không có quyền quản lý; không áp dụng voucher không hiệu lực | Chờ T503 toàn luồng |
+
 ## H3 — T501: nền tảng voucher (05/11/2026)
 
 Kiểm thử entity không cần SQL Server:
@@ -17,7 +54,7 @@ mvn -o '-Dbclinic.integration=true' '-Dtest=VoucherTest,H3VoucherIntegrationTest
 - Entity: tên/mã, giá trị giảm và giới hạn, chặn NaN/vô cực, đổi loại giảm, thứ tự ngày, hiệu lực gồm hai đầu, vô hiệu, tính giảm không vượt tổng.
 - DAO: sinh `VC###`, thêm/đọc/cập nhật/vô hiệu, `giaTriGiamToiDa` NULL ↔ 0, lọc thời hạn/trạng thái, mã không tồn tại; Quản lý/Lễ tân/Nha sĩ, chưa đăng nhập, giả vai trò session và tài khoản khóa; giữ tham chiếu/số giảm trên hóa đơn; rollback thêm/sửa/vô hiệu khi nhật ký lỗi, không gán mã trước commit và thử lại; bốn yêu cầu thêm đồng thời không trùng mã.
 - API giữ nguyên: Quản lý dùng `layTatCa`, `them`, `capNhat`, `xoa`; Quản lý/Lễ tân dùng `layTheoMa`, `layConHieuLuc`. `xoa` là vô hiệu, không xóa vật lý. Voucher đã gắn vào bất kỳ hóa đơn nào không được cập nhật nội dung, kể cả hóa đơn chưa thanh toán. Các thao tác ghi dùng chung khóa `BClinic:thanh-toan` với HoaDonDAO.
-- T501 là nền tảng DAO; chưa có UI UC036–038, chưa nghiệm thu toàn H3 hoặc kiểm thử chéo. Kiểm thử này chưa thay thế kiểm thử thanh toán UC025 toàn luồng tại T503.
+- T501 là nền tảng DAO; UI UC036–038 xem T502 phía trên. Chưa nghiệm thu toàn H3 hoặc kiểm thử chéo. Kiểm thử này chưa thay thế kiểm thử thanh toán UC025 toàn luồng tại T503.
 
 ## Hồ sơ chốt kỹ thuật H2 (04/11/2026)
 
