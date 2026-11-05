@@ -156,6 +156,7 @@ public class PnlLichNhaSi extends JPanel {
     private PnlTraCuuHoSo pnlTraCuu;
     private PnlLichCaNhan pnlLichCaNhan;
     private PnlThongKeBenhNhan pnlThongKe;
+    private PnlThongKeLichHenNhaSi pnlThongKeLich; // UC034, tạo khi mở lần đầu
     private PnlTongQuanNhaSi pnlTongQuan;
     private final CardLayout theNoiDung = new CardLayout();
     private final JPanel pnlNoiDung = new JPanel(theNoiDung);
@@ -252,6 +253,8 @@ public class PnlLichNhaSi extends JPanel {
         top.add(menuItem("Bệnh án", LineIcon.Type.CLIPBOARD, () -> moTrang("Bệnh án")));
         top.add(Box.createVerticalStrut(4));
         top.add(menuItem("Thống kê", LineIcon.Type.CHART, () -> moTrang("Thống kê")));
+        top.add(Box.createVerticalStrut(4));
+        top.add(menuItem("Thống kê lịch", LineIcon.Type.CHART, () -> moTrang("Thống kê lịch"))); // UC034
         sidebar.add(top, BorderLayout.NORTH);
 
         JPanel bottom = new JPanel();
@@ -362,6 +365,13 @@ public class PnlLichNhaSi extends JPanel {
         if ("Thống kê".equals(trang) && pnlThongKe != null) {
             pnlThongKe.lamMoi();
         }
+        if ("Thống kê lịch".equals(trang)) { // UC034: lịch hẹn của nha sĩ theo trạng thái
+            if (pnlThongKeLich == null) {
+                pnlThongKeLich = new PnlThongKeLichHenNhaSi();
+                pnlTrang.add(pnlThongKeLich, trang);
+            }
+            pnlThongKeLich.lamMoi();
+        }
         theTrang.show(pnlTrang, trang);
         lblTrang.setText(trang);
         if ("Khám".equals(trang)) {
@@ -410,7 +420,7 @@ public class PnlLichNhaSi extends JPanel {
                 LineIcon.Type.CHECK;
             case "Bệnh án" ->
                 LineIcon.Type.CLIPBOARD;
-            case "Thống kê" ->
+            case "Thống kê", "Thống kê lịch" ->
                 LineIcon.Type.CHART;
             default ->
                 LineIcon.Type.SETTINGS;
