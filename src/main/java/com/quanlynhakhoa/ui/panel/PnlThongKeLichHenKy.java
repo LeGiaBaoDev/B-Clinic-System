@@ -92,7 +92,10 @@ public class PnlThongKeLichHenKy {
     }
 
     static final String TAT_CA = "Tất cả nha sĩ";
-    static final String KHONG_CO_DU_LIEU = "Không có dữ liệu trong kỳ này.";
+    /** "Không có lịch hẹn trong tuần này." — đổi theo nút Ngày / Tuần / Tháng / Năm / Khoảng đang chọn. */
+    static String khongCoDuLieu(PnlBaoCao.Ky ky) {
+        return "Không có lịch hẹn " + ky.trong() + " này.";
+    }
     static final String[] TRANG_THAI = {"Hoàn tất", "Đã đặt", "Đã đến", "Đã hủy", "Không đến"};
 
     private static final Logger LOG = Logger.getLogger(PnlThongKeLichHenKy.class.getName());
@@ -123,6 +126,7 @@ public class PnlThongKeLichHenKy {
 
     private KhoangNgay khoangNay;
     private KhoangNgay khoangTruoc;
+    private PnlBaoCao.Ky ky = PnlBaoCao.Ky.TUAN;
     private boolean daNapNhaSi;
     private boolean dangNapCombo;
     private SwingWorker<DuLieu, Void> worker;
@@ -286,10 +290,14 @@ public class PnlThongKeLichHenKy {
 
     // ===================== Tải dữ liệu =====================
 
-    /** Trang Báo cáo gọi khi đổi kỳ: tải kỳ này và kỳ trước (theo nha sĩ đang lọc) chạy nền. */
-    public void taiDuLieu(KhoangNgay nay, KhoangNgay truoc) {
+    /**
+     * Trang Báo cáo gọi khi đổi bộ lọc: tải khoảng đang xem và khoảng trước đó (theo nha sĩ đang lọc) chạy nền.
+     * {@code ky} dùng để ghi chữ "so với tuần trước", "lịch hẹn trong tuần"...
+     */
+    public void taiDuLieu(KhoangNgay nay, KhoangNgay truoc, PnlBaoCao.Ky ky) {
         khoangNay = nay;
         khoangTruoc = truoc;
+        this.ky = Objects.requireNonNull(ky);
         napNhaSi();
         taiLai();
     }
@@ -391,12 +399,12 @@ public class PnlThongKeLichHenKy {
 
         lblHoanTat.setText(String.valueOf(a.hoanTat()));
         lblChuyenDoi.setText("Chuyển đổi " + phanTram(a.tyLeChuyenDoi()) + " tổng " + a.tong() + " lịch");
-        datSoVoiKyTruoc(lblHoanTatSoVoiTruoc, b.hoanTat(), a.hoanTat(), true);
+        datSoVoiTruoc(lblHoanTatSoVoiTruoc, b.hoanTat(), a.hoanTat(), true, ky);
 
         long huyVaKhongDen = a.daHuy() + a.khongDen();
         lblHuyKhongDen.setText(String.valueOf(huyVaKhongDen));
         lblChiTietHuy.setText("Hủy " + a.daHuy() + " · Không đến " + a.khongDen());
-        datSoVoiKyTruoc(lblHuySoVoiTruoc, b.daHuy() + b.khongDen(), huyVaKhongDen, false);
+        datSoVoiTruoc(lblHuySoVoiTruoc, b.daHuy() + b.khongDen(), huyVaKhongDen, false, ky);
 
         long[] soLuong = {a.hoanTat(), a.daDat(), a.daDen(), a.daHuy(), a.khongDen()};
         double[] tyLe = {a.tyLeHoanTat(), a.tyLeDaDat(), a.tyLeDaDen(), a.tyLeDaHuy(), a.tyLeKhongDen()};
@@ -407,20 +415,23 @@ public class PnlThongKeLichHenKy {
                 duLieuBieuDo.setValue(TRANG_THAI[i], soLuong[i]);
             }
         }
-        lblTongDaKetThuc.setText(a.tong() + " lịch hẹn trong kỳ");
-        baoTinhTrang(a.coDuLieu() ? "Tỷ lệ chuyển đổi = lịch hoàn tất / tổng số lịch." : KHONG_CO_DU_LIEU, MUTED);
+        lblTongDaKetThuc.setText(a.tong() + " lịch hẹn " + ky.trong());
+        baoTinhTrang(a.coDuLieu() ? "Tỷ lệ chuyển đổi = lịch hoàn tất / tổng số lịch." : khongCoDuLieu(ky), MUTED);
     }
 
     /**
-     * Dòng "↑ 12,5% · Kỳ trước: N". {@code tangLaTot} = true thì tăng tô xanh (hoàn tất); false thì tăng tô đỏ
-     * (hủy / không đến tăng là xấu).
+     * Dòng "↑ 25,0% so với tuần trước (4 lịch)"; trước đó = 0 thì "Tuần trước: 0 lịch". {@code tangLaTot} = true
+     * thì tăng tô xanh (hoàn tất); false thì tăng tô đỏ (hủy / không đến tăng là xấu).
      */
-    private static void datSoVoiKyTruoc(JLabel nhan, long truoc, long nay, boolean tangLaTot) {
+    private static void datSoVoiTruoc(JLabel nhan, long truoc, long nay, boolean tangLaTot, PnlBaoCao.Ky ky) {
         String pt = PnlDoanhThuKy.thayDoi(BigDecimal.valueOf(truoc), BigDecimal.valueOf(nay));
         boolean tang = pt.startsWith("+");
         boolean giam = pt.startsWith("−");
-        nhan.setText((pt.equals("—") ? "" : (tang ? "↑ " : giam ? "↓ " : "") + pt.replaceFirst("^[+−]", "") + " · ")
-                + "Kỳ trước: " + truoc);
+        String tenTruoc = ky.truoc();
+        nhan.setText(pt.equals("—")
+                ? Character.toUpperCase(tenTruoc.charAt(0)) + tenTruoc.substring(1) + ": " + truoc + " lịch"
+                : (tang ? "↑ " : giam ? "↓ " : "") + pt.replaceFirst("^[+−]", "") + " so với " + tenTruoc
+                        + " (" + truoc + " lịch)");
         nhan.setForeground(tang ? (tangLaTot ? GREEN : DO) : giam ? (tangLaTot ? DO : GREEN) : MUTED);
     }
 
