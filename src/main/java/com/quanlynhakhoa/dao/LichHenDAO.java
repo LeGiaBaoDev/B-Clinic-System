@@ -11,7 +11,6 @@ import com.quanlynhakhoa.entity.enums.*;
 import com.quanlynhakhoa.exception.BusinessException;
 import java.sql.*;
 import java.time.*;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -140,6 +139,13 @@ public class LichHenDAO {
         return JdbcHelper.transaction(c -> {
             PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
             MaSinh.khoa(c, "BClinic:lich");
+            return luuTrongGiaoDich(c, lh, themMoi);
+        });
+    }
+
+    /** Phần ghi của {@link #luu}: đã có giao dịch, đã kiểm quyền và đã khóa mã sinh. */
+    private boolean luuTrongGiaoDich(Connection c, LichHen lh, boolean themMoi) throws SQLException {
+        {
             if (!themMoi) {
                 LichHen old = layTheoMa(c, lh.getMaLH(), false);
                 yeuCau(old != null && old.getTrangThai() == TrangThaiLichHen.DA_DAT,
@@ -171,7 +177,69 @@ public class LichHenDAO {
                 NhatKy.ghi(c, themMoi ? "DAT_LICH" : "DOI_LICH", ma);
             }
             return rows == 1;
+        }
+    }
+
+    /** Khoảng ngày cho phép đặt tái khám (gồm cả hai đầu). */
+    public record KhoangNgay(LocalDate tu, LocalDate den) {
+
+        public boolean chua(LocalDate ngay) {
+            return ngay != null && !ngay.isBefore(tu) && !ngay.isAfter(den);
+        }
+    }
+
+    /**
+     * UC017 – đặt lịch tái khám từ phiếu khám đã hoàn tất. Khách hàng, nha sĩ và dịch vụ lấy từ
+     * phiếu nguồn (giữ cùng nha sĩ); ngày hẹn phải nằm trong khoảng tái khám cho phép.
+     *
+     * @return lịch hẹn vừa tạo (đã có mã)
+     */
+    public LichHen taoTaiKham(String maPK, LocalDateTime ngayGio, String ghiChu) {
+        yeuCau(ngayGio != null, "Thiếu ngày giờ tái khám.");
+        return JdbcHelper.transaction(c -> {
+            PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
+            MaSinh.khoa(c, "BClinic:lich");
+            PhieuKham nguon = phieuNguon(c, maPK);
+            LichHen lh = new LichHen(null, ngayGio, TrangThaiLichHen.DA_DAT, ghiChu, null,
+                    nguon.getHoSoBenhAn().getKhachHang(), nguon.getLichHen().getNhaSi(),
+                    nguon.getLichHen().getDichVu(), nguon);
+            yeuCau(luuTrongGiaoDich(c, lh, true), "Không đặt được lịch tái khám.");
+            return lh;
         });
+    }
+
+    /** Khoảng ngày tái khám hợp lệ của một phiếu khám đã hoàn tất (để giới hạn ô chọn ngày). */
+    public KhoangNgay khoangNgayTaiKham(String maPK) {
+        return JdbcHelper.doc(c -> {
+            PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
+            return khoangTaiKham(phieuNguon(c, maPK));
+        });
+    }
+
+    /** Gợi ý khung giờ trống của đúng nha sĩ đã khám, cho một ngày nằm trong khoảng tái khám. */
+    public List<LocalDateTime> goiYKhungTrongTaiKham(String maPK, LocalDate ngay) {
+        yeuCau(ngay != null, "Thiếu ngày cần tìm.");
+        LichHen goc = JdbcHelper.doc(c -> {
+            PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
+            PhieuKham nguon = phieuNguon(c, maPK);
+            yeuCau(khoangTaiKham(nguon).chua(ngay), "Ngày tái khám ngoài khoảng cho phép.");
+            return nguon.getLichHen();
+        });
+        return goiYKhungTrong(goc.getKhachHang().getMaKH(), goc.getNhaSi().getMaNV(),
+                goc.getDichVu().getMaDV(), ngay);
+    }
+
+    private PhieuKham phieuNguon(Connection c, String maPK) throws SQLException {
+        PhieuKham nguon = maPK == null ? null : new PhieuKhamDAO().layTheoMa(c, maPK, true);
+        yeuCau(nguon != null && nguon.getTrangThai() == TrangThaiPhieuKham.HOAN_TAT
+                && nguon.getLichHen() != null, "Phiếu nguồn tái khám chưa hoàn tất.");
+        return nguon;
+    }
+
+    private KhoangNgay khoangTaiKham(PhieuKham nguon) {
+        LocalDate ngayLap = nguon.getNgayLap().toLocalDate();
+        return new KhoangNgay(ngayLap.plusDays(quyDinh.taiKhamMinNgay()),
+                ngayLap.plusDays(quyDinh.taiKhamMaxNgay()));
     }
 
     /**
@@ -222,8 +290,10 @@ public class LichHenDAO {
                     && src.getLichHen().getDichVu().getMaDV().equals(dv.getMaDV()),
                     "Tái khám phải giữ khách hàng, nha sĩ và dịch vụ nguồn.");
             yeuCau(dv.getLoTrinhDichVu() != null, "Dịch vụ chưa có lộ trình tái khám.");
-            long days = ChronoUnit.DAYS.between(src.getNgayLap().toLocalDate(), start.toLocalDate());
-            yeuCau(days >= quyDinh.taiKhamMinNgay() && days <= quyDinh.taiKhamMaxNgay(),
+            yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LichHen WHERE maPKNguon=? AND maLH<>?"
+                    + " AND trangThai IN('DA_DAT','DA_DEN','HOAN_TAT')", src.getMaPK(), boQua),
+                    "Phiếu khám này đã có lịch tái khám.");
+            yeuCau(khoangTaiKham(src).chua(start.toLocalDate()),
                     "Ngày tái khám ngoài khoảng cho phép.");
         }
     }
