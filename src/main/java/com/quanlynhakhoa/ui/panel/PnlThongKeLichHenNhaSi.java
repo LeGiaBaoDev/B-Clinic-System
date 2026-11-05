@@ -105,8 +105,8 @@ public class PnlThongKeLichHenNhaSi extends JPanel {
     final JToggleButton btnThang = new JToggleButton("Tháng");
     final JToggleButton btnKhoang = new JToggleButton("Khoảng");
     private final ButtonGroup nhomKy = new ButtonGroup();
-    private final JPanel pnlMotNgay = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-    private final JPanel pnlKhoang = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+    final JPanel pnlMotNgay = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+    final JPanel pnlKhoang = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private Ky ky = Ky.TUAN;
     final JLabel lblTong = new JLabel("—");
     final JLabel lblDaDat = new JLabel("—");
