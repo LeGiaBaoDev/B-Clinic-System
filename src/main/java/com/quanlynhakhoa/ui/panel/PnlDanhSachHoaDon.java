@@ -118,8 +118,35 @@ public class PnlDanhSachHoaDon extends JPanel {
     /** Dùng DAO thật; "Xem" mở DlgChiTietHoaDon, "Thu tiền" mở hộp thanh toán của Bảo. */
     public PnlDanhSachHoaDon() {
         this(new TraCuuHoaDon(), null,
-                (cha, hd, sau) -> DlgThanhToan.hien(SwingUtilities.getWindowAncestor(cha), hd, sau),
+                PnlDanhSachHoaDon::moThanhToan,
                 LocalDate::now);
+    }
+
+    private static void moThanhToan(Component cha, HoaDon hd, Runnable sau) {
+        cha.setEnabled(false);
+        new SwingWorker<HoaDon, Void>() {
+            @Override
+            protected HoaDon doInBackground() {
+                return new com.quanlynhakhoa.dao.HoaDonDAO().layTheoMa(hd.getMaHD());
+            }
+
+            @Override
+            protected void done() {
+                cha.setEnabled(true);
+                try {
+                    HoaDon chiTiet = get();
+                    if (chiTiet == null) {
+                        throw new BusinessException("Hóa đơn không còn tồn tại.");
+                    }
+                    DlgThanhToan.hien(SwingUtilities.getWindowAncestor(cha), chiTiet, sau);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException | BusinessException ex) {
+                    LOG.log(Level.WARNING, "Không thể mở thanh toán", ex);
+                    JOptionPane.showMessageDialog(cha, "Không thể tải chi tiết hóa đơn. Vui lòng thử lại.");
+                }
+            }
+        }.execute();
     }
 
     /**

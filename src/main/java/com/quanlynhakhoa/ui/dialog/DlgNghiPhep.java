@@ -101,6 +101,7 @@ public class DlgNghiPhep extends JDialog {
             listCard.add(detail,BorderLayout.SOUTH);add(listCard,BorderLayout.CENTER);
             lbl.setName("thongBaoDon");lbl.setFont(font(12));lbl.setForeground(TEAL_DARK);lbl.setBorder(new EmptyBorder(6,10,6,10));
             lbl.setOpaque(true);lbl.setBackground(TEAL_LIGHT);add(lbl,BorderLayout.SOUTH);
+            txtTim.addActionListener(e->filter());
             cboStatus.addActionListener(e->filter());txtTim.getDocument().addDocumentListener(listener(this::filter));dpNgay.addPropertyChangeListener("date",e->filter());btnClear.addActionListener(e->{txtTim.setText("");dpNgay.setDate(null);cboStatus.setSelectedIndex(manager?0:3);});
             tbl.getSelectionModel().addListSelectionListener(e->{if(!e.getValueIsAdjusting())selection();});txtReject.getDocument().addDocumentListener(listener(this::controls));txtReason.getDocument().addDocumentListener(listener(this::controls));cboCa.addActionListener(e->controls());
             btnReload.addActionListener(e->{if(!busy){if(!manager)xoaLocCaNhan();load();}});btnGui.addActionListener(e->send());btnApprove.addActionListener(e->decide(true));btnReject.addActionListener(e->decide(false));controls();load();

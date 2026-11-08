@@ -28,9 +28,8 @@ import java.util.function.Function;
  * // nút "Xem": new DlgChiTietHoaDon(SwingUtilities.getWindowAncestor(this), maHD).setVisible(true);
  * </pre>
  *
- * <p>Vì sao lọc từ khóa trên máy: {@code HoaDonDAO.timKiem} chỉ lọc theo khoảng ngày lập và trạng thái.
- * Danh sách đã giới hạn theo khoảng ngày nên số hóa đơn nhỏ, lọc thêm mã / tên / SĐT trên máy đủ nhanh
- * (Dương chọn 05/11, không sửa file của Bảo).</p>
+ * <p>DAO tải dữ liệu danh sách và tổng tiền bằng một truy vấn theo khoảng ngày/trạng thái.
+ * Lọc thêm mã, tên và số điện thoại trên kết quả, không truy vấn lại từng hóa đơn.</p>
  */
 public final class TraCuuHoaDon {
 
@@ -77,13 +76,17 @@ public final class TraCuuHoaDon {
 
     private final TimTheoNgay timTheoNgay;
     private final Function<String, BigDecimal> tinhTongTien;
+    private final HoaDonDAO danhSachDAO;
 
     /** Dùng DAO thật của Bảo. */
     public TraCuuHoaDon() {
-        this(new HoaDonDAO()::timKiem, new HoaDonDAO()::tinhTongTien);
+        danhSachDAO = new HoaDonDAO();
+        timTheoNgay = null;
+        tinhTongTien = null;
     }
 
     TraCuuHoaDon(TimTheoNgay timTheoNgay, Function<String, BigDecimal> tinhTongTien) {
+        danhSachDAO = null;
         this.timTheoNgay = Objects.requireNonNull(timTheoNgay);
         this.tinhTongTien = Objects.requireNonNull(tinhTongTien);
     }
@@ -102,6 +105,14 @@ public final class TraCuuHoaDon {
         kiemTraKhoangNgay(tu, den);
         TrangThai loc = trangThai == null ? TrangThai.TAT_CA : trangThai;
         List<Dong> ketQua = new ArrayList<>();
+        if (danhSachDAO != null) {
+            for (HoaDonDAO.DongDanhSach d : danhSachDAO.layDanhSach(tu, den, loc.daTra())) {
+                if (khop(d.hoaDon(), tuKhoa)) {
+                    ketQua.add(new Dong(d.hoaDon(), d.khachHang(), d.tongThanhToan()));
+                }
+            }
+            return ketQua;
+        }
         for (HoaDon hd : timTheoNgay.tim(tu, den, loc.daTra())) {
             if (khop(hd, tuKhoa)) {
                 // Tổng thanh toán = tiền dịch vụ + thuế từng dòng - giảm giá; DAO của Bảo tính để khớp với lúc thu tiền.

@@ -81,6 +81,8 @@ public class DatabaseConnection {
         return java.sql.DriverManager.getConnection(url,thuocTinh.getProperty("db.username"),thuocTinh.getProperty("db.password"));
     }
 
+    public String getDatabaseName() { return thuocTinh.getProperty("db.name", "BClinic"); }
+
     /** Chặn restore nếu còn giao dịch, đóng pool và mở lại khi kết thúc bảo trì. */
     public synchronized AutoCloseable tamDungDeKhoiPhuc() throws SQLException {
         if (dangKhoiPhuc || dataSource.getHikariPoolMXBean().getActiveConnections() > 0) {
@@ -121,7 +123,19 @@ public class DatabaseConnection {
 
     private static Properties loadProperties() {
         Properties props = new Properties();
-        try (InputStream is = DatabaseConnection.class
+        java.nio.file.Path external = java.nio.file.Path.of(System.getProperty("bclinic.config", PROPS_FILE));
+        if (!java.nio.file.Files.isRegularFile(external) && System.getProperty("bclinic.config") == null) {
+            try {
+                java.nio.file.Path location = java.nio.file.Path.of(DatabaseConnection.class
+                        .getProtectionDomain().getCodeSource().getLocation().toURI());
+                if (java.nio.file.Files.isRegularFile(location)) external = location.getParent().resolve(PROPS_FILE);
+            } catch (java.net.URISyntaxException e) {
+                throw new IllegalStateException("Không xác định được thư mục ứng dụng", e);
+            }
+        }
+        try (InputStream is = java.nio.file.Files.isRegularFile(external)
+                ? java.nio.file.Files.newInputStream(external)
+                : DatabaseConnection.class
                 .getClassLoader()
                 .getResourceAsStream(PROPS_FILE)) {
             if (is == null) {

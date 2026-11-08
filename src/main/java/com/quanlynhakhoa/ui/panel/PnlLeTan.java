@@ -62,15 +62,15 @@ public class PnlLeTan extends JPanel {
 
     private final TaiKhoan taiKhoan;
     private final Runnable dangXuat;
-    private final PnlTongQuanLeTan pnlTongQuan;
-    private final PnlKhachHang pnlKhachHang;
-    private final PnlTiepNhan pnlTiepNhan;
+    private PnlTongQuanLeTan pnlTongQuan;
+    private PnlKhachHang pnlKhachHang;
+    private PnlTiepNhan pnlTiepNhan;
     private PnlLichCaNhan pnlLichCaNhan;
     private PnlDoanhThuNgay pnlDoanhThuNgay;
     private PnlThongKeLichHenNgay pnlThongKeLich; // UC032, tạo khi mở lần đầu
-    private final PnlTraCuuPhieu pnlPhieuKham;
-    private final PnlLichHen pnlLichHen;
-    private final PnlHoaDon pnlHoaDon;
+    private PnlTraCuuPhieu pnlPhieuKham;
+    private PnlLichHen pnlLichHen;
+    private PnlHoaDon pnlHoaDon;
     private final CardLayout cards = new CardLayout();
     private final JPanel pnlCards = new JPanel(cards);
     private final Map<String, JButton> menu = new LinkedHashMap<>();
@@ -87,19 +87,7 @@ public class PnlLeTan extends JPanel {
             throw new IllegalArgumentException("Màn hình này chỉ dành cho lễ tân.");
         }
         setBackground(BACKGROUND);
-        pnlTongQuan = new PnlTongQuanLeTan(taiKhoan, this::moTrang);
-        pnlKhachHang = new PnlKhachHang(VaiTro.LETAN);
-        pnlTiepNhan = new PnlTiepNhan();
-        pnlPhieuKham = new PnlTraCuuPhieu(taiKhoan);
-        pnlLichHen = new PnlLichHen();
-        pnlHoaDon = new PnlHoaDon(); // trang Hóa đơn: tra cứu + thu tiền (thu tiền vẫn dùng DlgThanhToan)
         pnlCards.setOpaque(false);
-        pnlCards.add(pnlTongQuan, "Tổng quan");
-        pnlCards.add(pnlKhachHang, "Bệnh nhân");
-        pnlCards.add(pnlTiepNhan, "Tiếp nhận");
-        pnlCards.add(pnlPhieuKham, "Phiếu khám");
-        pnlCards.add(pnlLichHen, "Lịch hẹn");
-        pnlCards.add(pnlHoaDon, "Hóa đơn");
         add(taoSidebar(), BorderLayout.WEST);
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BACKGROUND);
@@ -236,9 +224,16 @@ public class PnlLeTan extends JPanel {
     }
 
     private void moTrang(String trang) {
-        if ("Tổng quan".equals(trang) && pnlTongQuan != null) {
-            pnlTongQuan.lamMoi();
+        boolean moi = false;
+        switch (trang) {
+            case "Tổng quan" -> { if (pnlTongQuan == null) { pnlTongQuan = new PnlTongQuanLeTan(taiKhoan, this::moTrang); pnlCards.add(pnlTongQuan,trang); moi = true; } }
+            case "Bệnh nhân" -> { if (pnlKhachHang == null) { pnlKhachHang = new PnlKhachHang(VaiTro.LETAN); pnlCards.add(pnlKhachHang,trang); moi = true; } }
+            case "Tiếp nhận" -> { if (pnlTiepNhan == null) { pnlTiepNhan = new PnlTiepNhan(); pnlCards.add(pnlTiepNhan,trang); moi = true; } }
+            case "Phiếu khám" -> { if (pnlPhieuKham == null) { pnlPhieuKham = new PnlTraCuuPhieu(taiKhoan); pnlCards.add(pnlPhieuKham,trang); moi = true; } }
+            case "Lịch hẹn" -> { if (pnlLichHen == null) { pnlLichHen = new PnlLichHen(); pnlCards.add(pnlLichHen,trang); moi = true; } }
+            case "Hóa đơn" -> { if (pnlHoaDon == null) { pnlHoaDon = new PnlHoaDon(); pnlCards.add(pnlHoaDon,trang); moi = true; } }
         }
+        if ("Tổng quan".equals(trang) && !moi) pnlTongQuan.lamMoi();
         if("Lịch của tôi".equals(trang)) {
             if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlCards.add(pnlLichCaNhan,trang); }
             pnlLichCaNhan.lamMoiDuLieu();
@@ -253,14 +248,14 @@ public class PnlLeTan extends JPanel {
         }
         cards.show(pnlCards, trang);
         lblTrang.setText(trang);
-        if ("Tiếp nhận".equals(trang)) {
+        if ("Tiếp nhận".equals(trang) && !moi) {
             pnlTiepNhan.lamMoi();
-        } else if ("Phiếu khám".equals(trang)) {
+        } else if ("Phiếu khám".equals(trang) && !moi) {
             pnlPhieuKham.lamMoi();
-        } else if ("Hóa đơn".equals(trang)) {
+        } else if ("Hóa đơn".equals(trang) && !moi) {
             pnlHoaDon.lamMoi();
         }
-        if ("Lịch hẹn".equals(trang)) {
+        if ("Lịch hẹn".equals(trang) && !moi) {
             pnlLichHen.lamMoi();
         }
         menu.forEach((ten, nut) -> {
@@ -355,12 +350,12 @@ public class PnlLeTan extends JPanel {
         }
         btnThongBao.setEnabled(false);
         LocalDate homNay = LocalDate.now(ZONE);
-        new SwingWorker<List<LichHen>, Void>() {
+        new SwingWorker<List<LichHenDAO.TomTat>, Void>() {
             @Override
-            protected List<LichHen> doInBackground() {
-                return new LichHenDAO().timKiem(homNay, homNay, null).stream()
-                        .filter(lh -> lh.getTrangThai() == TrangThaiLichHen.DA_DAT
-                                || lh.getTrangThai() == TrangThaiLichHen.DA_DEN)
+            protected List<LichHenDAO.TomTat> doInBackground() {
+                return new LichHenDAO().layTomTat(homNay, homNay).stream()
+                        .filter(lh -> lh.trangThai() == TrangThaiLichHen.DA_DAT
+                                || lh.trangThai() == TrangThaiLichHen.DA_DEN)
                         .toList();
             }
 
@@ -369,11 +364,11 @@ public class PnlLeTan extends JPanel {
                 btnThongBao.setEnabled(true);
                 try {
                     List<PopupThongBao.Dong> ds = get().stream().map(lh -> {
-                        boolean daDen = lh.getTrangThai() == TrangThaiLichHen.DA_DEN;
+                        boolean daDen = lh.trangThai() == TrangThaiLichHen.DA_DEN;
                         return new PopupThongBao.Dong(
-                                lh.getNgayGioHen().format(GIO),
-                                lh.getKhachHang().getTenKH(),
-                                lh.getDichVu().getTenDV(),
+                                lh.ngayGioHen().format(GIO),
+                                lh.tenKH(),
+                                lh.tenDV(),
                                 daDen ? "Đã đến" : "Đã đặt",
                                 daDen ? GREEN : AMBER,
                                 daDen ? new Color(0xE7F7EF) : AMBER_LIGHT,

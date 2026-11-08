@@ -1,0 +1,9 @@
+# Duong dan phia SQL Server; de trong de tu lay thu muc Backup mac dinh.
+backup.dir=
+backup.history.file=backups/backup-history.csv
+backup.auto.enabled=false
+backup.auto.time=22:00
+backup.auto.period=DAILY
+backup.keep=14
+# Tu dong duoc luu khi Quan ly bam Luu lich tu dong.
+backup.auto.actor=

@@ -533,6 +533,7 @@ public class DlgThanhToan extends JDialog {
                     } else {
                         cboVoucher.setEnabled(true);
                     }
+                    dangTai = false;
                     capNhatTong();
                     if (hoaDon.isTrangThai()) {
                         khoaDaThanhToan();

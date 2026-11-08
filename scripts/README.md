@@ -1,5 +1,11 @@
 # Dữ liệu mẫu nghiệp vụ
 
+Backup/restore H5 đã được triển khai trong ứng dụng (menu quản lý). Hướng dẫn tại `../../docs/H5/HUONG_DAN_BACKUP_RESTORE.md`; `Run-AutoBackup.ps1` hỗ trợ Windows Task Scheduler khi app đóng. Không dùng script seed để thay thế chức năng restore.
+
+## Demo lúc 13:00 ngày 06/11/2026
+
+Đã nạp ảnh chụp MÔ PHỎNG theo mốc báo cáo: sáng có khám/thu tiền, chiều có lịch tiếp nhận; ưu tiên hieu.quanly/hieu.letan/hieu.nhasi. Seed bằng Run-SeedReportNoon.ps1, kiểm SQL verify_report_noon.sql và DAO VerifyReportNoon.java. Hướng dẫn tài khoản, màn hình, mã phiếu/lịch và số liệu tại `../../docs/DEMO_06_11_2026.md` (ngoài repo). Marker chống nạp trùng; không reset thao tác demo; không phải migration Flyway.
+
 ## Bộ dữ liệu 4 ngày 06–09/11/2026
 
 Đã nạp bộ dữ liệu theo thời gian thực: tương lai chỉ đặt/hủy; các tình huống khám và thanh toán nằm ở quá khứ. Chi tiết bảng, tài khoản, tình huống và kiểm chứng tại [FOUR_DAYS_SCENARIOS.md](FOUR_DAYS_SCENARIOS.md). Chạy bằng `Run-SeedFourDays.ps1` (preview) / `-Apply`; xác minh bằng `verify_four_days.sql`. Marker ngăn nạp trùng. Mã hóa đơn phải khớp phiếu; có thể có khoảng trống khi phiếu chưa sinh hóa đơn.

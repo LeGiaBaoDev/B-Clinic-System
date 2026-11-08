@@ -1119,6 +1119,7 @@ public class PnlLichNhaSi extends JPanel {
                 apDungLoc();
             }
         };
+        txtTimKiem.addActionListener(e -> apDungLoc());
         txtTimKiem.getDocument().addDocumentListener(loc);
         tblLich.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
