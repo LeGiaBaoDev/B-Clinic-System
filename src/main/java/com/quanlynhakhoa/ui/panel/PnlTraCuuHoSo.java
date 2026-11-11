@@ -203,6 +203,7 @@ public class PnlTraCuuHoSo extends JPanel {
                 BorderFactory.createLineBorder(BORDER), new EmptyBorder(7, 8, 7, 8)));
         txtTim.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         txtTim.setAlignmentX(LEFT_ALIGNMENT);
+        txtTim.addActionListener(e -> taiDanhSach());
         txtTim.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             public void insertUpdate(javax.swing.event.DocumentEvent e) { taiDanhSach(); }
             public void removeUpdate(javax.swing.event.DocumentEvent e) { taiDanhSach(); }

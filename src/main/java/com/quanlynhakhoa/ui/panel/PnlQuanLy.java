@@ -99,6 +99,7 @@ public class PnlQuanLy extends JPanel {
         addMenu(top, "Lịch của tôi", LineIcon.Type.CALENDAR);
         addMenu(top, "Báo cáo", LineIcon.Type.CHART);
         addMenu(top, "Voucher", LineIcon.Type.VOUCHER);
+        addMenu(top, "Sao lưu & Khôi phục", LineIcon.Type.CLIPBOARD);
         JScrollPane scrollMenu=new JScrollPane(top);
         scrollMenu.setBorder(BorderFactory.createEmptyBorder());
         scrollMenu.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -351,6 +352,14 @@ public class PnlQuanLy extends JPanel {
     public void moTrang(String name) {
         if (!"Tổng quan".equals(name) && !menu.containsKey(name)) {
             return;
+        }
+        if ("Sao lưu & Khôi phục".equals(name) && java.util.Arrays.stream(pnlCards.getComponents()).noneMatch(c -> name.equals(c.getName()))) {
+            pnlCards.add(new PnlSaoLuu(() -> {
+                com.quanlynhakhoa.util.SessionManager.getInstance().logout();
+                Window owner = SwingUtilities.getWindowAncestor(this);
+                if (owner != null) owner.dispose();
+                new com.quanlynhakhoa.ui.frame.FrmDangNhap().setVisible(true);
+            }), name);
         }
         if ("Lịch của tôi".equals(name)) {
             if(pnlLichCaNhan==null) { pnlLichCaNhan=new PnlLichCaNhan(); pnlCards.add(pnlLichCaNhan,name); }

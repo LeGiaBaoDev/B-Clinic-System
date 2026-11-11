@@ -33,6 +33,7 @@ public class App {
         }
 
         // 3. Mở màn hình đăng nhập trên Event Dispatch Thread
+        com.quanlynhakhoa.util.BackupScheduler.getInstance().khoiDongLai();
         SwingUtilities.invokeLater(() -> {
             FrmDangNhap frm = new FrmDangNhap();
             frm.setVisible(true);

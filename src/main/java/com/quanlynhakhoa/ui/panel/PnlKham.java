@@ -590,6 +590,7 @@ public class PnlKham extends JPanel {
         txtTimDichVu.setFont(font(11));
         txtTimDichVu.putClientProperty("JTextField.placeholderText", "Tìm mã hoặc tên dịch vụ...");
         txtTimDichVu.putClientProperty("JTextField.leadingIcon", new LineIcon(LineIcon.Type.SEARCH, MUTED, 15));
+        txtTimDichVu.addActionListener(e -> locDichVu());
         txtTimDichVu.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
                 locDichVu();

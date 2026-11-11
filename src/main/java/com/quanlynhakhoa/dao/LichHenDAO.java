@@ -16,6 +16,28 @@ import java.util.List;
 
 public class LichHenDAO {
 
+    public record TomTat(String maLH, LocalDateTime ngayGioHen, TrangThaiLichHen trangThai,
+            String tenKH, String tenNV, String tenDV) { }
+
+    /** Dữ liệu nhẹ cho tổng quan/thông báo, không nạp bệnh án hay phiếu nguồn. */
+    public List<TomTat> layTomTat(LocalDate tu, LocalDate den) {
+        khoangNgay(tu, den);
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c);
+            return JdbcHelper.query(c, """
+                    SELECT lh.maLH,lh.ngayGioHen,lh.trangThai,kh.tenKH,n.hoTenNV,d.tenDV
+                    FROM LichHen lh
+                    JOIN KhachHang kh ON kh.maKH=lh.maKH
+                    JOIN NhanVien n ON n.maNV=lh.maNV
+                    JOIN DichVu d ON d.maDV=lh.maDV
+                    WHERE lh.ngayGioHen>=? AND lh.ngayGioHen<? AND (?=1 OR lh.maNV=?)
+                    ORDER BY lh.ngayGioHen
+                    """, r -> new TomTat(r.getString(1), r.getObject(2, LocalDateTime.class),
+                            TrangThaiLichHen.valueOf(r.getString(3)),r.getString(4),r.getString(5),r.getString(6)),
+                    tu.atStartOfDay(),den.plusDays(1).atStartOfDay(),actor.vaiTro()!=VaiTro.NHASI,actor.maNV());
+        });
+    }
+
     private static final String SQL_SELECT = """
             SELECT maLH, ngayGioHen, trangThai, ghiChu, lyDoHuy,
                    maKH, maNV, maDV, maPKNguon
@@ -46,7 +68,7 @@ public class LichHenDAO {
         String mau = JdbcHelper.tuKhoa(tuKhoa);
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
-            return JdbcHelper.query(c, """
+            var rows = JdbcHelper.query(c, """
                     SELECT lh.maLH, lh.ngayGioHen, lh.trangThai, lh.ghiChu, lh.lyDoHuy,
                            lh.maKH, lh.maNV, lh.maDV, lh.maPKNguon
                     FROM LichHen lh JOIN KhachHang kh ON kh.maKH = lh.maKH
@@ -55,9 +77,10 @@ public class LichHenDAO {
                       AND (?=1 OR lh.maNV=?)
                     ORDER BY lh.ngayGioHen
                     """,
-                    r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    DocDanhSach::docLich,
                     tu.atStartOfDay(), den.plusDays(1).atStartOfDay(), trangThai, trangThai,
                     mau, mau, mau, mau, actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+            return DocDanhSach.lich(c, rows).stream().map(lh -> loc(lh, actor.vaiTro())).toList();
         });
     }
 
@@ -65,10 +88,11 @@ public class LichHenDAO {
     public List<LichHen> timTheoKhachHang(String maKH) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
-            return JdbcHelper.query(c, SQL_SELECT
+            var rows = JdbcHelper.query(c, SQL_SELECT
                     + " WHERE maKH=? AND (?=1 OR maNV=?) ORDER BY ngayGioHen DESC",
-                    r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    DocDanhSach::docLich,
                     maKH, actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+            return DocDanhSach.lich(c, rows).stream().map(lh -> loc(lh, actor.vaiTro())).toList();
         });
     }
 

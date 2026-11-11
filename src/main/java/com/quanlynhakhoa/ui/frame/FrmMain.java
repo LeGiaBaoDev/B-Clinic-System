@@ -112,6 +112,16 @@ public class FrmMain extends JFrame {
     private void khoiTaoFrame() {
         setTitle("B-Clinic \u2014 Qu\u1ea3n l\u00fd ph\u00f2ng kh\u00e1m nha khoa");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent event) {
+                if (com.quanlynhakhoa.dao.BackupDAO.dangChay()) {
+                    setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+                    JOptionPane.showMessageDialog(FrmMain.this, "Đang sao lưu/khôi phục dữ liệu. Vui lòng đợi thao tác hoàn tất trước khi thoát.");
+                } else {
+                    setDefaultCloseOperation(EXIT_ON_CLOSE);
+                }
+            }
+        });
         setSize(780, 540);
         setMinimumSize(new Dimension(700, 480));
         setLocationRelativeTo(null);

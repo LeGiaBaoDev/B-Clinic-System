@@ -99,18 +99,17 @@ public class PnlTongQuanLeTan extends JPanel {
             @Override
             protected DuLieu doInBackground() {
                 LocalDate today = LocalDate.now();
-                List<LichHen> lich = lichHenDAO.timKiem(today, today, null);
-                List<PhieuKham> phieu = phieuKhamDAO.timKiem(today, today);
-                List<PhieuKham> cho = phieu.stream()
-                        .filter(pk -> pk.getTrangThai() == TrangThaiPhieuKham.CHO_KHAM
-                                || pk.getTrangThai() == TrangThaiPhieuKham.DANG_KHAM)
-                        .toList();
-                List<HoaDon> hoaDon = hoaDonDAO.timKiem(today, today, null);
+                List<LichHenDAO.TomTat> lichTuan = lichHenDAO.layTomTat(today, today.plusDays(7));
+                List<LichHenDAO.TomTat> lich = lichTuan.stream()
+                        .filter(lh -> lh.ngayGioHen().toLocalDate().equals(today)).toList();
+                int cho = phieuKhamDAO.demDangCho(today);
+                List<HoaDonDAO.DongDanhSach> hoaDon = hoaDonDAO.layDanhSach(today, today, null);
                 Map<String, BigDecimal> tong = new HashMap<>();
                 BigDecimal doanhThu = BigDecimal.ZERO;
                 List<HoaDon> chuaTra = new ArrayList<>();
-                for (HoaDon hd : hoaDon) {
-                    BigDecimal tien = hoaDonDAO.tinhTongTien(hd.getMaHD());
+                for (HoaDonDAO.DongDanhSach dong : hoaDon) {
+                    HoaDon hd = dong.hoaDon();
+                    BigDecimal tien = dong.tongThanhToan();
                     tong.put(hd.getMaHD(), tien);
                     if (hd.isTrangThai()) {
                         doanhThu = doanhThu.add(tien);
@@ -118,8 +117,9 @@ public class PnlTongQuanLeTan extends JPanel {
                         chuaTra.add(hd);
                     }
                 }
-                List<LichHen> sapToi = lichHenDAO.timKiem(today.plusDays(1),
-                        today.plusDays(7), TrangThaiLichHen.DA_DAT);
+                List<LichHenDAO.TomTat> sapToi = lichTuan.stream()
+                        .filter(lh -> lh.ngayGioHen().toLocalDate().isAfter(today)
+                                && lh.trangThai() == TrangThaiLichHen.DA_DAT).toList();
                 return new DuLieu(lich, cho, chuaTra, tong, doanhThu, sapToi);
             }
 
@@ -269,12 +269,12 @@ public class PnlTongQuanLeTan extends JPanel {
     }
 
     private void hienThi(DuLieu d) {
-        long daKham = d.lich().stream().filter(lh -> lh.getTrangThai() == TrangThaiLichHen.DA_DEN
-                || lh.getTrangThai() == TrangThaiLichHen.HOAN_TAT).count();
+        long daKham = d.lich().stream().filter(lh -> lh.trangThai() == TrangThaiLichHen.DA_DEN
+                || lh.trangThai() == TrangThaiLichHen.HOAN_TAT).count();
         lblLichHen.setText(String.valueOf(d.lich().size()));
         lblLichHenSub.setText(daKham + " đã đến/hoàn tất");
-        lblChoKham.setText(String.valueOf(d.choKham().size()));
-        lblChoKhamSub.setText(d.choKham().isEmpty() ? "Phòng chờ đang trống" : "Đang chờ trong phòng khám");
+        lblChoKham.setText(String.valueOf(d.choKham()));
+        lblChoKhamSub.setText(d.choKham() == 0 ? "Phòng chờ đang trống" : "Đang chờ trong phòng khám");
         lblChuaThanhToan.setText(String.valueOf(d.chuaThanhToan().size()));
         lblChuaThanhToanSub.setText(d.chuaThanhToan().isEmpty() ? "Không còn công nợ"
                 : tien(d.chuaThanhToan().stream().map(hd -> d.tong().getOrDefault(hd.getMaHD(),
@@ -285,12 +285,12 @@ public class PnlTongQuanLeTan extends JPanel {
         lblSapToiSub.setText("Lịch hẹn 7 ngày tới");
 
         modelLich.setRowCount(0);
-        d.lich().stream().sorted((a, b) -> a.getNgayGioHen().compareTo(b.getNgayGioHen()))
+        d.lich().stream().sorted((a, b) -> a.ngayGioHen().compareTo(b.ngayGioHen()))
                 .forEach(lh -> modelLich.addRow(new Object[]{
-                    lh.getNgayGioHen().format(GIO),
-                    lh.getKhachHang().getTenKH(),
-                    lh.getNhaSi() == null ? "—" : lh.getNhaSi().getHoTenNV(),
-                    nhanTrangThai(lh.getTrangThai())}));
+                    lh.ngayGioHen().format(GIO),
+                    lh.tenKH(),
+                    lh.tenNV(),
+                    nhanTrangThai(lh.trangThai())}));
 
         modelHoaDon.setRowCount(0);
         d.chuaThanhToan().stream()
@@ -301,18 +301,16 @@ public class PnlTongQuanLeTan extends JPanel {
                     tien(d.tong().getOrDefault(hd.getMaHD(), BigDecimal.ZERO))}));
 
         modelSapToi.setRowCount(0);
-        d.sapToi().stream().sorted((a, b) -> a.getNgayGioHen().compareTo(b.getNgayGioHen()))
+        d.sapToi().stream().sorted((a, b) -> a.ngayGioHen().compareTo(b.ngayGioHen()))
                 .forEach(lh -> modelSapToi.addRow(new Object[]{
-                    lh.getNgayGioHen().format(NGAY_GIO),
-                    lh.getKhachHang().getTenKH(),
-                    lh.getNhaSi() == null ? "—" : lh.getNhaSi().getHoTenNV()}));
+                    lh.ngayGioHen().format(NGAY_GIO),
+                    lh.tenKH(),
+                    lh.tenNV()}));
     }
 
     private static String tenKhach(HoaDon hd) {
-        if (hd.getPhieuKham() == null || hd.getPhieuKham().getLichHen() == null) {
-            return "—";
-        }
-        return hd.getPhieuKham().getLichHen().getKhachHang().getTenKH();
+        var kh = TraCuuHoaDon.khachHang(hd);
+        return kh == null ? "—" : kh.getTenKH();
     }
 
     private static String nhanTrangThai(TrangThaiLichHen tt) {
@@ -331,8 +329,8 @@ public class PnlTongQuanLeTan extends JPanel {
         return f.format(so == null ? BigDecimal.ZERO : so) + " ₫";
     }
 
-    private record DuLieu(List<LichHen> lich, List<PhieuKham> choKham,
+    private record DuLieu(List<LichHenDAO.TomTat> lich, int choKham,
             List<HoaDon> chuaThanhToan, Map<String, BigDecimal> tong,
-            BigDecimal doanhThu, List<LichHen> sapToi) {
+            BigDecimal doanhThu, List<LichHenDAO.TomTat> sapToi) {
     }
 }

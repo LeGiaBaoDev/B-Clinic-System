@@ -33,4 +33,5 @@ src/main/resources/database.properties
 mail.properties
 **/mail.properties
 backups/
+app.properties
 *.bak

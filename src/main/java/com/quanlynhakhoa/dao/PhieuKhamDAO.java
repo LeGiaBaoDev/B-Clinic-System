@@ -16,6 +16,19 @@ import java.util.Objects;
 
 public class PhieuKhamDAO {
 
+    public int demDangCho(LocalDate ngay) {
+        Objects.requireNonNull(ngay);
+        return JdbcHelper.doc(c -> {
+            Actor actor = PhanQuyen.quyen(c);
+            return JdbcHelper.one(c, """
+                    SELECT COUNT(*) FROM PhieuKham p
+                    WHERE p.ngayLap>=? AND p.ngayLap<? AND p.trangThai IN('CHO_KHAM','DANG_KHAM')
+                      AND (?=1 OR EXISTS(SELECT 1 FROM LichHen l WHERE l.maLH=p.maLH AND l.maNV=?))
+                    """, r -> r.getInt(1),ngay.atStartOfDay(),ngay.plusDays(1).atStartOfDay(),
+                    actor.vaiTro()!=VaiTro.NHASI,actor.maNV());
+        });
+    }
+
     private static final String SQL_SELECT = """
             SELECT maPK, ngayLap, trangThai, loiDan, maHSBA, maLH, maNV_LapPhieu
             FROM PhieuKham
@@ -29,13 +42,14 @@ public class PhieuKhamDAO {
         khoangNgay(tu, den);
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
-            return JdbcHelper.query(c, SQL_SELECT
+            var rows = JdbcHelper.query(c, SQL_SELECT
                     + " WHERE ngayLap>=? AND ngayLap<? AND (?=1 OR EXISTS("
                     + "SELECT 1 FROM LichHen lh WHERE lh.maLH=PhieuKham.maLH AND lh.maNV=?))"
                     + " ORDER BY ngayLap DESC",
-                    r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    DocDanhSach::docPhieu,
                     tu.atStartOfDay(), den.plusDays(1).atStartOfDay(),
                     actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+            return DocDanhSach.phieu(c, rows).stream().map(pk -> loc(pk, actor.vaiTro())).toList();
         });
     }
 
@@ -43,7 +57,7 @@ public class PhieuKhamDAO {
     public List<PhieuKham> timKiem(String tuKhoa) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
-            return JdbcHelper.query(c, """
+            var rows = JdbcHelper.query(c, """
                     SELECT pk.maPK,pk.ngayLap,pk.trangThai,pk.loiDan,pk.maHSBA,pk.maLH,
                            pk.maNV_LapPhieu
                     FROM PhieuKham pk
@@ -53,9 +67,10 @@ public class PhieuKhamDAO {
                     WHERE (pk.maPK LIKE ? OR kh.tenKH LIKE ? OR kh.sdt LIKE ?)
                       AND (?=1 OR lh.maNV=?)
                     ORDER BY pk.ngayLap DESC
-                    """, r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    """, DocDanhSach::docPhieu,
                     JdbcHelper.tuKhoa(tuKhoa), JdbcHelper.tuKhoa(tuKhoa),
                     JdbcHelper.tuKhoa(tuKhoa), actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+            return DocDanhSach.phieu(c, rows).stream().map(pk -> loc(pk, actor.vaiTro())).toList();
         });
     }
 
@@ -63,11 +78,12 @@ public class PhieuKhamDAO {
     public List<PhieuKham> timTheoKhachHang(String maKH) {
         return JdbcHelper.doc(c -> {
             Actor actor = PhanQuyen.quyen(c);
-            return JdbcHelper.query(c, SQL_SELECT
+            var rows = JdbcHelper.query(c, SQL_SELECT
                     + " WHERE maLH IN (SELECT maLH FROM LichHen WHERE maKH=?"
                     + " AND (?=1 OR maNV=?)) ORDER BY ngayLap DESC",
-                    r -> loc(mapRow(c, r, true), actor.vaiTro()),
+                    DocDanhSach::docPhieu,
                     maKH, actor.vaiTro() != VaiTro.NHASI, actor.maNV());
+            return DocDanhSach.phieu(c, rows).stream().map(pk -> loc(pk, actor.vaiTro())).toList();
         });
     }
 

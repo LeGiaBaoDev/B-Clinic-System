@@ -16,6 +16,48 @@ import java.util.List;
 
 public class HoaDonDAO {
 
+    public record DongDanhSach(HoaDon hoaDon, KhachHang khachHang, BigDecimal tongThanhToan) { }
+
+    /** Dữ liệu danh sách: một truy vấn, chỉ tải chi tiết khi mở hóa đơn. */
+    public List<DongDanhSach> layDanhSach(LocalDate tu, LocalDate den, Boolean daTra) {
+        khoangNgay(tu, den);
+        return JdbcHelper.doc(c -> {
+            PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.LETAN);
+            return JdbcHelper.query(c, """
+                    SELECT hd.maHD,hd.ngayLap,hd.trangThai,hd.tongKhuyenMai,
+                           kh.maKH,kh.tenKH,kh.ngaySinh,kh.gioiTinh,kh.sdt,kh.diaChi,kh.email,
+                           hs.maHSBA,pk.maPK,
+                           COALESCE(t.tong,0) AS tong
+                    FROM HoaDon hd
+                    JOIN PhieuKham pk ON pk.maPK=hd.maPK
+                    JOIN HoSoBenhAn hs ON hs.maHSBA=pk.maHSBA
+                    JOIN KhachHang kh ON kh.maKH=hs.maKH
+                    LEFT JOIN (
+                        SELECT maPK,SUM(thanhTien+ROUND(thanhTien*mucThueGTGT/100,0)) AS tong
+                        FROM ChiTietPhieuKham GROUP BY maPK
+                    ) t ON t.maPK=pk.maPK
+                    WHERE hd.ngayLap>=? AND hd.ngayLap<? AND (? IS NULL OR hd.trangThai=?)
+                    ORDER BY hd.ngayLap DESC
+                    """, r -> {
+                KhachHang kh = KhachHang.tuDuLieu(r.getString("maKH"), r.getString("tenKH"),
+                        r.getObject("ngaySinh", LocalDate.class), r.getBoolean("gioiTinh"),
+                        r.getString("sdt"), r.getString("diaChi"), r.getString("email"));
+                PhieuKham pk = new PhieuKham();
+                pk.setMaPK(r.getString("maPK"));
+                pk.setHoSoBenhAn(new HoSoBenhAn(r.getString("maHSBA"), null, kh));
+                HoaDon hd = new HoaDon();
+                hd.setMaHD(r.getString("maHD"));
+                hd.setNgayLap(r.getObject("ngayLap", LocalDateTime.class));
+                hd.setTrangThai(r.getBoolean("trangThai"));
+                hd.setTongKhuyenMai(r.getDouble("tongKhuyenMai"));
+                hd.setPhieuKham(pk);
+                BigDecimal tong = r.getBigDecimal("tong")
+                        .subtract(r.getBigDecimal("tongKhuyenMai")).max(BigDecimal.ZERO);
+                return new DongDanhSach(hd, kh, tong);
+            }, tu.atStartOfDay(), den.plusDays(1).atStartOfDay(), daTra, daTra);
+        });
+    }
+
     private static final String SQL_SELECT = """
             SELECT maHD, ngayLap, trangThai, hinhThucThanhToan, ngayThanhToan, tongKhuyenMai,
                    maPK, maVoucher, maNV_ThuNgan
