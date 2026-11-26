@@ -49,7 +49,7 @@ class PnlDanhSachHoaDonTest {
         LocalDateTime lap = LocalDateTime.of(2026, 10, 16, gio, 8);
         PhieuKham pk = new PhieuKham("PK" + maHD.substring(2), lap.minusMinutes(30), TrangThaiPhieuKham.HOAN_TAT,
                 null, new HoSoBenhAn(null, null, kh), null, null);
-        NhanVien thuNgan = new NhanVien("NV003", "Thảo Linh", false, "0398682232", "letan@example.com", "Lễ tân");
+        NhanVien thuNgan = new NhanVien("LT001", "Thảo Linh", false, "0398682232", "letan@example.com", "Lễ tân");
         return daTra ? new HoaDon(maHD, lap, true, HoaDon.TIEN_MAT, lap.plusMinutes(5), 0, pk, null, thuNgan)
                 : new HoaDon(maHD, lap, false, null, null, 0, pk, null, null);
     }

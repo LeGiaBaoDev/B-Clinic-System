@@ -64,19 +64,19 @@ class HoaDonDAOTest {
                     maKH, maKH.toLowerCase() + "@example.com");
             JdbcHelper.update(c, "INSERT INTO HoSoBenhAn(maHSBA,maKH) VALUES(?,?)", maHS, maKH);
             JdbcHelper.update(c, "INSERT INTO LichLamViec(maLLV,maNV,ngayTruc,caTruc,gioBatDau,"
-                    + "gioKetThuc,trangThai) VALUES(?,'NV002',CAST(SYSDATETIME() AS DATE),"
+                    + "gioKetThuc,trangThai) VALUES(?,'NS001',CAST(SYSDATETIME() AS DATE),"
                     + "'CA_NGAY','07:00','17:30','DA_PHAN_CONG')", maLLV);
             JdbcHelper.update(c, "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai)"
-                    + " VALUES(?,?,'NV002','DV999',DATEADD(HOUR,10,CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2)),'DA_DEN')",
+                    + " VALUES(?,?,'NS001','DV999',DATEADD(HOUR,10,CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2)),'DA_DEN')",
                     maLH, maKH);
             JdbcHelper.update(c, "INSERT INTO PhieuKham(maPK,maHSBA,maLH,maNV_LapPhieu,ngayLap,trangThai)"
-                    + " VALUES(?,?,?,'NV003',SYSDATETIME(),'DANG_KHAM')", maPK, maHS, maLH);
+                    + " VALUES(?,?,?,'LT001',SYSDATETIME(),'DANG_KHAM')", maPK, maHS, maLH);
             JdbcHelper.update(c, "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,"
                     + "donViTinh,soLuong,donGia,mucThueGTGT)"
-                    + " VALUES(?,'DV999','NV002',N'Đau răng',N'Sâu răng',N'Lần',1,100000,0)", maPK);
+                    + " VALUES(?,'DV999','NS001',N'Đau răng',N'Sâu răng',N'Lần',1,100000,0)", maPK);
             JdbcHelper.update(c, "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,"
                     + "donViTinh,soLuong,donGia,mucThueGTGT)"
-                    + " VALUES(?,'DV998','NV002',N'Vật tư',N'Phục hồi',N'Cái',1,200000,5)", maPK);
+                    + " VALUES(?,'DV998','NS001',N'Vật tư',N'Phục hồi',N'Cái',1,200000,5)", maPK);
             JdbcHelper.update(c, "UPDATE PhieuKham SET trangThai='HOAN_TAT' WHERE maPK=?", maPK);
             JdbcHelper.update(c, "INSERT INTO HoaDon(maHD,maPK,ngayLap,trangThai) VALUES(?,?,?,0)",
                     maHD, maPK, LocalDateTime.now());
@@ -109,7 +109,7 @@ class HoaDonDAOTest {
 
         assertEquals(0, new BigDecimal("190000").compareTo(thoi));
         assertEquals(1, dem("SELECT COUNT(*) FROM HoaDon WHERE maHD=? AND trangThai=1"
-                + " AND maNV_ThuNgan='NV003' AND hinhThucThanhToan=N'Tiền mặt'", maHD));
+                + " AND maNV_ThuNgan='LT001' AND hinhThucThanhToan=N'Tiền mặt'", maHD));
         assertEquals("HOAN_TAT", chuoi("SELECT trangThai FROM LichHen WHERE maLH=?", maLH));
         assertEquals(0, dao.tinhTongTien(maHD).compareTo(new BigDecimal("310000")));
     }

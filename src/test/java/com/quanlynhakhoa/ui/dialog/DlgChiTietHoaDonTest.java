@@ -44,7 +44,7 @@ class DlgChiTietHoaDonTest {
     private static HoaDon hoaDon(boolean daTra, Voucher voucher, double giam) {
         PhieuKham pk = new PhieuKham("PK261016018", LAP.minusMinutes(40), TrangThaiPhieuKham.HOAN_TAT,
                 null, new HoSoBenhAn(null, null, KHACH), null, null);
-        NhanVien thuNgan = new NhanVien("NV003", "Nguyễn Thảo Linh", false, "0398682232", "letan@example.com", "Lễ tân");
+        NhanVien thuNgan = new NhanVien("LT001", "Nguyễn Thảo Linh", false, "0398682232", "letan@example.com", "Lễ tân");
         return daTra
                 ? new HoaDon("HD261016042", LAP, true, HoaDon.CHUYEN_KHOAN, LAP.plusMinutes(12), giam, pk, voucher, thuNgan)
                 : new HoaDon("HD261016042", LAP, false, null, null, giam, pk, voucher, null);

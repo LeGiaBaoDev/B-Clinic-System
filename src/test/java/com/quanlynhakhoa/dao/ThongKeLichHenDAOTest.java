@@ -27,8 +27,8 @@ class ThongKeLichHenDAOTest {
 
     /** Xa hiện tại để không lẫn với dữ liệu của test khác. */
     private static final LocalDate NGAY = LocalDate.now().plusDays(300);
-    private static final String NHA_SI = "NV002";
-    private static final String NHA_SI_KHAC = "NV001";
+    private static final String NHA_SI = "NS001";
+    private static final String NHA_SI_KHAC = "QL001";
     private static final DateTimeFormatter YYMMDD = DateTimeFormatter.ofPattern("yyMMdd");
     private static final AtomicInteger DEM = new AtomicInteger(700);
 
@@ -182,7 +182,7 @@ class ThongKeLichHenDAOTest {
     void tongHop_locNhaSiKhongCoLich_traVeKhong() throws SQLException {
         lichNgay(NGAY, 1, "HOAN_TAT");
 
-        assertEquals(0, dao.tongHop(NGAY, NGAY, "NV999").tong());
+        assertEquals(0, dao.tongHop(NGAY, NGAY, "NS999").tong());
     }
 
     // ------------------------------------------------------------------ UC032 theo ngày

@@ -32,7 +32,7 @@ class PnlVoucherTest {
     private boolean confirmed = true;
 
     @BeforeEach void setup() {
-        NhanVien nv = new NhanVien("NV001", "Người kiểm thử", true, "0900000001", "test@example.com", "Quản lý");
+        NhanVien nv = new NhanVien("QL001", "Người kiểm thử", true, "0900000001", "test@example.com", "Quản lý");
         SessionManager.getInstance().login(new TaiKhoan("TK001", "test.quanly", "x", VaiTro.QUANLY, true, nv));
         data.add(voucher("VC001", "Chăm sóc nụ cười", true, 10, DAY.minusDays(2), DAY.plusDays(10), true));
         data.add(voucher("VC002", "Khách hàng mới", false, 100000, DAY.minusDays(2), DAY.plusDays(10), true));

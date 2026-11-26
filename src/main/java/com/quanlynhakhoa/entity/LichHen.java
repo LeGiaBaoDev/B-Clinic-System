@@ -16,6 +16,8 @@ public class LichHen {
     private NhanVien nhaSi;
     private DichVu dichVu;
     private PhieuKham phieuKhamNguon;
+    private ChiTietPhieuKham chiTietPhieuKhamNguon;
+    private int thoiLuongDuKien;
 
     public LichHen() {
     }
@@ -42,10 +44,22 @@ public class LichHen {
         this.nhaSi = other.nhaSi;
         this.dichVu = other.dichVu;
         this.phieuKhamNguon = other.phieuKhamNguon;
+        this.chiTietPhieuKhamNguon=other.chiTietPhieuKhamNguon;
+        this.thoiLuongDuKien=other.thoiLuongDuKien;
     }
 
     public String getMaLH() {
         return maLH;
+    }
+
+    public ChiTietPhieuKham getChiTietPhieuKhamNguon() { return chiTietPhieuKhamNguon; }
+    public void setChiTietPhieuKhamNguon(ChiTietPhieuKham value) {
+        if(value!=null && phieuKhamNguon!=null && !phieuKhamNguon.equals(value.getPhieuKham())) throw new IllegalArgumentException("Dòng điều trị không thuộc phiếu tái khám nguồn.");
+        chiTietPhieuKhamNguon=value;
+    }
+    public int getThoiLuongDuKien() { return thoiLuongDuKien; }
+    public void setThoiLuongDuKien(int value) {
+        if(value<=0) throw new IllegalArgumentException("Thời lượng dự kiến phải lớn hơn 0.");thoiLuongDuKien=value;
     }
 
     public void setMaLH(String maLH) {

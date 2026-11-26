@@ -1,6 +1,7 @@
 package com.quanlynhakhoa.entity;
 
 import com.quanlynhakhoa.entity.enums.MucThue;
+import com.quanlynhakhoa.entity.enums.LoaiGTGT;
 
 import java.util.Objects;
 
@@ -12,6 +13,7 @@ public class LoaiDichVu {
     private String maLoaiDV;
     private String tenLoaiDV;
     private MucThue mucThueGTGT;
+    private LoaiGTGT loaiGTGT=LoaiGTGT.KHONG_CHIU_THUE;
 
     public LoaiDichVu() {
     }
@@ -26,6 +28,7 @@ public class LoaiDichVu {
         this.maLoaiDV = other.maLoaiDV;
         this.tenLoaiDV = other.tenLoaiDV;
         this.mucThueGTGT = other.mucThueGTGT;
+        this.loaiGTGT=other.loaiGTGT;
     }
 
     public String getMaLoaiDV() {
@@ -55,6 +58,13 @@ public class LoaiDichVu {
             throw new IllegalArgumentException("Tên loại dịch vụ không khớp mức thuế GTGT");
         }
         this.tenLoaiDV = ten;
+        this.loaiGTGT=DIEU_TRI.equals(ten)?LoaiGTGT.KHONG_CHIU_THUE:LoaiGTGT.CHIU_THUE;
+    }
+
+    public LoaiGTGT getLoaiGTGT() { return loaiGTGT; }
+    public void setLoaiGTGT(LoaiGTGT value) {
+        if(value==null || value==LoaiGTGT.KHONG_CHIU_THUE && mucThueGTGT!=MucThue.THUE_0) throw new IllegalArgumentException("Loại GTGT không khớp thuế suất.");
+        loaiGTGT=value;
     }
 
     public MucThue getMucThueGTGT() {

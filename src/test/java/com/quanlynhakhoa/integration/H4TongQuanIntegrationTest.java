@@ -102,10 +102,10 @@ class H4TongQuanIntegrationTest {
                 bill(c, 3, DAY.atStartOfDay(), null, 300000, 5);
                 bill(c, 4, DAY.atTime(8,0), DAY.plusDays(1).atStartOfDay(), 200000, 10);
                 bill(c, 5, DAY.plusDays(1).atStartOfDay(), null, 900000, 0);
-                sql(c, "INSERT INTO LichLamViec(maLLV,maNV,ngayTruc,caTruc,gioBatDau,gioKetThuc) VALUES('LLV00701','NV002',?,'CA_SANG','08:00','12:00')", DAY.minusDays(1));
+                sql(c, "INSERT INTO LichLamViec(maLLV,maNV,ngayTruc,caTruc,gioBatDau,gioKetThuc) VALUES('LLV00701','NS001',?,'CA_SANG','08:00','12:00')", DAY.minusDays(1));
                 var statuses = com.quanlynhakhoa.entity.enums.TrangThaiLichHen.values();
                 for (int i = 0; i < statuses.length; i++) {
-                    sql(c, "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai,lyDoHuy) VALUES(?,'KH00001','NV002','DV701',?,?,?)",
+                    sql(c, "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai,lyDoHuy) VALUES(?,'KH00001','NS001','DV701',?,?,?)",
                             "LH261105" + String.format(Locale.ROOT, "%03d", i + 1), DAY.atTime(8 + i, 0),
                             statuses[i].name(), statuses[i].name().equals("DA_HUY") ? "Kiểm thử" : null);
                 }
@@ -144,9 +144,9 @@ class H4TongQuanIntegrationTest {
         private static void bill(Connection c, int n, LocalDateTime created, LocalDateTime paid, int price, int tax) throws Exception {
             String pk = "PK261105" + String.format(Locale.ROOT, "%03d", n);
             String hd = "HD261105" + String.format(Locale.ROOT, "%03d", n);
-            sql(c, "INSERT INTO PhieuKham(maPK,maHSBA,maNV_LapPhieu,ngayLap) VALUES(?,'HS00001','NV003',?)", pk, created);
-            sql(c, "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,donViTinh,soLuong,donGia,mucThueGTGT) VALUES(?,'DV701','NV002',N'Khám',N'Khám',N'Lần',1,?,?)", pk, price, tax);
-            sql(c, "INSERT INTO HoaDon(maHD,maPK,ngayLap,trangThai,ngayThanhToan,hinhThucThanhToan,maNV_ThuNgan,maVoucher,tongKhuyenMai) VALUES(?,?,?,?,?,?,?,?,?)", hd, pk, created, paid != null, paid, paid == null ? null : "Tiền mặt", paid == null ? null : "NV003", tax > 0 ? "VC701" : null, tax > 0 ? 10000 : 0);
+            sql(c, "INSERT INTO PhieuKham(maPK,maHSBA,maNV_LapPhieu,ngayLap) VALUES(?,'HS00001','LT001',?)", pk, created);
+            sql(c, "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,donViTinh,soLuong,donGia,mucThueGTGT) VALUES(?,'DV701','NS001',N'Khám',N'Khám',N'Lần',1,?,?)", pk, price, tax);
+            sql(c, "INSERT INTO HoaDon(maHD,maPK,ngayLap,trangThai,ngayThanhToan,hinhThucThanhToan,maNV_ThuNgan,maVoucher,tongKhuyenMai) VALUES(?,?,?,?,?,?,?,?,?)", hd, pk, created, paid != null, paid, paid == null ? null : "Tiền mặt", paid == null ? null : "LT001", tax > 0 ? "VC701" : null, tax > 0 ? 10000 : 0);
         }
         private static void login(VaiTro role) {
             SessionManager.getInstance().login(new TaiKhoanDAO().dangNhap("hieu." + role.name().toLowerCase(Locale.ROOT), "Clinic@123"));

@@ -66,10 +66,16 @@ public class NhanVienDAO {
     }
 
     void them(Connection c, NhanVien nv) throws SQLException {
+        String cm=nv.getChuyenMon()==null?"":nv.getChuyenMon().toLowerCase(java.util.Locale.ROOT);
+        VaiTro role=cm.contains("nha sĩ")?VaiTro.NHASI:cm.contains("lễ tân")?VaiTro.LETAN:VaiTro.QUANLY;
+        them(c,nv,role);
+    }
+
+    void them(Connection c, NhanVien nv, VaiTro vaiTro) throws SQLException {
         new NhanVien(null, nv.getHoTenNV(), nv.isGioiTinh(),
                 nv.getSdt(), nv.getEmail(), nv.getChuyenMon());
 
-        String ma = MaSinh.maMoi(c, MaSinh.Bang.NHAN_VIEN, null);
+        String ma = MaSinh.maNhanVien(c, vaiTro);
         JdbcHelper.update(c, "INSERT INTO NhanVien(maNV,hoTenNV,gioiTinh,sdt,email,chuyenMon)"
                 + " VALUES(?,?,?,?,?,?)",
                 ma, nv.getHoTenNV(), nv.isGioiTinh(), nv.getSdt(),

@@ -38,7 +38,7 @@ class PnlTiepNhanTest {
         lh.setNgayGioHen(LocalDateTime.of(2026, 11, 4, 9, 30));
         lh.setKhachHang(new KhachHang("KH00012", "Nguyễn Minh Anh",
                 LocalDate.of(1998, 3, 12), false, "0903456789", "TP.HCM", null));
-        lh.setNhaSi(new NhanVien("NV002", "Trần Hoàng Nam", true, "0398682231",
+        lh.setNhaSi(new NhanVien("NS001", "Trần Hoàng Nam", true, "0398682231",
                 "nhasi@example.com", "Nha sĩ"));
         lh.setDichVu(new DichVu("DV001", "Khám tổng quát", 100_000, 30, null, true,
                 new LoaiDichVu("LDV01", "Điều trị bệnh lý", MucThue.THUE_0)));

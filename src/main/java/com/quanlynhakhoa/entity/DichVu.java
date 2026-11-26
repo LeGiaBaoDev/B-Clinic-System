@@ -1,6 +1,7 @@
 package com.quanlynhakhoa.entity;
 
 import java.util.Objects;
+import java.math.BigDecimal;
 
 public class DichVu {
     /** Khớp cột DichVu.tenDV NVARCHAR(150). */
@@ -8,7 +9,7 @@ public class DichVu {
 
     private String maDV;
     private String tenDV;
-    private double donGia;
+    private BigDecimal donGia = BigDecimal.ZERO;
     private int thoiLuong;
     private String loTrinhDichVu;
     private boolean trangThai = true;
@@ -37,6 +38,12 @@ public class DichVu {
         this.loaiDichVu = other.loaiDichVu;
     }
 
+    public DichVu(String maDV,String tenDV,BigDecimal donGia,int thoiLuong,String loTrinh,
+            boolean trangThai,LoaiDichVu loai) {
+        this(maDV,tenDV,donGia.doubleValue(),thoiLuong,loTrinh,trangThai,loai);
+        setDonGia(donGia);
+    }
+
     public String getMaDV() {
         return maDV;
     }
@@ -62,15 +69,22 @@ public class DichVu {
         this.tenDV = tenDV.trim();
     }
 
+    public BigDecimal getDonGiaChinhXac() { return donGia; }
+    public void setDonGia(BigDecimal value) {
+        value=ChiTietHoaDon.tien(value);
+        if(value.signum()<=0) throw new IllegalArgumentException("Đơn giá phải lớn hơn 0.");
+        donGia=value;
+    }
+
     public double getDonGia() {
-        return donGia;
+        return donGia.doubleValue();
     }
 
     public void setDonGia(double donGia) {
         if (donGia <= 0) {
             throw new IllegalArgumentException("Đơn giá phải lớn hơn 0");
         }
-        this.donGia = donGia;
+        this.donGia = ChiTietHoaDon.tien(BigDecimal.valueOf(donGia));
     }
 
     public int getThoiLuong() {

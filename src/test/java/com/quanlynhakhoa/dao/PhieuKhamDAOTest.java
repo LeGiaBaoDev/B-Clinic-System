@@ -55,10 +55,10 @@ class PhieuKhamDAOTest {
             JdbcHelper.update(c, "INSERT INTO HoSoBenhAn(maHSBA,maKH) VALUES(?,?)",
                     "HS" + suffix, maKH);
             JdbcHelper.update(c, "INSERT INTO LichLamViec(maLLV,maNV,ngayTruc,caTruc,gioBatDau,"
-                    + "gioKetThuc,trangThai) VALUES(?,'NV002',CAST(SYSDATETIME() AS DATE),"
+                    + "gioKetThuc,trangThai) VALUES(?,'NS001',CAST(SYSDATETIME() AS DATE),"
                     + "'CA_NGAY','07:00','17:30','DA_PHAN_CONG')", maLLV);
             JdbcHelper.update(c, "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai)"
-                    + " VALUES(?,?,'NV002','DV999',DATEADD(HOUR,10,CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2)),'DA_DAT')",
+                    + " VALUES(?,?,'NS001','DV999',DATEADD(HOUR,10,CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2)),'DA_DAT')",
                     maLH, maKH);
         }
     }
@@ -102,7 +102,7 @@ class PhieuKhamDAOTest {
         try (Connection c = DatabaseConnection.getInstance().getConnection()) {
             JdbcHelper.update(c, "DELETE FROM LichHen WHERE maLH=?", maKhac);
             JdbcHelper.update(c, "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai)"
-                    + " VALUES(?,?,'NV002','DV999',DATEADD(DAY,1,CAST(SYSDATETIME() AS DATE)),'DA_DAT')",
+                    + " VALUES(?,?,'NS001','DV999',DATEADD(DAY,1,CAST(SYSDATETIME() AS DATE)),'DA_DAT')",
                     maKhac, maKH);
         }
         try {
@@ -121,7 +121,7 @@ class PhieuKhamDAOTest {
         try (Connection c = DatabaseConnection.getInstance().getConnection()) {
             JdbcHelper.update(c, "DELETE FROM LichHen WHERE maLH=?", maHuy);
             JdbcHelper.update(c, "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai,lyDoHuy)"
-                    + " VALUES(?,?,'NV002','DV999',DATEADD(HOUR,11,CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2)),"
+                    + " VALUES(?,?,'NS001','DV999',DATEADD(HOUR,11,CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2)),"
                     + "'DA_HUY',N'Test')", maHuy, maKH);
         }
         try {

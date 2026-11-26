@@ -12,7 +12,7 @@ import java.util.function.Function;
 final class DocDanhSach {
     record Lich(String ma, LocalDateTime ngay, String tt, String ghiChu, String lyDo,
                 String kh, String nv, String dv, String nguon) { }
-    record Phieu(String ma, LocalDateTime ngay, String tt, String loiDan, String hs, String lh, String nv) { }
+    record Phieu(String ma, LocalDateTime ngay, String tt, String loiDan, String hs, String lh, String nv, String nhaSi, LocalDateTime batDau, LocalDateTime hoanTat) { }
     private final Connection c;
     private final Map<String, KhachHang> kh = new HashMap<>();
     private final Map<String, NhanVien> nv = new HashMap<>();
@@ -29,7 +29,7 @@ final class DocDanhSach {
     static Phieu docPhieu(ResultSet r) throws SQLException {
         return new Phieu(r.getString("maPK"),r.getObject("ngayLap",LocalDateTime.class),
                 r.getString("trangThai"),r.getString("loiDan"),r.getString("maHSBA"),
-                r.getString("maLH"),r.getString("maNV_LapPhieu"));
+                r.getString("maLH"),r.getString("maNV_LapPhieu"),r.getString("maNV_NhaSiPhuTrach"),r.getObject("ngayBatDauKham",LocalDateTime.class),r.getObject("ngayHoanTat",LocalDateTime.class));
     }
     static List<LichHen> lich(Connection c, List<Lich> rows) throws SQLException {
         DocDanhSach d = new DocDanhSach(c);
@@ -57,14 +57,15 @@ final class DocDanhSach {
                 r->KhachHang.tuDuLieu(r.getString("maKH"),r.getString("tenKH"),r.getObject("ngaySinh",LocalDate.class),
                         r.getBoolean("gioiTinh"),r.getString("sdt"),r.getString("diaChi"),r.getString("email")))) kh.put(k.getMaKH(),k);
         for(HoSo h:hoSo) hs.put(h.ma(),new HoSoBenhAn(h.ma(),h.tienSu(),kh.get(h.kh())));
-        Set<String> nvIds=ma(lich,Lich::nv); nvIds.addAll(ma(all,Phieu::nv));
+        Set<String> nvIds=ma(lich,Lich::nv); nvIds.addAll(ma(all,Phieu::nv));nvIds.addAll(ma(all,Phieu::nhaSi));
         for(NhanVien n:theoMa("SELECT * FROM NhanVien WHERE maNV IN (",nvIds,
                 r->NhanVien.tuDuLieu(r.getString("maNV"),r.getString("hoTenNV"),r.getBoolean("gioiTinh"),
                         r.getString("sdt"),r.getString("email"),r.getString("chuyenMon")))) nv.put(n.getMaNV(),n);
-        for(DichVu v:theoMa("SELECT d.*,l.tenLoaiDV,l.mucThueGTGT FROM DichVu d LEFT JOIN LoaiDichVu l ON l.maLoaiDV=d.maLoaiDV WHERE d.maDV IN (",ma(lich,Lich::dv),r->{
+        for(DichVu v:theoMa("SELECT d.*,l.tenLoaiDV,l.mucThueGTGT,l.loaiGTGT FROM DichVu d LEFT JOIN LoaiDichVu l ON l.maLoaiDV=d.maLoaiDV WHERE d.maDV IN (",ma(lich,Lich::dv),r->{
             LoaiDichVu loai=r.getString("maLoaiDV")==null?null:new LoaiDichVu(r.getString("maLoaiDV"),r.getString("tenLoaiDV"),switch(r.getInt("mucThueGTGT")){
                 case 0->MucThue.THUE_0;case 5->MucThue.THUE_5;case 10->MucThue.THUE_10;default->throw new SQLException("Thuế không hợp lệ");});
-            return new DichVu(r.getString("maDV"),r.getString("tenDV"),r.getDouble("donGia"),r.getInt("thoiLuong"),r.getString("loTrinhDichVu"),r.getBoolean("trangThai"),loai);
+            if(loai!=null)loai.setLoaiGTGT(LoaiGTGT.valueOf(r.getString("loaiGTGT")));
+            return new DichVu(r.getString("maDV"),r.getString("tenDV"),r.getBigDecimal("donGia"),r.getInt("thoiLuong"),r.getString("loTrinhDichVu"),r.getBoolean("trangThai"),loai);
         })) dv.put(v.getMaDV(),v);
     }
     private LichHen taoLich(Lich l) {
@@ -73,7 +74,9 @@ final class DocDanhSach {
                 kh.get(l.kh()),nv.get(l.nv()),dv.get(l.dv()),p==null?null:taoPhieu(p,null));
     }
     private PhieuKham taoPhieu(Phieu p,LichHen lich) {
-        return new PhieuKham(p.ma(),p.ngay(),TrangThaiPhieuKham.valueOf(p.tt()),p.loiDan(),hs.get(p.hs()),lich,nv.get(p.nv()));
+        PhieuKham result=new PhieuKham(p.ma(),p.ngay(),TrangThaiPhieuKham.valueOf(p.tt()),p.loiDan(),hs.get(p.hs()),lich,nv.get(p.nv()));
+        if(p.nhaSi()!=null)result.setNhaSiPhuTrach(nv.get(p.nhaSi()));
+        result.setNgayBatDauKham(p.batDau());result.setNgayHoanTat(p.hoanTat());return result;
     }
     private static <T> Set<String> ma(List<T> rows,Function<T,String> key) {
         Set<String> ids=new LinkedHashSet<>();for(T row:rows){String id=key.apply(row);if(id!=null)ids.add(id);}return ids;

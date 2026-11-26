@@ -82,16 +82,16 @@ public class VoucherDAO {
 
             if (!themMoi) {
                 yeuCau(!JdbcHelper.exists(c,
-                                "SELECT 1 FROM HoaDon WITH(UPDLOCK,HOLDLOCK) WHERE maVoucher=?",
+                                "SELECT 1 FROM ChiTietHoaDon WITH(UPDLOCK,HOLDLOCK) WHERE maVoucher=?",
                                 v.getMaVoucher()),
                         "Voucher đã dùng; chỉ được vô hiệu hóa để giữ lịch sử.");
             }
 
             String ma = themMoi ? MaSinh.maMoi(c, MaSinh.Bang.VOUCHER, null) : v.getMaVoucher();
             Object cap = v.getGiaTriGiamToiDa() == 0 ? null
-                    : BigDecimal.valueOf(v.getGiaTriGiamToiDa());
+                    : v.getGiaTriGiamToiDaChinhXac();
             Object[] args = {
-                    v.getTenVoucher(), v.isLoaiGiam() ? 1 : 0, BigDecimal.valueOf(v.getGiaGiam()),
+                    v.getTenVoucher(), v.isLoaiGiam() ? 1 : 0, v.getGiaGiamChinhXac(),
                     cap, v.getNgayBatDau(), v.getNgayKetThuc(), v.isTrangThai(), ma
             };
             int rows = JdbcHelper.update(c, themMoi
@@ -126,8 +126,8 @@ public class VoucherDAO {
                 r.getString("maVoucher"),
                 r.getString("tenVoucher"),
                 r.getBoolean("loaiGiam"),
-                r.getDouble("giaGiam"),
-                r.getDouble("giaTriGiamToiDa"),
+                r.getBigDecimal("giaGiam"),
+                r.getBigDecimal("giaTriGiamToiDa"),
                 r.getObject("ngayBatDau", LocalDate.class),
                 r.getObject("ngayKetThuc", LocalDate.class),
                 r.getBoolean("trangThai"));

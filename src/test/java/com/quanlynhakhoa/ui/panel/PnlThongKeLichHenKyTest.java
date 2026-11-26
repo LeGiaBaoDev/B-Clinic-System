@@ -48,8 +48,8 @@ class PnlThongKeLichHenKyTest {
 
             @Override
             public List<NhanVien> danhSachNhaSi() {
-                return List.of(LichHenMau.nhaSi("NV002", "Trần Dũng", "0398682231"),
-                        LichHenMau.nhaSi("NV004", "Lê Hà", "0398682232"));
+                return List.of(LichHenMau.nhaSi("NS001", "Trần Dũng", "0398682231"),
+                        LichHenMau.nhaSi("NS004", "Lê Hà", "0398682232"));
             }
         }));
     }
@@ -137,7 +137,7 @@ class PnlThongKeLichHenKyTest {
         });
         PnlThongKeDichVuTest.choDen(() -> {
             synchronized (daGoi) {
-                return daGoi.stream().anyMatch(g -> "NV002".equals(g[2]));
+                return daGoi.stream().anyMatch(g -> "NS001".equals(g[2]));
             }
         });
         synchronized (daGoi) {

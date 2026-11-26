@@ -44,7 +44,7 @@ final class H3ThanhToanScenario {
     private static Bill bill(Connection c) throws Exception {
         int n = ++sequence;
         String lh = "LH" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMMdd")) + String.format(Locale.ROOT, "%03d", 200 + n);
-        sql(c, "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen) VALUES(?,'KH00001','NV002','DV701',?)",
+        sql(c, "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen) VALUES(?,'KH00001','NS001','DV701',?)",
                 lh, LocalDate.now().atStartOfDay().plusMinutes(n * 30L));
         login(VaiTro.LETAN);
         PhieuKham pk = PK.taoTuLichHen(lh);

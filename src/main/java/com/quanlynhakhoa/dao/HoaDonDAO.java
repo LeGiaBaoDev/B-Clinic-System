@@ -24,18 +24,15 @@ public class HoaDonDAO {
         return JdbcHelper.doc(c -> {
             PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.LETAN);
             return JdbcHelper.query(c, """
-                    SELECT hd.maHD,hd.ngayLap,hd.trangThai,hd.tongKhuyenMai,
+                    SELECT hd.maHD,hd.ngayLap,hd.trangThai,hd.tongKhuyenMai,hd.tongTienHang,hd.tongThueGTGT,hd.tongThanhToan,hd.tongDaThu,
+                           hd.tenKhachHang,hd.sdtKhachHang,hd.diaChiKhachHang,
                            kh.maKH,kh.tenKH,kh.ngaySinh,kh.gioiTinh,kh.sdt,kh.diaChi,kh.email,
                            hs.maHSBA,pk.maPK,
-                           COALESCE(t.tong,0) AS tong
+                           hd.tongThanhToan AS tong
                     FROM HoaDon hd
                     JOIN PhieuKham pk ON pk.maPK=hd.maPK
                     JOIN HoSoBenhAn hs ON hs.maHSBA=pk.maHSBA
                     JOIN KhachHang kh ON kh.maKH=hs.maKH
-                    LEFT JOIN (
-                        SELECT maPK,SUM(thanhTien+ROUND(thanhTien*mucThueGTGT/100,0)) AS tong
-                        FROM ChiTietPhieuKham GROUP BY maPK
-                    ) t ON t.maPK=pk.maPK
                     WHERE hd.ngayLap>=? AND hd.ngayLap<? AND (? IS NULL OR hd.trangThai=?)
                     ORDER BY hd.ngayLap DESC
                     """, r -> {
@@ -48,19 +45,21 @@ public class HoaDonDAO {
                 HoaDon hd = new HoaDon();
                 hd.setMaHD(r.getString("maHD"));
                 hd.setNgayLap(r.getObject("ngayLap", LocalDateTime.class));
-                hd.setTrangThai(r.getBoolean("trangThai"));
-                hd.setTongKhuyenMai(r.getDouble("tongKhuyenMai"));
+                hd.setTongKhuyenMai(r.getBigDecimal("tongKhuyenMai"));
                 hd.setPhieuKham(pk);
-                BigDecimal tong = r.getBigDecimal("tong")
-                        .subtract(r.getBigDecimal("tongKhuyenMai")).max(BigDecimal.ZERO);
-                return new DongDanhSach(hd, kh, tong);
+                hd.setTrangThai(r.getBoolean("trangThai"));
+                hd=HoaDon.tuDuLieuTaiChinh(hd,kh,r.getString("tenKhachHang"),r.getString("sdtKhachHang"),r.getString("diaChiKhachHang"),
+                        r.getBigDecimal("tongTienHang"),r.getBigDecimal("tongThueGTGT"),r.getBigDecimal("tongKhuyenMai"),
+                        r.getBigDecimal("tongThanhToan"),r.getBigDecimal("tongDaThu"));
+                return new DongDanhSach(hd, kh, r.getBigDecimal("tong"));
             }, tu.atStartOfDay(), den.plusDays(1).atStartOfDay(), daTra, daTra);
         });
     }
 
     private static final String SQL_SELECT = """
             SELECT maHD, ngayLap, trangThai, hinhThucThanhToan, ngayThanhToan, tongKhuyenMai,
-                   maPK, maVoucher, maNV_ThuNgan
+                   maPK, maVoucher, maNV_ThuNgan, maKH, tenKhachHang, sdtKhachHang, diaChiKhachHang,
+                   tongTienHang, tongThueGTGT, tongThanhToan, tongDaThu
             FROM HoaDon
             """;
 
@@ -107,8 +106,21 @@ public class HoaDonDAO {
                 maPK), "Phiếu khám đã có hóa đơn.");
 
         String ma = MaSinh.maMoi(c, MaSinh.Bang.HOA_DON, LocalDate.now());
-        JdbcHelper.update(c, "INSERT INTO HoaDon(maHD,maPK,ngayLap) VALUES(?,?,?)",
-                ma, maPK, LocalDateTime.now());
+        JdbcHelper.update(c, """
+                INSERT INTO HoaDon(maHD,maPK,ngayLap,maKH,tenKhachHang,sdtKhachHang,diaChiKhachHang)
+                SELECT ?,p.maPK,?,k.maKH,k.tenKH,k.sdt,k.diaChi FROM PhieuKham p
+                JOIN HoSoBenhAn h ON h.maHSBA=p.maHSBA JOIN KhachHang k ON k.maKH=h.maKH
+                WHERE p.maPK=?
+                """,ma,LocalDateTime.now(),maPK);
+        JdbcHelper.update(c, """
+                INSERT ChiTietHoaDon(maHD,maPK,maCTPK,maDV,tenDichVu,donViTinh,soLuong,donGia,
+                    loaiGTGT,thueSuatGTGT,tienHang,tienGTGT,tienGiam,thanhTien)
+                SELECT ?,ct.maPK,ct.maCTPK,ct.maDV,d.tenDV,ct.donViTinh,ct.soLuong,ct.donGia,
+                    ct.loaiGTGT,CASE WHEN ct.loaiGTGT=N'KHONG_CHIU_THUE' THEN NULL ELSE ct.mucThueGTGT END,
+                    ct.thanhTien,ROUND(ct.thanhTien*ct.mucThueGTGT/100,0),0,
+                    ct.thanhTien+ROUND(ct.thanhTien*ct.mucThueGTGT/100,0)
+                FROM ChiTietPhieuKham ct JOIN DichVu d ON d.maDV=ct.maDV WHERE ct.maPK=?
+                """,ma,maPK);
         return ma;
     }
 
@@ -124,11 +136,11 @@ public class HoaDonDAO {
     }
 
     static BigDecimal tienGiam(Voucher vc, BigDecimal tong) {
-        BigDecimal giam = BigDecimal.valueOf(vc.getGiaGiam());
+        BigDecimal giam = vc.getGiaGiamChinhXac();
         if (vc.isLoaiGiam()) {
             giam = tong.multiply(giam).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
             if (vc.getGiaTriGiamToiDa() > 0) {
-                giam = giam.min(BigDecimal.valueOf(vc.getGiaTriGiamToiDa()));
+                giam = giam.min(vc.getGiaTriGiamToiDaChinhXac());
             }
         }
         return giam.min(tong).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
@@ -136,104 +148,27 @@ public class HoaDonDAO {
 
     public BigDecimal tinhTongTien(String maHD) {
         return JdbcHelper.doc(c -> {
-            PhanQuyen.quyen(c, VaiTro.QUANLY, VaiTro.LETAN);
-            HoaDon hd = layTheoMa(c, maHD);
-            yeuCau(hd != null, "Hóa đơn không tồn tại.");
-            return tongTruocGiam(c, hd.getPhieuKham().getMaPK())
-                    .subtract(BigDecimal.valueOf(hd.getTongKhuyenMai()))
-                    .max(BigDecimal.ZERO);
+            PhanQuyen.quyen(c,VaiTro.QUANLY,VaiTro.LETAN);
+            BigDecimal tong=JdbcHelper.one(c,"SELECT tongThanhToan FROM HoaDon WHERE maHD=?",r->r.getBigDecimal(1),maHD);
+            yeuCau(tong!=null,"Hóa đơn không tồn tại.");return tong;
         });
     }
 
-    public boolean apDungVoucher(String maHD, String maVoucher) {
-        return JdbcHelper.transaction(c -> {
-            PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
-            MaSinh.khoa(c, "BClinic:thanh-toan");
-            HoaDon hd = layTheoMa(c, maHD);
-            yeuCau(hd != null && !hd.isTrangThai(), "Hóa đơn không tồn tại hoặc đã thanh toán.");
-            yeuCau(hd.getVoucher() == null, "Mỗi hóa đơn chỉ được áp dụng một voucher.");
-
-            Voucher vc = new VoucherDAO().layTheoMa(c, maVoucher);
-            yeuCau(vc != null && vc.kiemTraHieuLuc(LocalDate.now()), "Voucher không có hiệu lực.");
-            BigDecimal giam = tienGiam(vc, tongTruocGiam(c, hd.getPhieuKham().getMaPK()));
-            JdbcHelper.update(c, "UPDATE HoaDon SET maVoucher=?,tongKhuyenMai=?"
-                    + " WHERE maHD=? AND trangThai=0", maVoucher, giam, maHD);
-            NhatKy.ghi(c, "AP_DUNG_VOUCHER", maHD + " / " + maVoucher);
-            return true;
+    /** Mã chỉ được áp cho dịch vụ được cấu hình; vẫn chọn phương án tốt nhất. */
+    public boolean apDungVoucher(String maHD,String maVoucher) {
+        return JdbcHelper.transaction(c->{
+            PhanQuyen.quyen(c,VaiTro.QUANLY,VaiTro.LETAN);
+            MaSinh.khoa(c,"BClinic:thu:"+maHD);
+            KhuyenMaiHoaDon.apDung(c,maHD,maVoucher);
+            NhatKy.ghi(c,"AP_DUNG_VOUCHER",maHD);return true;
         });
     }
-
-    /**
-     * Với tiền mặt yêu cầu tiền nhận đủ; chuyển khoản truyền đúng tổng để xác
-     * nhận số tiền.
-     */
-    public BigDecimal thanhToan(String maHD, String hinhThuc, BigDecimal soTienNhan) {
-        return thanhToan(maHD, hinhThuc, soTienNhan, null);
+    public BigDecimal thanhToan(String maHD,String hinhThuc,BigDecimal soTienNhan) {
+        return thanhToan(maHD,hinhThuc,soTienNhan,null);
     }
-
-    /**
-     * Áp dụng voucher (nếu có) và thanh toán trong cùng một transaction để không
-     * để lại hóa đơn đã giảm giá nhưng chưa thanh toán khi thao tác thất bại.
-     */
-    public BigDecimal thanhToan(String maHD, String hinhThuc, BigDecimal soTienNhan,
-            String maVoucherMoi) {
-        yeuCau(HoaDon.TIEN_MAT.equals(hinhThuc) || HoaDon.CHUYEN_KHOAN.equals(hinhThuc),
-                "Hình thức thanh toán không hợp lệ.");
-        String voucherChon = maVoucherMoi == null || maVoucherMoi.isBlank()
-                ? null : maVoucherMoi.trim();
-        return JdbcHelper.transaction(c -> {
-            Actor actor = PhanQuyen.quyen(c, VaiTro.LETAN, VaiTro.QUANLY);
-            MaSinh.khoa(c, "BClinic:thanh-toan");
-            HoaDon hd = layTheoMa(c, maHD);
-            yeuCau(hd != null && !hd.isTrangThai(), "Hóa đơn không tồn tại hoặc đã thanh toán.");
-            String maVoucherHienTai = hd.getVoucher() == null ? null : hd.getVoucher().getMaVoucher();
-            yeuCau(voucherChon == null || maVoucherHienTai == null
-                    || voucherChon.equals(maVoucherHienTai),
-                    "Hóa đơn đã áp dụng voucher khác.");
-
-            BigDecimal tongTruoc = tongTruocGiam(c, hd.getPhieuKham().getMaPK());
-            String maVoucherApDung = maVoucherHienTai == null ? voucherChon : maVoucherHienTai;
-            BigDecimal giam = BigDecimal.valueOf(hd.getTongKhuyenMai());
-            if (maVoucherApDung != null) {
-                Voucher vc = new VoucherDAO().layTheoMa(c, maVoucherApDung);
-                yeuCau(vc != null && vc.kiemTraHieuLuc(LocalDate.now()),
-                        "Voucher không có hiệu lực.");
-                giam = tienGiam(vc, tongTruoc);
-                if (maVoucherHienTai != null) {
-                    yeuCau(giam.compareTo(BigDecimal.valueOf(hd.getTongKhuyenMai())) == 0,
-                            "Giá trị voucher đã thay đổi.");
-                }
-                yeuCau(maVoucherHienTai != null
-                        || JdbcHelper.update(c, "UPDATE HoaDon SET maVoucher=?,tongKhuyenMai=?"
-                        + " WHERE maHD=? AND trangThai=0", maVoucherApDung, giam, maHD) == 1,
-                        "Không thể áp dụng voucher.");
-                if (maVoucherHienTai == null) {
-                    NhatKy.ghi(c, "AP_DUNG_VOUCHER", maHD + " / " + maVoucherApDung);
-                }
-            }
-
-            BigDecimal tong = tongTruoc.subtract(giam).max(BigDecimal.ZERO);
-            yeuCau(soTienNhan != null && soTienNhan.compareTo(tong) >= 0,
-                    "Số tiền nhận chưa đủ.");
-            yeuCau(!HoaDon.CHUYEN_KHOAN.equals(hinhThuc) || soTienNhan.compareTo(tong) == 0,
-                    "Số tiền chuyển khoản phải khớp tổng hóa đơn.");
-            yeuCau(hd.getPhieuKham().getTrangThai() == TrangThaiPhieuKham.HOAN_TAT,
-                    "Phiếu khám chưa hoàn tất.");
-
-            yeuCau(JdbcHelper.update(c, "UPDATE HoaDon SET trangThai=1,maNV_ThuNgan=?,"
-                    + "hinhThucThanhToan=?,ngayThanhToan=? WHERE maHD=? AND trangThai=0",
-                    actor.maNV(), hinhThuc, LocalDateTime.now(), maHD) == 1,
-                    "Hóa đơn vừa được thanh toán.");
-
-            LichHen lh = hd.getPhieuKham().getLichHen();
-            if (lh != null) {
-                yeuCau(JdbcHelper.update(c, "UPDATE LichHen SET trangThai='HOAN_TAT'"
-                        + " WHERE maLH=? AND trangThai='DA_DEN'", lh.getMaLH()) == 1,
-                        "Trạng thái lịch hẹn không phù hợp để thanh toán.");
-            }
-            NhatKy.ghi(c, "THANH_TOAN", maHD);
-            return soTienNhan.subtract(tong);
-        });
+    public BigDecimal thanhToan(String maHD,String hinhThuc,BigDecimal soTienNhan,String maVoucherMoi) {
+        return new PhieuThuDAO().thanhToanHet(maHD,hinhThuc,soTienNhan,
+                maVoucherMoi==null || maVoucherMoi.isBlank()?null:maVoucherMoi.trim());
     }
 
     private HoaDon loc(HoaDon hd, VaiTro vaiTro) {
@@ -246,16 +181,20 @@ public class HoaDonDAO {
     private HoaDon mapRow(Connection c, ResultSet r) throws SQLException {
         String maVoucher = r.getString("maVoucher");
         String maNV = r.getString("maNV_ThuNgan");
-        return new HoaDon(
+        HoaDon hd = new HoaDon(
                 r.getString("maHD"),
                 r.getObject("ngayLap", LocalDateTime.class),
                 r.getBoolean("trangThai"),
                 r.getString("hinhThucThanhToan"),
                 r.getObject("ngayThanhToan", LocalDateTime.class),
-                r.getDouble("tongKhuyenMai"),
+                r.getBigDecimal("tongKhuyenMai"),
                 new PhieuKhamDAO().layTheoMa(c, r.getString("maPK"), true),
                 maVoucher == null ? null : new VoucherDAO().layTheoMa(c, maVoucher),
                 maNV == null ? null : new NhanVienDAO().layTheoMa(c, maNV));
+        return HoaDon.tuDuLieuTaiChinh(hd,hd.getPhieuKham().getHoSoBenhAn().getKhachHang(),
+                r.getString("tenKhachHang"),r.getString("sdtKhachHang"),r.getString("diaChiKhachHang"),
+                r.getBigDecimal("tongTienHang"),r.getBigDecimal("tongThueGTGT"),r.getBigDecimal("tongKhuyenMai"),
+                r.getBigDecimal("tongThanhToan"),r.getBigDecimal("tongDaThu"));
     }
 
     private static void khoangNgay(LocalDate tu, LocalDate den) {

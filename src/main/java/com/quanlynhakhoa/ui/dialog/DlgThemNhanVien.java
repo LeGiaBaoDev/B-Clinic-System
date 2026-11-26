@@ -359,7 +359,7 @@ public class DlgThemNhanVien extends JDialog {
             TaiKhoan tk;
             try {
                 tk = new TaiKhoan(banDau == null ? null : banDau.getMaTK(),
-                        banDau == null ? QuyTacTaiKhoan.tenDangNhap(nv.getHoTenNV(), vaiTroTheoChuyenMon()) : banDau.getTenTK(),
+                        banDau == null ? QuyTacTaiKhoan.goiYTenDangNhap(vaiTroTheoChuyenMon(), tenDaDung) : banDau.getTenTK(),
                         banDau == null ? QuyTacTaiKhoan.MAT_KHAU_MAC_DINH : "[Ẩn]", vaiTroTheoChuyenMon(), true, nv);
                 if (banDau != null) { tk.setTrangThai(cboTrangThai.getSelectedIndex() == 0); }
             } catch (IllegalArgumentException ex) {

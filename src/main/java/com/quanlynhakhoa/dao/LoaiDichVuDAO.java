@@ -14,7 +14,7 @@ import java.util.List;
 public class LoaiDichVuDAO {
 
     private static final String SQL_SELECT = """
-            SELECT maLoaiDV, tenLoaiDV, mucThueGTGT
+            SELECT maLoaiDV, tenLoaiDV, mucThueGTGT, loaiGTGT
             FROM LoaiDichVu
             """;
 
@@ -47,8 +47,8 @@ public class LoaiDichVuDAO {
             return daLuu;
         }
         String ma = MaSinh.maMoi(c, MaSinh.Bang.LOAI_DICH_VU, null);
-        JdbcHelper.update(c, "INSERT INTO LoaiDichVu(maLoaiDV,tenLoaiDV,mucThueGTGT) VALUES(?,?,?)",
-                ma, loai.getTenLoaiDV(), thue(loai.getMucThueGTGT()));
+        JdbcHelper.update(c, "INSERT INTO LoaiDichVu(maLoaiDV,tenLoaiDV,mucThueGTGT,loaiGTGT) VALUES(?,?,?,?)",
+                ma, loai.getTenLoaiDV(), thue(loai.getMucThueGTGT()),loai.getLoaiGTGT().name());
         NhatKy.ghi(c, "THEM_LOAI_DICH_VU", ma);
         return new LoaiDichVu(ma, loai.getTenLoaiDV(), loai.getMucThueGTGT());
     }
@@ -62,8 +62,8 @@ public class LoaiDichVuDAO {
                     loai.getTenLoaiDV()), "Loại dịch vụ đã tồn tại.");
 
             String ma = MaSinh.maMoi(c, MaSinh.Bang.LOAI_DICH_VU, null);
-            JdbcHelper.update(c, "INSERT INTO LoaiDichVu(maLoaiDV,tenLoaiDV,mucThueGTGT) VALUES(?,?,?)",
-                    ma, loai.getTenLoaiDV(), thue(loai.getMucThueGTGT()));
+            JdbcHelper.update(c, "INSERT INTO LoaiDichVu(maLoaiDV,tenLoaiDV,mucThueGTGT,loaiGTGT) VALUES(?,?,?,?)",
+                    ma, loai.getTenLoaiDV(), thue(loai.getMucThueGTGT()),loai.getLoaiGTGT().name());
             loai.setMaLoaiDV(ma);
             NhatKy.ghi(c, "THEM_LOAI_DICH_VU", ma);
             return true;
@@ -78,16 +78,18 @@ public class LoaiDichVuDAO {
             yeuCau(!JdbcHelper.exists(c, "SELECT 1 FROM LoaiDichVu WHERE tenLoaiDV=? AND maLoaiDV<>?",
                     loai.getTenLoaiDV(), loai.getMaLoaiDV()), "Loại dịch vụ đã tồn tại.");
 
-            return JdbcHelper.update(c, "UPDATE LoaiDichVu SET tenLoaiDV=?,mucThueGTGT=? WHERE maLoaiDV=?",
-                    loai.getTenLoaiDV(), thue(loai.getMucThueGTGT()), loai.getMaLoaiDV()) == 1;
+            return JdbcHelper.update(c, "UPDATE LoaiDichVu SET tenLoaiDV=?,mucThueGTGT=?,loaiGTGT=? WHERE maLoaiDV=?",
+                    loai.getTenLoaiDV(), thue(loai.getMucThueGTGT()), loai.getLoaiGTGT().name(),loai.getMaLoaiDV()) == 1;
         });
     }
 
     private LoaiDichVu mapRow(ResultSet r) throws SQLException {
-        return new LoaiDichVu(
+        LoaiDichVu result = new LoaiDichVu(
                 r.getString("maLoaiDV"),
                 r.getString("tenLoaiDV"),
                 mucThue(r.getInt("mucThueGTGT")));
+        result.setLoaiGTGT(com.quanlynhakhoa.entity.enums.LoaiGTGT.valueOf(r.getString("loaiGTGT")));
+        return result;
     }
 
     static int thue(MucThue value) {

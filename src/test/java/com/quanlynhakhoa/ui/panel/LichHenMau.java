@@ -27,6 +27,6 @@ final class LichHenMau {
         DichVu dv = new DichVu("DV001", tenDV, 100000, 30, null, true,
                 new LoaiDichVu("LDV01", "Điều trị bệnh lý", MucThue.THUE_0));
         String lyDoHuy = trangThai == TrangThaiLichHen.DA_HUY ? "Khách bận" : null;
-        return new LichHen(maLH, gio, trangThai, null, lyDoHuy, kh, nhaSi("NV002", tenNhaSi, "0398682231"), dv, null);
+        return new LichHen(maLH, gio, trangThai, null, lyDoHuy, kh, nhaSi("NS001", tenNhaSi, "0398682231"), dv, null);
     }
 }

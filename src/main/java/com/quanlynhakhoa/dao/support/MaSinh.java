@@ -31,6 +31,7 @@ public final class MaSinh {
         LICH_HEN("LichHen", "maLH", "LH", 3),
         PHIEU_KHAM("PhieuKham", "maPK", "PK", 3),
         HOA_DON("HoaDon", "maHD", "HD", 3),
+        PHIEU_THU("PhieuThu", "maPT", "PT", 3),
         VOUCHER("Voucher", "maVoucher", "VC", 3),
         NHAT_KY("NhatKyHeThong", "maNhatKy", "NK", 6);
 
@@ -61,6 +62,7 @@ public final class MaSinh {
      * 
      */
     public static String maMoi(Connection c, Bang bang, LocalDate ngay) throws SQLException {
+        if(bang==Bang.NHAN_VIEN) throw new BusinessException("Sinh mã nhân viên phải chọn vai trò.");
         String prefix = bang.prefix
                 + (ngay == null ? "" : ngay.format(DateTimeFormatter.ofPattern("yyMMdd")));
         khoa(c, "BClinic:ma:" + bang.table);
@@ -75,5 +77,14 @@ public final class MaSinh {
             }
         }
         throw new BusinessException("Đã hết mã cho " + bang.table + ".");
+    }
+
+    public static String maNhanVien(Connection c, com.quanlynhakhoa.entity.enums.VaiTro vaiTro) throws SQLException {
+        String prefix=com.quanlynhakhoa.util.QuyTacTaiKhoan.tienTo(vaiTro);
+        khoa(c,"BClinic:ma:NhanVien:"+vaiTro.name());
+        Integer so=JdbcHelper.one(c,"UPDATE BoDemMaNhanVien WITH(UPDLOCK,HOLDLOCK) SET soCuoi=soCuoi+1 OUTPUT inserted.soCuoi WHERE vaiTro=? AND soCuoi<999",
+                r->r.getInt(1),vaiTro.name());
+        if(so==null) throw new BusinessException("Đã hết mã nhân viên hoặc chưa có bộ đếm vai trò.");
+        return prefix+String.format(Locale.ROOT,"%03d",so);
     }
 }

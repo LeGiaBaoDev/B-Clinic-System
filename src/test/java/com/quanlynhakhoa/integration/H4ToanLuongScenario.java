@@ -33,7 +33,7 @@ final class H4ToanLuongScenario {
             assertEquals(expectedDb, scalar(c, "SELECT DB_NAME()"));
             sql(c, "INSERT INTO LoaiDichVu(maLoaiDV,tenLoaiDV,mucThueGTGT) VALUES('LDV01',N'Điều trị bệnh lý',0),('LDV02',N'Vật tư/thiết bị bán kèm',5),('LDV03',N'Thẩm mỹ',10)");
             sql(c, "INSERT INTO DichVu(maDV,maLoaiDV,tenDV,donGia,thoiLuong) VALUES('DV701','LDV01',N'Khám test',100000,15),('DV702','LDV02',N'Vật tư test',200000,15),('DV703','LDV03',N'Thẩm mỹ test',300000,15)");
-            sql(c, "INSERT INTO LichLamViec(maLLV,maNV,ngayTruc,caTruc,gioBatDau,gioKetThuc) VALUES('LLV00701','NV002',?,'CA_NGAY','07:00','17:30')", DAY);
+            sql(c, "INSERT INTO LichLamViec(maLLV,maNV,ngayTruc,caTruc,gioBatDau,gioKetThuc) VALUES('LLV00701','NS001',?,'CA_NGAY','07:00','17:30')", DAY);
             LocalDateTime first = LocalDateTime.now().plusMinutes(10).withSecond(0).withNano(0);
             if (first.toLocalTime().isBefore(LocalTime.of(7, 0))) first = DAY.atTime(7, 0);
             assertTrue(first.toLocalDate().equals(DAY) && first.plusMinutes(105).toLocalTime().isBefore(LocalTime.of(17, 30)),
@@ -83,7 +83,7 @@ final class H4ToanLuongScenario {
                 "090077700" + index, "Dữ liệu test", "flow" + index + "@example.com");
         assertTrue(new KhachHangDAO().them(customer, "Tiền sử mô phỏng"));
         LichHen appointment = new LichHen(null, time, TrangThaiLichHen.DA_DAT, "H4 full flow", null, customer,
-                new NhanVienDAO().layTheoMa("NV002"), new DichVuDAO().layTheoMa("DV701"), null);
+                new NhanVienDAO().layTheoMa("NS001"), new DichVuDAO().layTheoMa("DV701"), null);
         assertTrue(LH.them(appointment)); assertNotNull(appointment.getMaLH());
         assertThrows(BusinessException.class, () -> LH.them(new LichHen(appointment)));
         PhieuKham pk = PK.taoTuLichHen(appointment.getMaLH());
@@ -137,11 +137,11 @@ final class H4ToanLuongScenario {
                 F AS (SELECT DATEADD(DAY,-1-CAST(n/8 AS INT),CAST(? AS DATE)) AS d,
                     RIGHT('000'+CAST(701+n%8 AS VARCHAR(3)),3) AS suffix,CAST(n%8 AS INT) AS slot FROM N)
                 """;
-        sql(c, prefix + "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai,ghiChu) SELECT 'LH'+CONVERT(CHAR(6),d,12)+suffix,'KH00001','NV002','DV701',DATEADD(HOUR,7+slot,CAST(d AS DATETIME2)),'HOAN_TAT',N'H4 performance fixture' FROM F", DAY);
-        sql(c, prefix + "INSERT INTO PhieuKham(maPK,maHSBA,maLH,maNV_LapPhieu,ngayLap) SELECT 'PK'+CONVERT(CHAR(6),d,12)+suffix,'HS00001','LH'+CONVERT(CHAR(6),d,12)+suffix,'NV003',DATEADD(HOUR,7+slot,CAST(d AS DATETIME2)) FROM F", DAY);
-        sql(c, "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,donViTinh,soLuong,donGia,mucThueGTGT) SELECT pk.maPK,dv.maDV,'NV002',N'Test',N'Test',N'Lần',1,dv.donGia,l.mucThueGTGT FROM PhieuKham pk JOIN LichHen lh ON lh.maLH=pk.maLH CROSS JOIN DichVu dv JOIN LoaiDichVu l ON l.maLoaiDV=dv.maLoaiDV WHERE lh.ghiChu=N'H4 performance fixture'");
+        sql(c, prefix + "INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai,ghiChu) SELECT 'LH'+CONVERT(CHAR(6),d,12)+suffix,'KH00001','NS001','DV701',DATEADD(HOUR,7+slot,CAST(d AS DATETIME2)),'HOAN_TAT',N'H4 performance fixture' FROM F", DAY);
+        sql(c, prefix + "INSERT INTO PhieuKham(maPK,maHSBA,maLH,maNV_LapPhieu,ngayLap) SELECT 'PK'+CONVERT(CHAR(6),d,12)+suffix,'HS00001','LH'+CONVERT(CHAR(6),d,12)+suffix,'LT001',DATEADD(HOUR,7+slot,CAST(d AS DATETIME2)) FROM F", DAY);
+        sql(c, "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,donViTinh,soLuong,donGia,mucThueGTGT) SELECT pk.maPK,dv.maDV,'NS001',N'Test',N'Test',N'Lần',1,dv.donGia,l.mucThueGTGT FROM PhieuKham pk JOIN LichHen lh ON lh.maLH=pk.maLH CROSS JOIN DichVu dv JOIN LoaiDichVu l ON l.maLoaiDV=dv.maLoaiDV WHERE lh.ghiChu=N'H4 performance fixture'");
         sql(c, "UPDATE pk SET trangThai='HOAN_TAT' FROM PhieuKham pk JOIN LichHen lh ON lh.maLH=pk.maLH WHERE lh.ghiChu=N'H4 performance fixture'");
-        sql(c, "INSERT INTO HoaDon(maHD,maPK,maNV_ThuNgan,ngayLap,trangThai,hinhThucThanhToan,ngayThanhToan) SELECT 'HD'+SUBSTRING(pk.maPK,3,9),pk.maPK,'NV003',pk.ngayLap,1,N'Tiền mặt',DATEADD(MINUTE,30,pk.ngayLap) FROM PhieuKham pk JOIN LichHen lh ON lh.maLH=pk.maLH WHERE lh.ghiChu=N'H4 performance fixture'");
+        sql(c, "INSERT INTO HoaDon(maHD,maPK,maNV_ThuNgan,ngayLap,trangThai,hinhThucThanhToan,ngayThanhToan) SELECT 'HD'+SUBSTRING(pk.maPK,3,9),pk.maPK,'LT001',pk.ngayLap,1,N'Tiền mặt',DATEADD(MINUTE,30,pk.ngayLap) FROM PhieuKham pk JOIN LichHen lh ON lh.maLH=pk.maLH WHERE lh.ghiChu=N'H4 performance fixture'");
         assertEquals("1443", scalar(c, "SELECT COUNT(*) FROM HoaDon"));
         List<Long> dashMs = new ArrayList<>(), reportMs = new ArrayList<>();
         for (int i = 0; i < 6; i++) {
