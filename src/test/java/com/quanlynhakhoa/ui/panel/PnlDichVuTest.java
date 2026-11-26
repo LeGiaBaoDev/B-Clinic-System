@@ -224,7 +224,7 @@ class PnlDichVuTest {
 
     @Test
     void nutThemDichVu_chiHienVoiQuanLy() throws Exception {
-        NhanVien nv = new NhanVien("NV001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
+        NhanVien nv = new NhanVien("QL001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
         try {
             for (VaiTro vaiTro : VaiTro.values()) {
                 SessionManager.getInstance().login(new TaiKhoan("TK001", "tk.kiemthu", "x", vaiTro, true, nv));
@@ -243,7 +243,7 @@ class PnlDichVuTest {
 
     @Test
     void nhanDup_quanLyMoTrangChinhSua_dichVuNgungThiBao_huyThiVeDanhSach() throws Exception {
-        NhanVien nv = new NhanVien("NV001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
+        NhanVien nv = new NhanVien("QL001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
         try {
             SessionManager.getInstance().login(new TaiKhoan("TK001", "tk.kiemthu", "x", VaiTro.QUANLY, true, nv));
             taoPanel((k, t, m) -> List.of(caoVoi, niengRang));
@@ -337,7 +337,7 @@ class PnlDichVuTest {
     }
 
     private void dangNhap(VaiTro vaiTro) {
-        NhanVien nv = new NhanVien("NV001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
+        NhanVien nv = new NhanVien("QL001", "Người dùng thử", true, "0912345678", "thu@example.com", "Thử");
         SessionManager.getInstance().login(new TaiKhoan("TK001", "tk.kiemthu", "x", vaiTro, true, nv));
     }
 

@@ -39,7 +39,7 @@ class PnlLichLamViecTest {
 
     private static TaiKhoan tk(String id,VaiTro role,boolean active) {
         return new TaiKhoan("TK"+id,"test"+id,"[Ẩn]",role,active,
-            new NhanVien("NV"+id,"Nguyễn Văn Anh",true,"0912345678","test@example.com","Nội nha"));
+            new NhanVien(com.quanlynhakhoa.util.QuyTacTaiKhoan.tienTo(role)+id,"Nguyễn Văn Anh",true,"0912345678","test@example.com","Nội nha"));
     }
     @BeforeEach void login() throws Exception {
         SwingUtilities.invokeAndWait(() -> com.formdev.flatlaf.FlatLightLaf.setup());
@@ -69,7 +69,7 @@ class PnlLichLamViecTest {
             combo("caPhanCong").setSelectedIndex(1); button().doClick();
         });
         await(()->loads.get()==2&&button().isEnabled());
-        assertEquals("NV002",saved.get().getNhanVien().getMaNV());
+        assertEquals("NS002",saved.get().getNhanVien().getMaNV());
         assertEquals(CaTruc.CA_CHIEU,saved.get().getCaTruc());
         assertEquals(LocalTime.of(13,30),saved.get().getGioBatDau());
         assertEquals(LocalTime.of(17,30),saved.get().getGioKetThuc());

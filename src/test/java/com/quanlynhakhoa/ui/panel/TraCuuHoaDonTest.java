@@ -36,7 +36,7 @@ class TraCuuHoaDonTest {
         KhachHang kh = new KhachHang(maKH, ten, LocalDate.of(1995, 5, 20), true, sdt, null, null);
         PhieuKham pk = new PhieuKham("PK" + maHD.substring(2), LocalDateTime.of(2026, 10, 16, 9, 0),
                 TrangThaiPhieuKham.HOAN_TAT, null, new HoSoBenhAn(null, null, kh), null, null);
-        NhanVien thuNgan = new NhanVien("NV003", "Thảo Linh", false, "0398682232", "letan@example.com", "Lễ tân");
+        NhanVien thuNgan = new NhanVien("LT001", "Thảo Linh", false, "0398682232", "letan@example.com", "Lễ tân");
         LocalDateTime lap = LocalDateTime.of(2026, 10, 16, 10, 8);
         return daTra
                 ? new HoaDon(maHD, lap, true, HoaDon.TIEN_MAT, lap.plusMinutes(5), 0, pk, null, thuNgan)

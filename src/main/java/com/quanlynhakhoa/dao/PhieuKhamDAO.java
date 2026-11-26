@@ -30,7 +30,7 @@ public class PhieuKhamDAO {
     }
 
     private static final String SQL_SELECT = """
-            SELECT maPK, ngayLap, trangThai, loiDan, maHSBA, maLH, maNV_LapPhieu
+            SELECT maPK, ngayLap, trangThai, loiDan, maHSBA, maLH, maNV_LapPhieu, maNV_NhaSiPhuTrach, ngayBatDauKham, ngayHoanTat
             FROM PhieuKham
             """;
 
@@ -59,7 +59,7 @@ public class PhieuKhamDAO {
             Actor actor = PhanQuyen.quyen(c);
             var rows = JdbcHelper.query(c, """
                     SELECT pk.maPK,pk.ngayLap,pk.trangThai,pk.loiDan,pk.maHSBA,pk.maLH,
-                           pk.maNV_LapPhieu
+                           pk.maNV_LapPhieu,pk.maNV_NhaSiPhuTrach,pk.ngayBatDauKham,pk.ngayHoanTat
                     FROM PhieuKham pk
                     LEFT JOIN LichHen lh ON lh.maLH=pk.maLH
                     LEFT JOIN HoSoBenhAn hs ON hs.maHSBA=pk.maHSBA
@@ -128,8 +128,8 @@ public class PhieuKhamDAO {
 
             String ma = MaSinh.maMoi(c, MaSinh.Bang.PHIEU_KHAM, LocalDate.now());
             JdbcHelper.update(c, "INSERT INTO PhieuKham(maPK,maHSBA,maLH,maNV_LapPhieu,ngayLap,"
-                    + "trangThai) VALUES(?,?,?,?,?,'CHO_KHAM')",
-                    ma, hs.getMaHSBA(), maLH, actor.maNV(), LocalDateTime.now());
+                    + "trangThai,maNV_NhaSiPhuTrach) VALUES(?,?,?,?,?,'CHO_KHAM',?)",
+                    ma, hs.getMaHSBA(), maLH, actor.maNV(), LocalDateTime.now(),lh.getNhaSi().getMaNV());
             yeuCau(JdbcHelper.update(c, "UPDATE LichHen SET trangThai='DA_DEN'"
                     + " WHERE maLH=? AND trangThai='DA_DAT'", maLH) == 1,
                     "Lịch hẹn vừa được người khác xử lý.");
@@ -145,8 +145,8 @@ public class PhieuKhamDAO {
             PhieuKham pk = layTheoMa(c, maPK, true);
             yeuCau(pk != null, "Phiếu khám không tồn tại.");
             kiemTraQuyen(pk, actor);
-            yeuCau(JdbcHelper.update(c, "UPDATE PhieuKham SET trangThai='DANG_KHAM'"
-                    + " WHERE maPK=? AND trangThai='CHO_KHAM'", maPK) == 1,
+            yeuCau(JdbcHelper.update(c, "UPDATE PhieuKham SET trangThai='DANG_KHAM',ngayBatDauKham=SYSDATETIME(),maNV_NhaSiPhuTrach=?"
+                    + " WHERE maPK=? AND trangThai='CHO_KHAM'", actor.maNV(),maPK) == 1,
                     "Chỉ bắt đầu phiếu đang chờ khám.");
             NhatKy.ghi(c, "BAT_DAU_KHAM", maPK);
             return true;
@@ -179,10 +179,11 @@ public class PhieuKhamDAO {
                         stored.getMaPK()),
                         "Phiếu khám phải có ít nhất một dịch vụ điều trị.");
 
-                JdbcHelper.update(c, "UPDATE PhieuKham SET loiDan=?,trangThai='HOAN_TAT'"
+                JdbcHelper.update(c, "UPDATE PhieuKham SET loiDan=?,trangThai='HOAN_TAT',ngayHoanTat=SYSDATETIME()"
                         + " WHERE maPK=? AND trangThai='DANG_KHAM'",
                         pk.getLoiDan(), stored.getMaPK());
                 new HoaDonDAO().taoTuPhieuKham(c, stored.getMaPK());
+                if(stored.getLichHen()!=null) JdbcHelper.update(c,"UPDATE LichHen SET trangThai='HOAN_TAT' WHERE maLH=? AND trangThai='DA_DEN'",stored.getLichHen().getMaLH());
                 NhatKy.ghi(c, "HOAN_TAT_KHAM", stored.getMaPK());
                 return null;
             });
@@ -200,7 +201,7 @@ public class PhieuKhamDAO {
         if (napLichHen && maLH != null) {
             lh = new LichHenDAO().layTheoMa(c, maLH, false);
         }
-        return new PhieuKham(
+        PhieuKham result = new PhieuKham(
                 r.getString("maPK"),
                 r.getObject("ngayLap", LocalDateTime.class),
                 TrangThaiPhieuKham.valueOf(r.getString("trangThai")),
@@ -208,6 +209,11 @@ public class PhieuKhamDAO {
                 new HoSoBenhAnDAO().layTheoMa(c, r.getString("maHSBA")),
                 lh,
                 new NhanVienDAO().layTheoMa(c, r.getString("maNV_LapPhieu")));
+        String ns=r.getString("maNV_NhaSiPhuTrach");
+        if(ns!=null)result.setNhaSiPhuTrach(new NhanVienDAO().layTheoMa(c,ns));
+        result.setNgayBatDauKham(r.getObject("ngayBatDauKham",LocalDateTime.class));
+        result.setNgayHoanTat(r.getObject("ngayHoanTat",LocalDateTime.class));
+        return result;
     }
 
     static PhieuKham loc(PhieuKham pk, VaiTro vaiTro) {

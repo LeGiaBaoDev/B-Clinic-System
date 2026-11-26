@@ -69,15 +69,15 @@ class ThongKeBenhNhanDAOTest {
             taoKhach(c, maKHB, "B");
             taoKhach(c, maKHC, "C");
 
-            taoLich(c, maLHA1, maKHA, "NV002", homQua.atTime(9, 0));
-            taoLich(c, maLHA2, maKHA, "NV002", homNay.atTime(8, 0));
-            taoLich(c, maLHB, maKHB, "NV002", homNay.atTime(10, 0));
-            taoLich(c, maLHC, maKHC, "NV001", homNay.atTime(11, 0));
+            taoLich(c, maLHA1, maKHA, "NS001", homQua.atTime(9, 0));
+            taoLich(c, maLHA2, maKHA, "NS001", homNay.atTime(8, 0));
+            taoLich(c, maLHB, maKHB, "NS001", homNay.atTime(10, 0));
+            taoLich(c, maLHC, maKHC, "QL001", homNay.atTime(11, 0));
 
-            taoPhieu(c, maPKA1, maKHA, maLHA1, homQua.atTime(9, 0), "NV002", 1);
-            taoPhieu(c, maPKA2, maKHA, maLHA2, homNay.atTime(8, 0), "NV002", 2);
-            taoPhieu(c, maPKB, maKHB, maLHB, homNay.atTime(10, 0), "NV002", 1);
-            taoPhieu(c, maPKC, maKHC, maLHC, homNay.atTime(11, 0), "NV001", 1);
+            taoPhieu(c, maPKA1, maKHA, maLHA1, homQua.atTime(9, 0), "NS001", 1);
+            taoPhieu(c, maPKA2, maKHA, maLHA2, homNay.atTime(8, 0), "NS001", 2);
+            taoPhieu(c, maPKB, maKHB, maLHB, homNay.atTime(10, 0), "NS001", 1);
+            taoPhieu(c, maPKC, maKHC, maLHC, homNay.atTime(11, 0), "QL001", 1);
         }
     }
 
@@ -97,7 +97,7 @@ class ThongKeBenhNhanDAOTest {
     private static void taoPhieu(Connection c, String maPK, String maKH, String maLH,
             LocalDateTime ngay, String maNVNhaSi, int soLuong) throws SQLException {
         JdbcHelper.update(c, "INSERT INTO PhieuKham(maPK,maHSBA,maLH,maNV_LapPhieu,ngayLap,trangThai)"
-                + " VALUES(?,?,?,'NV003',?,'DANG_KHAM')", maPK, "HS" + maKH.substring(2), maLH, ngay);
+                + " VALUES(?,?,?,'LT001',?,'DANG_KHAM')", maPK, "HS" + maKH.substring(2), maLH, ngay);
         JdbcHelper.update(c, "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,"
                 + "ketQuaDieuTri,donViTinh,soLuong,donGia,mucThueGTGT)"
                 + " VALUES(?,'DV999',?,N'Đau răng',N'Sâu răng',N'Đã xử lý',N'Lần',?,100000,0)",

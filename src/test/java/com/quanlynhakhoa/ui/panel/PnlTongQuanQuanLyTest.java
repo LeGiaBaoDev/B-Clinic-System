@@ -37,7 +37,7 @@ class PnlTongQuanQuanLyTest {
                 1, new BigDecimal("200000"), 1, new BigDecimal("300000"),
                 BigDecimal.ZERO, BigDecimal.ZERO, List.of(),
                 List.of(new LichHenTrongNgay("LH261105001", day.atTime(11, 0), "Bệnh nhân", "Nha sĩ", TrangThaiLichHen.DA_DAT, null)),
-                List.of(new NhaSiHienTai("NV002", "Nha sĩ", true, false, null, null, null, null)), null);
+                List.of(new NhaSiHienTai("NS001", "Nha sĩ", true, false, null, null, null, null)), null);
     }
 
     private void await(LocalDate day) throws Exception {

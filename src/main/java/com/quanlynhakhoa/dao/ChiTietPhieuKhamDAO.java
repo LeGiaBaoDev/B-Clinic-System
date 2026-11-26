@@ -19,7 +19,7 @@ public class ChiTietPhieuKhamDAO {
 
     private static final String SQL_SELECT = """
             SELECT maCTPK, trieuChung, chanDoan, donGia, soLuong, donViTinh,
-                   mucThueGTGT, ketQuaDieuTri, maPK, maDV, maNV_NhaSi
+                   mucThueGTGT, ketQuaDieuTri, maPK, maDV, maNV_NhaSi, loaiGTGT
             FROM ChiTietPhieuKham
             """;
 
@@ -93,11 +93,11 @@ public class ChiTietPhieuKhamDAO {
 
         try (PreparedStatement ps = c.prepareStatement(
                 "INSERT INTO ChiTietPhieuKham(maPK,maDV,maNV_NhaSi,trieuChung,chanDoan,"
-                + "ketQuaDieuTri,donViTinh,soLuong,donGia,mucThueGTGT)"
-                + " VALUES(?,?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
+                + "ketQuaDieuTri,donViTinh,soLuong,donGia,mucThueGTGT,loaiGTGT)"
+                + " VALUES(?,?,?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
             JdbcHelper.bind(ps, pk.getMaPK(), dv.getMaDV(), nhaSi.getMaNV(), ct.getTrieuChung(),
                     ct.getChanDoan(), ct.getKetQuaDieuTri(), ct.getDonViTinh(), ct.getSoLuong(),
-                    BigDecimal.valueOf(dv.getDonGia()), thue);
+                    dv.getDonGiaChinhXac(), thue,dv.getLoaiDichVu().getLoaiGTGT().name());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -106,16 +106,17 @@ public class ChiTietPhieuKhamDAO {
             }
         }
         ct.setNhaSi(nhaSi);
-        ct.setDonGia(dv.getDonGia());
+        ct.setDonGia(dv.getDonGiaChinhXac());
         ct.setMucThueGTGT(thue);
+        ct.setLoaiGTGT(dv.getLoaiDichVu().getLoaiGTGT());
     }
 
     private ChiTietPhieuKham mapRow(Connection c, ResultSet r) throws SQLException {
-        return new ChiTietPhieuKham(
+        ChiTietPhieuKham result = new ChiTietPhieuKham(
                 r.getInt("maCTPK"),
                 r.getString("trieuChung"),
                 r.getString("chanDoan"),
-                r.getDouble("donGia"),
+                r.getBigDecimal("donGia"),
                 r.getInt("soLuong"),
                 r.getString("donViTinh"),
                 r.getDouble("mucThueGTGT"),
@@ -123,6 +124,7 @@ public class ChiTietPhieuKhamDAO {
                 new PhieuKhamDAO().layTheoMa(c, r.getString("maPK"), false),
                 new DichVuDAO().layTheoMa(c, r.getString("maDV")),
                 new NhanVienDAO().layTheoMa(c, r.getString("maNV_NhaSi")));
+        result.setLoaiGTGT(LoaiGTGT.valueOf(r.getString("loaiGTGT")));return result;
     }
 
     private static void yeuCau(boolean dieuKien, String message) {

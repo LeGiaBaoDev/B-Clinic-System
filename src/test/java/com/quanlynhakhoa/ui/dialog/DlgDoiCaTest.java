@@ -17,7 +17,7 @@ class DlgDoiCaTest {
     private DlgDoiCa.NoiDung form;
     private final TaiKhoan manager=user("001",VaiTro.QUANLY),a=user("002",VaiTro.NHASI),b=user("004",VaiTro.NHASI),other=user("003",VaiTro.LETAN);
     private final LocalDate day=LocalDate.now().plusDays(10);
-    private TaiKhoan user(String id,VaiTro role){return new TaiKhoan("TK"+id,"test"+id,"[Ẩn]",role,true,new NhanVien("NV"+id,"Nguyễn Văn Anh",true,"0912345678","test@example.com","Nha sĩ"));}
+    private TaiKhoan user(String id,VaiTro role){return new TaiKhoan("TK"+id,"test"+id,"[Ẩn]",role,true,new NhanVien(com.quanlynhakhoa.util.QuyTacTaiKhoan.tienTo(role)+id,"Nguyễn Văn Anh",true,"0912345678","test@example.com","Nha sĩ"));}
     private LichLamViec ca(String id,TaiKhoan tk,int offset){return new LichLamViec("LLV"+id,day.plusDays(offset),CaTruc.CA_SANG,LocalTime.of(8,0),LocalTime.NOON,TrangThaiLichLamViec.DA_PHAN_CONG,null,tk.getNhanVien());}
     private List<LichLamViec> lich(){return List.of(ca("00001",a,0),ca("00002",b,1),ca("00003",other,2));}
     @BeforeEach void login(){SessionManager.getInstance().login(manager);}
@@ -39,7 +39,7 @@ class DlgDoiCaTest {
     @Test void hoanDoi_chiChonNhanVienCungChucVu() throws Exception {
         AtomicBoolean done=new AtomicBoolean();
         SwingUtilities.invokeAndWait(()->{
-            form=new DlgDoiCa.NoiDung(lich(),List.of(a,b,other),r->{},r->{assertNotNull(r.caDich());assertEquals("NV004",r.caDich().getNhanVien().getMaNV());return true;},text->true,()->done.set(true),()->{});
+            form=new DlgDoiCa.NoiDung(lich(),List.of(a,b,other),r->{},r->{assertNotNull(r.caDich());assertEquals("NS004",r.caDich().getNhanVien().getMaNV());return true;},text->true,()->done.set(true),()->{});
             ((JComboBox<?>)find(form,"cachDoiCa")).setSelectedIndex(1);assertEquals(1,((JComboBox<?>)find(form,"caHoanDoi")).getItemCount());button().doClick();
         });await(done::get);
     }
@@ -68,12 +68,12 @@ class DlgDoiCaTest {
             ((JComboBox<?>)find(form,"nguonChucVu")).setSelectedItem("Nha sĩ");
             ((JComboBox<?>)find(form,"nguonCa")).setSelectedItem("Ca sáng");
             ((com.toedter.calendar.JDateChooser)find(form,"nguonNgay")).setDate(Date.from(day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()));
-            ((JTextField)find(form,"nguonTim")).setText("nguyen nv004");
+            ((JTextField)find(form,"nguonTim")).setText("nguyen ns004");
             ((JButton)find(form,"nguonLoc")).doClick();
             var source=(JComboBox<?>)find(form,"caNguon");
-            assertEquals(1,source.getItemCount());assertEquals("NV004",((LichLamViec)source.getSelectedItem()).getNhanVien().getMaNV());
+            assertEquals(1,source.getItemCount());assertEquals("NS004",((LichLamViec)source.getSelectedItem()).getNhanVien().getMaNV());
             ((JButton)find(form,"nguonXoaLoc")).doClick();assertEquals(3,source.getItemCount());
-            assertEquals("NV004",((LichLamViec)source.getSelectedItem()).getNhanVien().getMaNV()); // giữ ca đang chọn nếu vẫn còn
+            assertEquals("NS004",((LichLamViec)source.getSelectedItem()).getNhanVien().getMaNV()); // giữ ca đang chọn nếu vẫn còn
             ((JTextField)find(form,"nguonTim")).setText("khong ton tai");((JButton)find(form,"nguonLoc")).doClick();
             assertEquals(0,source.getItemCount());assertFalse(button().isEnabled());
             assertTrue(((JLabel)find(form,"nguonKetQua")).getText().contains("Không có ca phù hợp"));
@@ -85,12 +85,12 @@ class DlgDoiCaTest {
             form=new DlgDoiCa.NoiDung(lich(),List.of(a,b,other),r->{},r->true,t->true,()->{},()->{});
             ((JComboBox<?>)find(form,"cachDoiCa")).setSelectedIndex(1);
             assertFalse(find(form,"dichChucVu").isEnabled());
-            ((JTextField)find(form,"dichTim")).setText("NV003");((JButton)find(form,"dichLoc")).doClick();
+            ((JTextField)find(form,"dichTim")).setText("LT003");((JButton)find(form,"dichLoc")).doClick();
             var target=(JComboBox<?>)find(form,"caHoanDoi");assertEquals(0,target.getItemCount());assertFalse(button().isEnabled());
             assertEquals(3,((JComboBox<?>)find(form,"caNguon")).getItemCount());
             ((JButton)find(form,"dichXoaLoc")).doClick();assertEquals(1,target.getItemCount());assertTrue(button().isEnabled());
-            ((JTextField)find(form,"nguonTim")).setText("NV004");((JButton)find(form,"nguonLoc")).doClick();
-            assertEquals("NV002",((LichLamViec)target.getSelectedItem()).getNhanVien().getMaNV());
+            ((JTextField)find(form,"nguonTim")).setText("NS004");((JButton)find(form,"nguonLoc")).doClick();
+            assertEquals("NS002",((LichLamViec)target.getSelectedItem()).getNhanVien().getMaNV());
         });
     }
     private JButton button(){return (JButton)find(form,"luuDoiCa");}

@@ -96,58 +96,58 @@ class H2DaoIntegrationTest {
                 System.out.println("ISOLATED_DATABASE_CONFIRMED");
                 try {
                     login(VaiTro.QUANLY);
-                    LichLamViec a = shift(DAY, "NV002", 7, 9);
+                    LichLamViec a = shift(DAY, "NS001", 7, 9);
                     assertTrue(DAO.them(a));
                     assertTrue(a.getMaLLV().matches("LLV\\d{5}"));
                     assertEquals(LocalTime.of(7, 0), DAO.layTheoMa(a.getMaLLV()).getGioBatDau());
-                    LichLamViec duplicate = shift(DAY, "NV002", 9, 12);
+                    LichLamViec duplicate = shift(DAY, "NS001", 9, 12);
                     BusinessException ex = assertThrows(BusinessException.class, () -> DAO.them(duplicate));
                     assertEquals("Nhân viên đã được phân công ca này trong ngày.", ex.getMessage());
                     assertNull(duplicate.getMaLLV());
-                    assertThrows(BusinessException.class, () -> DAO.them(shift(DAY, "NV002", 8, 10)));
-                    LichLamViec other = shift(DAY, "NV003", 7, 9);
+                    assertThrows(BusinessException.class, () -> DAO.them(shift(DAY, "NS001", 8, 10)));
+                    LichLamViec other = shift(DAY, "LT001", 7, 9);
                     assertTrue(DAO.them(other));
                     assertNotEquals(a.getMaLLV(), other.getMaLLV());
-                    LichLamViec afternoon = shift(DAY, "NV002", 14, 17);
+                    LichLamViec afternoon = shift(DAY, "NS001", 14, 17);
                     afternoon.setCaTruc(CaTruc.CA_CHIEU);
                     assertTrue(DAO.them(afternoon));
-                    LichLamViec full = shift(DAY, "NV002", 7, 17);
+                    LichLamViec full = shift(DAY, "NS001", 7, 17);
                     full.setCaTruc(CaTruc.CA_NGAY);
                     assertThrows(BusinessException.class, () -> DAO.them(full));
-                    assertThrows(BusinessException.class, () -> DAO.them(shift(LocalDate.now().minusDays(1), "NV002", 7, 9)));
-                    assertThrows(BusinessException.class, () -> DAO.them(shift(DAY.plusDays(1), "NV002", 6, 9)));
+                    assertThrows(BusinessException.class, () -> DAO.them(shift(LocalDate.now().minusDays(1), "NS001", 7, 9)));
+                    assertThrows(BusinessException.class, () -> DAO.them(shift(DAY.plusDays(1), "NS001", 6, 9)));
                     assertTrue(DAO.capNhat(a)); // không tự xem ca hiện tại là trùng
                     LichLamViec changed = new LichLamViec(other);
                     changed.setNhanVien(a.getNhanVien());
                     assertThrows(BusinessException.class, () -> DAO.capNhat(changed));
-                    assertEquals("NV003", DAO.layTheoMa(other.getMaLLV()).getNhanVien().getMaNV());
+                    assertEquals("LT001", DAO.layTheoMa(other.getMaLLV()).getNhanVien().getMaNV());
                     LichLamViec missing = new LichLamViec(a);
                     missing.setMaLLV("LLV99999");
                     assertThrows(BusinessException.class, () -> DAO.capNhat(missing));
-                    assertThrows(BusinessException.class, () -> DAO.layTheoNhanVien("NV002", DAY, DAY.minusDays(1)));
+                    assertThrows(BusinessException.class, () -> DAO.layTheoNhanVien("NS001", DAY, DAY.minusDays(1)));
                     login(VaiTro.NHASI);
-                    assertEquals(2, DAO.layTheoNhanVien("NV002", DAY, DAY).size());
-                    assertTrue(DAO.layTatCa().stream().allMatch(x -> x.getNhanVien().getMaNV().equals("NV002")));
+                    assertEquals(2, DAO.layTheoNhanVien("NS001", DAY, DAY).size());
+                    assertTrue(DAO.layTatCa().stream().allMatch(x -> x.getNhanVien().getMaNV().equals("NS001")));
                     assertThrows(BusinessException.class, () -> DAO.layTheoMa(other.getMaLLV()));
-                    assertThrows(BusinessException.class, () -> DAO.layTheoNhanVien("NV003", DAY, DAY));
-                    assertThrows(BusinessException.class, () -> DAO.them(shift(DAY.plusDays(1), "NV002", 7, 9)));
+                    assertThrows(BusinessException.class, () -> DAO.layTheoNhanVien("LT001", DAY, DAY));
+                    assertThrows(BusinessException.class, () -> DAO.them(shift(DAY.plusDays(1), "NS001", 7, 9)));
                     login(VaiTro.LETAN);
                     assertThrows(BusinessException.class, () -> DAO.capNhat(other));
                     SessionManager.getInstance().logout();
                     assertThrows(BusinessException.class, DAO::layTatCa);
                     login(VaiTro.QUANLY);
                     try (var st = c.createStatement()) {
-                        st.executeUpdate("UPDATE TaiKhoan SET trangThai=0 WHERE maNV='NV003'");
+                        st.executeUpdate("UPDATE TaiKhoan SET trangThai=0 WHERE maNV='LT001'");
                     }
-                    assertThrows(BusinessException.class, () -> DAO.them(shift(DAY.plusDays(1), "NV003", 7, 9)));
+                    assertThrows(BusinessException.class, () -> DAO.them(shift(DAY.plusDays(1), "LT001", 7, 9)));
                     try (var st = c.createStatement()) {
-                        st.executeUpdate("UPDATE TaiKhoan SET trangThai=1 WHERE maNV='NV003'");
+                        st.executeUpdate("UPDATE TaiKhoan SET trangThai=1 WHERE maNV='LT001'");
                         st.execute("CREATE TRIGGER T601_FailAudit ON NhatKyHeThong AFTER INSERT AS BEGIN THROW 51000, 'T601 rollback', 1; END");
                     }
-                    LichLamViec rollback = shift(DAY.plusDays(2), "NV002", 7, 9);
+                    LichLamViec rollback = shift(DAY.plusDays(2), "NS001", 7, 9);
                     assertThrows(DataAccessException.class, () -> DAO.them(rollback));
                     assertNull(rollback.getMaLLV(), "Rollback không được để lại mã trên đối tượng");
-                    assertTrue(DAO.layTheoNhanVien("NV002", DAY.plusDays(2), DAY.plusDays(2)).isEmpty());
+                    assertTrue(DAO.layTheoNhanVien("NS001", DAY.plusDays(2), DAY.plusDays(2)).isEmpty());
                     try (var st = c.createStatement()) { st.execute("DROP TRIGGER T601_FailAudit"); }
                     ExecutorService pool = Executors.newFixedThreadPool(2);
                     CountDownLatch gate = new CountDownLatch(1);
@@ -155,23 +155,23 @@ class H2DaoIntegrationTest {
                         List<Future<Boolean>> results = new ArrayList<>();
                         for (int i=0; i<2; i++) results.add(pool.submit(() -> {
                             gate.await();
-                            try { return DAO.them(shift(DAY.plusDays(3), "NV002", 7, 9)); }
+                            try { return DAO.them(shift(DAY.plusDays(3), "NS001", 7, 9)); }
                             catch (BusinessException expected) { return false; }
                         }));
                         gate.countDown();
                         int success = 0;
                         for (Future<Boolean> result : results) if (result.get(20, TimeUnit.SECONDS)) success++;
                         assertEquals(1, success);
-                        assertEquals(1, DAO.layTheoNhanVien("NV002", DAY.plusDays(3), DAY.plusDays(3)).size());
+                        assertEquals(1, DAO.layTheoNhanVien("NS001", DAY.plusDays(3), DAY.plusDays(3)).size());
                     } finally { pool.shutdownNow(); }
-                    var leave=shift(DAY.plusDays(5),"NV002",7,17);
+                    var leave=shift(DAY.plusDays(5),"NS001",7,17);
                     leave.setCaTruc(CaTruc.CA_NGAY); legacyLeave(c,leave);
-                    var blocked=shift(DAY.plusDays(5),"NV002",8,12);
+                    var blocked=shift(DAY.plusDays(5),"NS001",8,12);
                     assertTrue(assertThrows(BusinessException.class,()->DAO.them(blocked)).getMessage().contains("nghỉ phép"));
                     assertNull(blocked.getMaLLV());
-                    var blockedAfternoon=shift(DAY.plusDays(5),"NV002",14,17); blockedAfternoon.setCaTruc(CaTruc.CA_CHIEU);
+                    var blockedAfternoon=shift(DAY.plusDays(5),"NS001",14,17); blockedAfternoon.setCaTruc(CaTruc.CA_CHIEU);
                     assertTrue(assertThrows(BusinessException.class,()->DAO.them(blockedAfternoon)).getMessage().contains("nghỉ phép"));
-                    assertEquals(1,DAO.layTheoNhanVien("NV002",DAY.plusDays(5),DAY.plusDays(5)).size());
+                    assertEquals(1,DAO.layTheoNhanVien("NS001",DAY.plusDays(5),DAY.plusDays(5)).size());
                     phanCongQuaGiaoDien();
                     lichCaNhanBaVaiTro(c);
                     doiCaVaHoanDoi(c);
@@ -192,10 +192,10 @@ class H2DaoIntegrationTest {
         }
         private static void nghiPhepVaTuChoi(Connection c) throws Exception {
             var don=new DonNghiPhepDAO();login(VaiTro.QUANLY);
-            var a=shift(DAY.plusDays(40),"NV002",8,12);assertTrue(DAO.them(a));
-            var b=shift(DAY.plusDays(40),"NV002",14,17);b.setCaTruc(CaTruc.CA_CHIEU);assertTrue(DAO.them(b));
-            var other=shift(DAY.plusDays(42),"NV003",8,12);assertTrue(DAO.them(other));
-            var mine=shift(DAY.plusDays(42),"NV001",8,12);assertTrue(DAO.them(mine));
+            var a=shift(DAY.plusDays(40),"NS001",8,12);assertTrue(DAO.them(a));
+            var b=shift(DAY.plusDays(40),"NS001",14,17);b.setCaTruc(CaTruc.CA_CHIEU);assertTrue(DAO.them(b));
+            var other=shift(DAY.plusDays(42),"LT001",8,12);assertTrue(DAO.them(other));
+            var mine=shift(DAY.plusDays(42),"QL001",8,12);assertTrue(DAO.them(mine));
             assertThrows(BusinessException.class,()->don.guiDon(a.getMaLLV(),"Không phải ca của tôi"));
             login(VaiTro.NHASI);
             for(String bad:new String[]{null,"","   ","x".repeat(256)})assertThrows(BusinessException.class,()->don.guiDon(a.getMaLLV(),bad));
@@ -214,7 +214,7 @@ class H2DaoIntegrationTest {
             assertThrows(BusinessException.class,()->don.duyet(id));assertThrows(BusinessException.class,()->don.tuChoi(id,"Xử lý lần hai"));
             assertThrows(BusinessException.class,()->DAO.duyetNghiPhep(b,"Bỏ qua đơn"));
             var illegal=new LichLamViec(b);illegal.nghiPhep("Bỏ qua đơn");assertThrows(BusinessException.class,()->DAO.capNhat(illegal));
-            var fresh=shift(DAY.plusDays(55),"NV002",8,12);fresh.nghiPhep("Bỏ qua đơn");assertThrows(BusinessException.class,()->DAO.them(fresh));
+            var fresh=shift(DAY.plusDays(55),"NS001",8,12);fresh.nghiPhep("Bỏ qua đơn");assertThrows(BusinessException.class,()->DAO.them(fresh));
             login(VaiTro.NHASI);assertThrows(BusinessException.class,()->don.guiDon(a.getMaLLV(),"Nghỉ lại"));
             String rejected=don.guiDon(b.getMaLLV(),"Xin nghỉ chiều");
             login(VaiTro.QUANLY);assertThrows(BusinessException.class,()->don.tuChoi(rejected,"   "));assertTrue(don.tuChoi(rejected,"Thiếu người trực"));
@@ -222,7 +222,7 @@ class H2DaoIntegrationTest {
             login(VaiTro.NHASI);var result=don.layDonCuaToi().stream().filter(d->d.maDon().equals(rejected)).findFirst().orElseThrow();assertEquals("Thiếu người trực",result.lyDoTuChoi());assertEquals("TU_CHOI",result.trangThai());
             String again=don.guiDon(b.getMaLLV(),"Xin lại sau từ chối");
             login(VaiTro.QUANLY);
-            var kh=new KhachHangDAO().layTheoMa("KH00001");var ns=new NhanVienDAO().layTheoMa("NV002");var dv=new DichVuDAO().layTheoMa("DV001");
+            var kh=new KhachHangDAO().layTheoMa("KH00001");var ns=new NhanVienDAO().layTheoMa("NS001");var dv=new DichVuDAO().layTheoMa("DV001");
             var blocked=new LichHen(null,DAY.plusDays(40).atTime(9,0),com.quanlynhakhoa.entity.enums.TrangThaiLichHen.DA_DAT,null,null,kh,ns,dv,null);
             login(VaiTro.LETAN);assertTrue(assertThrows(BusinessException.class,()->new LichHenDAO().them(blocked)).getMessage().contains("nghỉ phép"));
             // Đơn chờ không tự chặn lịch hẹn; duyệt phải kiểm tra lại sau preview.
@@ -233,16 +233,16 @@ class H2DaoIntegrationTest {
             assertEquals("DA_DEN",don.kiemTra(again).getFirst().trangThai());assertThrows(BusinessException.class,()->don.duyet(again));
             try(var ps=c.prepareStatement("UPDATE LichHen SET trangThai='DA_HUY',lyDoHuy=N'Đã dời trong test' WHERE maLH=?")){ps.setString(1,ap.getMaLH());ps.executeUpdate();}
             assertTrue(don.duyet(again));
-            login(VaiTro.LETAN);String rollback=don.guiDon(other.getMaLLV(),"Việc riêng; LLV00001 NV002: KHÔNG ĐƯỢC THẤY");
+            login(VaiTro.LETAN);String rollback=don.guiDon(other.getMaLLV(),"Việc riêng; LLV00001 NS001: KHÔNG ĐƯỢC THẤY");
             login(VaiTro.QUANLY);
             try(var st=c.createStatement()){st.execute("CREATE TRIGGER UC015_FailAudit ON NhatKyHeThong AFTER INSERT AS BEGIN THROW 51000,'UC015 rollback',1; END");}
             try{assertThrows(DataAccessException.class,()->don.duyet(rollback));}finally{try(var st=c.createStatement()){st.execute("DROP TRIGGER UC015_FailAudit");}}
             assertEquals("CHO_DUYET",don.layDonQuanLy().stream().filter(d->d.maDon().equals(rollback)).findFirst().orElseThrow().trangThai());assertEquals(TrangThaiLichLamViec.DA_PHAN_CONG,DAO.layTheoMa(other.getMaLLV()).getTrangThai());
-            try(var st=c.createStatement()){st.executeUpdate("UPDATE TaiKhoan SET trangThai=0 WHERE maNV='NV003'");}
-            try{assertThrows(BusinessException.class,()->don.duyet(rollback));}finally{try(var st=c.createStatement()){st.executeUpdate("UPDATE TaiKhoan SET trangThai=1 WHERE maNV='NV003'");}}
+            try(var st=c.createStatement()){st.executeUpdate("UPDATE TaiKhoan SET trangThai=0 WHERE maNV='LT001'");}
+            try{assertThrows(BusinessException.class,()->don.duyet(rollback));}finally{try(var st=c.createStatement()){st.executeUpdate("UPDATE TaiKhoan SET trangThai=1 WHERE maNV='LT001'");}}
             ExecutorService pool=Executors.newFixedThreadPool(2);CountDownLatch gate=new CountDownLatch(1);
             try{List<Future<Boolean>> res=new ArrayList<>();for(int i=0;i<2;i++)res.add(pool.submit(()->{gate.await();try{return don.duyet(rollback);}catch(BusinessException ex){return false;}}));gate.countDown();int n=0;for(var f:res)if(f.get(20,TimeUnit.SECONDS))n++;assertEquals(1,n);}finally{pool.shutdownNow();}
-            login(VaiTro.NHASI);assertFalse(DAO.layThongBaoDoiCaGanNhat().noiDung().contains("KHÔNG ĐƯỢC THẤY"));assertTrue(don.layDonCuaToi().stream().allMatch(d->d.ca().getNhanVien().getMaNV().equals("NV002")));
+            login(VaiTro.NHASI);assertFalse(DAO.layThongBaoDoiCaGanNhat().noiDung().contains("KHÔNG ĐƯỢC THẤY"));assertTrue(don.layDonCuaToi().stream().allMatch(d->d.ca().getNhanVien().getMaNV().equals("NS001")));
             login(VaiTro.LETAN);assertTrue(DAO.layThongBaoDoiCaGanNhat().noiDung().contains("Đã duyệt nghỉ phép"));
             // Bản chụp ca trong đơn không được âm thầm đổi khi ca đã bị dời.
             login(VaiTro.QUANLY);String ownId=don.guiDon(mine.getMaLLV(),"Quản lý cũng là nhân viên");assertEquals(1,don.layDonCuaToi().size());
@@ -262,7 +262,7 @@ class H2DaoIntegrationTest {
             var nv=new NhanVien(null,"Lê Kiểm Thử",true,"0980000004","uc014@example.com","Nha sĩ");
             var tk=new TaiKhoan(null,"ignored","ignored",VaiTro.NHASI,true,nv);
             assertTrue(new TaiKhoanDAO().taoNhanVienVaTaiKhoan(nv,tk));
-            var a=shift(DAY.plusDays(20),"NV002",8,12); assertTrue(DAO.them(a));
+            var a=shift(DAY.plusDays(20),"NS001",8,12); assertTrue(DAO.them(a));
             var b=shift(DAY.plusDays(21),nv.getMaNV(),14,17);b.setCaTruc(CaTruc.CA_CHIEU);assertTrue(DAO.them(b));
             var move=new LichLamViecDAO.YeuCauDoiCa(a,null,DAY.plusDays(22),CaTruc.CA_CHIEU);
             DAO.kiemTraDoiCa(move);assertEquals(DAY.plusDays(20),DAO.layTheoMa(a.getMaLLV()).getNgayTruc());
@@ -277,7 +277,7 @@ class H2DaoIntegrationTest {
             assertTrue(DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(fresh,b,null,null)));
             var aa=DAO.layTheoMa(a.getMaLLV());var bb=DAO.layTheoMa(b.getMaLLV());
             assertEquals(DAY.plusDays(21),aa.getNgayTruc());assertEquals(DAY.plusDays(22),bb.getNgayTruc());
-            assertEquals("NV002",aa.getNhanVien().getMaNV());assertEquals(nv.getMaNV(),bb.getNhanVien().getMaNV());
+            assertEquals("NS001",aa.getNhanVien().getMaNV());assertEquals(nv.getMaNV(),bb.getNhanVien().getMaNV());
             login(VaiTro.NHASI);var note=DAO.layThongBaoDoiCaGanNhat();assertNotNull(note);assertEquals("TK002",note.maTK());assertFalse(note.noiDung().contains(";"));
             SessionManager.getInstance().login(new TaiKhoanDAO().dangNhap(tk.getTenTK(),"Clinic@123"));
             var secondNote=DAO.layThongBaoDoiCaGanNhat();assertNotNull(secondNote);assertEquals(tk.getMaTK(),secondNote.maTK());
@@ -288,10 +288,10 @@ class H2DaoIntegrationTest {
             finally {try(var s=c.createStatement()){s.execute("DROP TRIGGER UC014_FailSecond");}}
             assertEquals(aa.getNgayTruc(),DAO.layTheoMa(aa.getMaLLV()).getNgayTruc());assertEquals(bb.getNgayTruc(),DAO.layTheoMa(bb.getMaLLV()).getNgayTruc());
             assertEquals(auditCount,scalar(c,"SELECT COUNT(*) FROM NhatKyHeThong WHERE hanhDong IN('DOI_CA','HOAN_DOI_CA')"));
-            var leave=shift(DAY.plusDays(23),"NV002",8,17);leave.setCaTruc(CaTruc.CA_NGAY);legacyLeave(c,leave);
+            var leave=shift(DAY.plusDays(23),"NS001",8,17);leave.setCaTruc(CaTruc.CA_NGAY);legacyLeave(c,leave);
             assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(aa,null,DAY.plusDays(23),CaTruc.CA_SANG)));
             assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(leave,null,DAY.plusDays(24),CaTruc.CA_SANG)));
-            var other=shift(DAY.plusDays(26),"NV003",8,12);assertTrue(DAO.them(other));
+            var other=shift(DAY.plusDays(26),"LT001",8,12);assertTrue(DAO.them(other));
             assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(aa,other,null,null)));
             assertThrows(BusinessException.class,()->DAO.doiCa(new LichLamViecDAO.YeuCauDoiCa(aa,null,LocalDate.now().minusDays(1),CaTruc.CA_SANG)));
             try(var s=c.createStatement()) {
@@ -299,7 +299,7 @@ class H2DaoIntegrationTest {
                 s.executeUpdate("IF NOT EXISTS(SELECT 1 FROM LoaiDichVu WHERE maLoaiDV='LDV01') INSERT INTO LoaiDichVu(maLoaiDV,tenLoaiDV,mucThueGTGT) VALUES('LDV01',N'Điều trị bệnh lý',0)");
                 s.executeUpdate("IF NOT EXISTS(SELECT 1 FROM DichVu WHERE maDV='DV001') INSERT INTO DichVu(maDV,maLoaiDV,tenDV,donGia,thoiLuong) VALUES('DV001','LDV01',N'Khám',100000,30)");
             }
-            try(var s=c.prepareStatement("INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai) VALUES(?,'KH00001','NV002','DV001',?,'DA_DAT')")) {
+            try(var s=c.prepareStatement("INSERT INTO LichHen(maLH,maKH,maNV,maDV,ngayGioHen,trangThai) VALUES(?,'KH00001','NS001','DV001',?,'DA_DAT')")) {
                 s.setString(1,"LH"+DAY.plusDays(21).format(java.time.format.DateTimeFormatter.ofPattern("yyMMdd"))+"777");s.setObject(2,DAY.plusDays(21).atTime(15,0));s.executeUpdate();
             }
             assertTrue(assertThrows(BusinessException.class,()->DAO.kiemTraDoiCa(new LichLamViecDAO.YeuCauDoiCa(aa,null,DAY.plusDays(25),CaTruc.CA_CHIEU))).getMessage().contains("lịch hẹn"));
@@ -315,14 +315,14 @@ class H2DaoIntegrationTest {
         }
 
         private static void lichCaNhanBaVaiTro(Connection c) throws Exception {
-            assertTrue(DAO.them(shift(DAY.plusDays(10),"NV001",7,9)));
+            assertTrue(DAO.them(shift(DAY.plusDays(10),"QL001",7,9)));
             for(VaiTro role:VaiTro.values()) {
                 login(role);
                 String staff=SessionManager.getInstance().getCurrentUser().getNhanVien().getMaNV();
                 var own=DAO.layLichCaNhan();
                 assertFalse(own.isEmpty()); assertTrue(own.stream().allMatch(x -> staff.equals(x.getNhanVien().getMaNV())));
                 // Giả mạo mã nhân viên trong session cũng không đổi chủ dữ liệu mà DAO trả về.
-                SessionManager.getInstance().getCurrentUser().getNhanVien().setMaNV(staff.equals("NV001")?"NV002":"NV001");
+                SessionManager.getInstance().getCurrentUser().getNhanVien().setMaNV(staff.equals("QL001")?"NS001":"QL001");
                 assertTrue(DAO.layLichCaNhan().stream().allMatch(x -> staff.equals(x.getNhanVien().getMaNV())));
                 login(role);
                 var ref=new java.util.concurrent.atomic.AtomicReference<com.quanlynhakhoa.ui.panel.PnlLichCaNhan>();
@@ -344,9 +344,9 @@ class H2DaoIntegrationTest {
                 System.out.println("UC012_PERSONAL_ONLY_"+role+"_OK");
             }
             login(VaiTro.LETAN);
-            try(var s=c.prepareStatement("UPDATE TaiKhoan SET trangThai=0 WHERE maNV='NV003'")) {s.executeUpdate();}
+            try(var s=c.prepareStatement("UPDATE TaiKhoan SET trangThai=0 WHERE maNV='LT001'")) {s.executeUpdate();}
             try { assertThrows(BusinessException.class,DAO::layLichCaNhan); }
-            finally {try(var s=c.prepareStatement("UPDATE TaiKhoan SET trangThai=1 WHERE maNV='NV003'")){s.executeUpdate();}}
+            finally {try(var s=c.prepareStatement("UPDATE TaiKhoan SET trangThai=1 WHERE maNV='LT001'")){s.executeUpdate();}}
             SessionManager.getInstance().logout(); assertThrows(BusinessException.class,DAO::layLichCaNhan);
             login(VaiTro.QUANLY);
         }
@@ -368,7 +368,7 @@ class H2DaoIntegrationTest {
             });
             choGiaoDien(() -> ((javax.swing.JComboBox<?>)tim(panel,"nhanVienPhanCong")).isEnabled()
                     && ((javax.swing.JLabel)tim(panel,"thongBaoPhanCong")).getText().contains("thành công"));
-            var rows = DAO.layTheoNhanVien("NV002",DAY.plusDays(4),DAY.plusDays(4));
+            var rows = DAO.layTheoNhanVien("NS001",DAY.plusDays(4),DAY.plusDays(4));
             assertEquals(1,rows.size()); assertEquals(LocalTime.of(13,30),rows.getFirst().getGioBatDau());
             javax.swing.SwingUtilities.invokeAndWait(() -> {
                 var table=(javax.swing.JTable)tim(panel,"bangLichLamViec");
@@ -377,7 +377,7 @@ class H2DaoIntegrationTest {
                         .anyMatch(i -> day.equals(table.getValueAt(i,0))&&table.getValueAt(i,4).toString().contains("13:30")));
                 assertFalse(((javax.swing.JButton)tim(panel,"luuPhanCong")).isEnabled());
             });
-            var duplicate=shift(DAY.plusDays(4),"NV002",14,17); duplicate.setCaTruc(CaTruc.CA_CHIEU);
+            var duplicate=shift(DAY.plusDays(4),"NS001",14,17); duplicate.setCaTruc(CaTruc.CA_CHIEU);
             assertThrows(BusinessException.class,()->DAO.them(duplicate));
             javax.swing.SwingUtilities.invokeAndWait(() -> {
                 ((com.toedter.calendar.JDateChooser)tim(panel,"ngayPhanCong")).setDate(java.util.Date.from(
@@ -390,7 +390,7 @@ class H2DaoIntegrationTest {
                         DAY.plusDays(6).atStartOfDay(ZoneId.systemDefault()).toInstant()));
                 assertTrue(((javax.swing.JButton)tim(panel,"luuPhanCong")).isEnabled());
             });
-            assertEquals(1,DAO.layTheoNhanVien("NV002",DAY.plusDays(4),DAY.plusDays(4)).size());
+            assertEquals(1,DAO.layTheoNhanVien("NS001",DAY.plusDays(4),DAY.plusDays(4)).size());
             System.out.println("H2_UC013_UI_SAVE_AND_DUPLICATE_OK");
             System.out.println("H2_LEAVE_BLOCKED_UI_AND_DAO_OK");
         }

@@ -23,16 +23,16 @@ import org.junit.jupiter.api.Assumptions;
  *
  * <p>Cách bật: tạo database trống {@code CREATE DATABASE BClinic_Test;} rồi đặt file
  * {@code src/test/resources/database.properties} (không commit) với {@code db.name=BClinic_Test}.
- * Flyway tự tạo bảng và dữ liệu mẫu (NV001–NV003, TK001–TK003) khi test chạy.</p>
+ * Flyway tự tạo bảng và dữ liệu mẫu (QL001–LT001, TK001–TK003) khi test chạy.</p>
  */
 final class DaoTestSupport {
 
     static final String TK_QUAN_LY = "TK001";
-    static final String NV_QUAN_LY = "NV001";
+    static final String NV_QUAN_LY = "QL001";
     static final String TK_NHA_SI = "TK002";
-    static final String NV_NHA_SI = "NV002";
+    static final String NV_NHA_SI = "NS001";
     static final String TK_LE_TAN = "TK003";
-    static final String NV_LE_TAN = "NV003";
+    static final String NV_LE_TAN = "LT001";
 
     private DaoTestSupport() {
     }

@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
 /** T901/T902 – UC017 đặt lịch tái khám từ phiếu khám đã hoàn tất. */
 class LichHenTaiKhamDAOTest {
 
-    private static final String NV = "NV002";
+    private static final String NV = "NS001";
     private static final LocalDate HOM_NAY = LocalDate.now();
     private static final DateTimeFormatter YYMMDD = DateTimeFormatter.ofPattern("yyMMdd");
     /** Mặc định tái khám 7–14 ngày kể từ ngày lập phiếu. */

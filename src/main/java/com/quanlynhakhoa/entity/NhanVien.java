@@ -50,7 +50,7 @@ public class NhanVien {
     }
 
     public void setMaNV(String maNV) {
-        if (maNV != null && !maNV.matches("NV\\d{3}")) {
+        if (maNV != null && (!maNV.matches("(QL|NS|LT)\\d{3}") || maNV.endsWith("000"))) {
             throw new IllegalArgumentException("Mã nhân viên không đúng định dạng");
         }
         this.maNV = maNV;

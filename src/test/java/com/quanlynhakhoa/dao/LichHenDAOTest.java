@@ -38,7 +38,7 @@ class LichHenDAOTest {
 
     private static final LocalDate NGAY = LocalDate.now().plusDays(10);
     private static final LocalDate NGAY_NGHI = NGAY.plusDays(1);
-    private static final String NV = "NV002";
+    private static final String NV = "NS001";
     private static final DateTimeFormatter YYMMDD = DateTimeFormatter.ofPattern("yyMMdd");
     private static final AtomicInteger DEM = new AtomicInteger(900);
 

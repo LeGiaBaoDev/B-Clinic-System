@@ -18,9 +18,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class PnlNhanVienTest {
 
     private PnlNhanVien panel;
-    private final NhanVien an = new NhanVien("NV001", "An Quản Lý", true,
+    private final NhanVien an = new NhanVien("QL001", "An Quản Lý", true,
             "0912345678", "an@example.com", "Quản lý");
-    private final NhanVien binh = new NhanVien("NV002", "Bình Nha sĩ", false,
+    private final NhanVien binh = new NhanVien("NS001", "Bình Nha sĩ", false,
             "0987654321", "binh@example.com", "Nha sĩ");
 
     @BeforeEach
@@ -76,8 +76,8 @@ class PnlNhanVienTest {
         choKetQua("Tìm thấy 2");
         SwingUtilities.invokeAndWait(() -> {
             JTable table = (JTable) tim("danhSachNhanVien");
-            table.getRowSorter().toggleSortOrder(0);
-            table.getRowSorter().toggleSortOrder(0);
+            table.getRowSorter().toggleSortOrder(1);
+            table.getRowSorter().toggleSortOrder(1);
             table.setRowSelectionInterval(0, 0);
             assertEquals("Bình Nha sĩ", ((JLabel) tim("chiTietNhanVien")).getText());
             assertTrue(((JLabel) tim("chiTietMetaNhanVien")).getText().contains("binh@example.com"));

@@ -18,7 +18,7 @@ public class DichVuDAO {
 
     private static final String SQL_SELECT = """
             SELECT dv.maDV, dv.tenDV, dv.donGia, dv.thoiLuong, dv.loTrinhDichVu, dv.trangThai,
-                   ldv.maLoaiDV, ldv.tenLoaiDV, ldv.mucThueGTGT
+                   ldv.maLoaiDV, ldv.tenLoaiDV, ldv.mucThueGTGT, ldv.loaiGTGT
             FROM DichVu dv
             LEFT JOIN LoaiDichVu ldv ON ldv.maLoaiDV = dv.maLoaiDV
             """;
@@ -117,7 +117,7 @@ public class DichVuDAO {
             String ma = MaSinh.maMoi(c, MaSinh.Bang.DICH_VU, null);
             int rows = JdbcHelper.update(c, "INSERT INTO DichVu(maDV,tenDV,maLoaiDV,donGia,thoiLuong,"
                     + "loTrinhDichVu,trangThai) VALUES(?,?,?,?,?,?,1)",
-                    ma, dv.getTenDV(), loai.getMaLoaiDV(), BigDecimal.valueOf(dv.getDonGia()),
+                    ma, dv.getTenDV(), loai.getMaLoaiDV(), dv.getDonGiaChinhXac(),
                     dv.getThoiLuong(), dv.getLoTrinhDichVu());
             if (rows == 1) {
                 dv.setMaDV(ma);
@@ -161,7 +161,7 @@ public class DichVuDAO {
 
             int rows = JdbcHelper.update(c, "UPDATE DichVu SET tenDV=?,maLoaiDV=?,donGia=?,thoiLuong=?,"
                     + "loTrinhDichVu=? WHERE maDV=? AND trangThai=1",
-                    dv.getTenDV(), loai.getMaLoaiDV(), BigDecimal.valueOf(dv.getDonGia()),
+                    dv.getTenDV(), loai.getMaLoaiDV(), dv.getDonGiaChinhXac(),
                     dv.getThoiLuong(), dv.getLoTrinhDichVu(), dv.getMaDV());
             if (rows == 1) {
                 dv.setTrangThai(true);
@@ -218,8 +218,8 @@ public class DichVuDAO {
         }
         if (Double.compare(cu.getDonGia(), moi.getDonGia()) != 0) {
             // stripTrailingZeros để ghi "300000" thay vì "300000.0".
-            doi.add("đơn giá " + BigDecimal.valueOf(cu.getDonGia()).stripTrailingZeros().toPlainString()
-                    + " -> " + BigDecimal.valueOf(moi.getDonGia()).stripTrailingZeros().toPlainString());
+            doi.add("đơn giá " + cu.getDonGiaChinhXac().stripTrailingZeros().toPlainString()
+                    + " -> " + moi.getDonGiaChinhXac().stripTrailingZeros().toPlainString());
         }
         if (cu.getThoiLuong() != moi.getThoiLuong()) {
             doi.add("thời lượng " + cu.getThoiLuong() + " -> " + moi.getThoiLuong() + " phút");
@@ -298,11 +298,12 @@ public class DichVuDAO {
                     r.getString("maLoaiDV"),
                     r.getString("tenLoaiDV"),
                     mucThue(r.getInt("mucThueGTGT")));
+            loai.setLoaiGTGT(com.quanlynhakhoa.entity.enums.LoaiGTGT.valueOf(r.getString("loaiGTGT")));
         }
         return new DichVu(
                 r.getString("maDV"),
                 r.getString("tenDV"),
-                r.getDouble("donGia"),
+                r.getBigDecimal("donGia"),
                 r.getInt("thoiLuong"),
                 r.getString("loTrinhDichVu"),
                 r.getBoolean("trangThai"),

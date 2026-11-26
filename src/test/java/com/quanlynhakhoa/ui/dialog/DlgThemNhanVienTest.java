@@ -22,8 +22,8 @@ class DlgThemNhanVienTest {
     private DlgThemNhanVien.NoiDung form;
 
     private TaiKhoan taiKhoanCu() {
-        return new TaiKhoan("TK010", "anh1.nhasi", "[Ẩn]", VaiTro.NHASI, true,
-                new NhanVien("NV010", "Nguyễn Văn Anh", true, "0912345678", "anh@example.com", "Nội nha"));
+        return new TaiKhoan("TK010", "NS002", "[Ẩn]", VaiTro.NHASI, true,
+                new NhanVien("NS010", "Nguyễn Văn Anh", true, "0912345678", "anh@example.com", "Nội nha"));
     }
 
     @Test
@@ -34,9 +34,9 @@ class DlgThemNhanVienTest {
         SwingUtilities.invokeAndWait(() -> {
             form = new DlgThemNhanVien.NoiDung((nv, tk) -> {
                 saved.set(tk);
-                assertEquals("NV010", nv.getMaNV());
+                assertEquals("NS010", nv.getMaNV());
                 assertEquals("TK010", tk.getMaTK());
-                assertEquals("anh1.nhasi", tk.getTenTK());
+                assertEquals("NS002", tk.getTenTK());
                 assertEquals("Đỗ Văn Đạt", nv.getHoTenNV());
                 assertEquals(VaiTro.LETAN, tk.getVaiTro());
                 assertTrue(tk.isTrangThai());
@@ -45,7 +45,7 @@ class DlgThemNhanVienTest {
             text("hoTen", "đỗ văn đạt");
             ((JComboBox<?>) tim("chuyenMon")).setSelectedItem("Lễ tân");
             assertEquals("Nguyễn Văn Anh", cu.getNhanVien().getHoTenNV());
-            assertEquals("anh1.nhasi", ((JTextField) tim("tenTaiKhoan")).getText());
+            assertEquals("NS002", ((JTextField) tim("tenTaiKhoan")).getText());
             nut("luuNhanVien").doClick();
         });
         choXong();
@@ -141,10 +141,10 @@ class DlgThemNhanVienTest {
             form = new DlgThemNhanVien.NoiDung((nv, tk) -> true, nv -> {}, () -> {});
             text("hoTen", "Nguyễn Văn Anh");
             roiOHoTen();
-            form.capNhatTenDaDung(java.util.List.of("anh.letan", "anh1.letan", "anh.nhasi"));
-            assertEquals("anh1.nhasi", ((JTextField) tim("tenTaiKhoan")).getText());
+            form.capNhatTenDaDung(java.util.List.of("LT001", "LT002", "NS001"));
+            assertEquals("NS002", ((JTextField) tim("tenTaiKhoan")).getText());
             ((JComboBox<?>) tim("chuyenMon")).setSelectedItem("Lễ tân");
-            assertEquals("anh2.letan", ((JTextField) tim("tenTaiKhoan")).getText());
+            assertEquals("LT003", ((JTextField) tim("tenTaiKhoan")).getText());
         });
     }
 
@@ -175,18 +175,18 @@ class DlgThemNhanVienTest {
             assertEquals("", username.getText());
             roiOHoTen();
             assertEquals("Nguyễn Văn Anh", ((JTextField) tim("hoTen")).getText());
-            assertEquals("anh.nhasi", username.getText());
+            assertEquals("NS001", username.getText());
             ((JComboBox<?>) tim("chuyenMon")).setSelectedItem("Lễ tân");
-            assertEquals("anh.letan", username.getText());
+            assertEquals("LT001", username.getText());
             text("hoTen", "Đỗ Văn Đạt");
-            form.capNhatTenDaDung(java.util.List.of("dat.letan"));
-            assertEquals("anh.letan", username.getText());
+            form.capNhatTenDaDung(java.util.List.of("LT001"));
+            assertEquals("LT002", username.getText());
             roiOHoTen();
-            assertEquals("dat1.letan", username.getText());
+            assertEquals("LT002", username.getText());
             text("hoTen", "Đỗ Văn Đạt");
             form.capNhatTenDaDung(java.util.List.of());
             roiOHoTen();
-            assertEquals("dat.letan", username.getText());
+            assertEquals("LT001", username.getText());
         });
     }
 
@@ -207,7 +207,7 @@ class DlgThemNhanVienTest {
                 assertNull(nv.getMaNV());
                 assertNull(tk.getMaTK());
                 assertEquals("Nguyễn Văn Anh", nv.getHoTenNV());
-                assertEquals("anh.nhasi", tk.getTenTK());
+                assertEquals("NS001", tk.getTenTK());
                 assertEquals("Clinic@123", tk.getMatKhau());
                 assertEquals(VaiTro.NHASI, tk.getVaiTro());
                 assertTrue(tk.isTrangThai());
@@ -215,7 +215,7 @@ class DlgThemNhanVienTest {
                 entered.countDown();
                 try { assertTrue(release.await(5, TimeUnit.SECONDS)); }
                 catch (InterruptedException ex) { throw new AssertionError(ex); }
-                nv.setMaNV("NV010");
+                nv.setMaNV("NS010");
                 tk.setMaTK("TK010");
                 return true;
             }, created::set, () -> closed.set(true));
@@ -235,7 +235,7 @@ class DlgThemNhanVienTest {
         choXong();
         assertTrue(background.get());
         assertEquals(1, saves.get());
-        assertEquals("NV010", created.get().getMaNV());
+        assertEquals("NS010", created.get().getMaNV());
         assertEquals("[Ẩn]", account.get().getMatKhau());
         SwingUtilities.invokeAndWait(() -> assertEquals("Clinic@123",
                 ((JTextField) tim("matKhau")).getText()));
@@ -255,7 +255,7 @@ class DlgThemNhanVienTest {
         assertFalse(created.get());
         SwingUtilities.invokeAndWait(() -> {
             assertTrue(thongBao().contains("đã tồn tại"));
-            assertEquals("anh.nhasi", ((JTextField) tim("tenTaiKhoan")).getText());
+            assertEquals("NS001", ((JTextField) tim("tenTaiKhoan")).getText());
             assertEquals("Clinic@123", ((JTextField) tim("matKhau")).getText());
             assertTrue(nut("huyNhanVien").isEnabled());
         });
@@ -323,7 +323,7 @@ class DlgThemNhanVienTest {
             nut("luuNhanVien").doClick();
         });
         choXong();
-        assertEquals("anh.letan", saved.get().getTenTK());
+        assertEquals("LT001", saved.get().getTenTK());
         assertEquals("Lễ tân", saved.get().getNhanVien().getChuyenMon());
         assertEquals(VaiTro.LETAN, saved.get().getVaiTro());
         SwingUtilities.invokeAndWait(() -> assertFalse(tim("vaiTro").isEnabled()));

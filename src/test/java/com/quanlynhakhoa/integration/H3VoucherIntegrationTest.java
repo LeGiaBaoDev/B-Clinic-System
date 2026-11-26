@@ -171,7 +171,7 @@ class H3VoucherIntegrationTest {
             Voucher used = voucher(); assertTrue(DAO.them(used));
             execute(c, "INSERT INTO KhachHang(maKH,tenKH,sdt,gioiTinh) VALUES('KH00001',N'Khách kiểm thử','0900000001',1)");
             execute(c, "INSERT INTO HoSoBenhAn(maHSBA,maKH) VALUES('HS00001','KH00001')");
-            execute(c, "INSERT INTO PhieuKham(maPK,maHSBA,maNV_LapPhieu,trangThai) VALUES('PK261105001','HS00001','NV003','HOAN_TAT')");
+            execute(c, "INSERT INTO PhieuKham(maPK,maHSBA,maNV_LapPhieu,trangThai) VALUES('PK261105001','HS00001','LT001','HOAN_TAT')");
             execute(c, "INSERT INTO HoaDon(maHD,maPK,maVoucher,tongKhuyenMai) VALUES('HD261105001','PK261105001','" + used.getMaVoucher() + "',10000)");
             used.setTenVoucher("Không được đổi");
             assertThrows(BusinessException.class, () -> DAO.capNhat(used));

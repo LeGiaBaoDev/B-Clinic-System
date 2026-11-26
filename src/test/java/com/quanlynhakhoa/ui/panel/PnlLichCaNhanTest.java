@@ -20,7 +20,7 @@ class PnlLichCaNhanTest {
     private PnlLichLamViec panel;
     private static TaiKhoan user(String id,VaiTro role) {
         return new TaiKhoan("TK"+id,"test"+id,"[Ẩn]",role,true,
-                new NhanVien("NV"+id,"Nguyễn Văn Anh",true,"0912345678","test@example.com","Nội nha"));
+                new NhanVien(com.quanlynhakhoa.util.QuyTacTaiKhoan.tienTo(role)+id,"Nguyễn Văn Anh",true,"0912345678","test@example.com","Nội nha"));
     }
     private static LichLamViec shift(String id,NhanVien nv) {
         return new LichLamViec("LLV"+id,LocalDate.now(),CaTruc.CA_NGAY,LocalTime.of(8,0),LocalTime.of(17,30),
@@ -40,7 +40,7 @@ class PnlLichCaNhanTest {
         await(()->loaded.get()&&table().getRowCount()==1);
         SwingUtilities.invokeAndWait(()->{
             assertEquals("Lịch của tôi",panel.getName());
-            assertTrue(table().getValueAt(0,1).toString().contains("NV001"));
+            assertTrue(table().getValueAt(0,1).toString().contains(me.getNhanVien().getMaNV()));
             assertEquals("Nghỉ phép",table().getValueAt(0,5));
             assertFalse(table().isCellEditable(0,0));
             assertNull(find(panel,"moPhanCa")); assertNull(find(panel,"luuPhanCong"));

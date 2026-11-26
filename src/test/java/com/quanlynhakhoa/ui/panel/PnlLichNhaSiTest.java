@@ -111,7 +111,7 @@ class PnlLichNhaSiTest {
         return new LichLamViec("LLV00001", HOM_NAY, CaTruc.CA_SANG,
                 LocalTime.of(8, 0), LocalTime.of(12, 0),
                 TrangThaiLichLamViec.DA_PHAN_CONG, null,
-                new NhanVien("NV002", "Nha sĩ kiểm thử", true, "0398682231",
+                new NhanVien("NS001", "Nha sĩ kiểm thử", true, "0398682231",
                         "nhasi@example.com", "Nha sĩ"));
     }
 
@@ -122,7 +122,7 @@ class PnlLichNhaSiTest {
         lh.setNgayGioHen(thoiGian);
         lh.setKhachHang(new KhachHang(maKH, tenKH, LocalDate.of(1990, 1, 1), true,
                 "0912345678", "Hà Nội", null));
-        lh.setNhaSi(new NhanVien("NV002", "Nha sĩ kiểm thử", true, "0398682231",
+        lh.setNhaSi(new NhanVien("NS001", "Nha sĩ kiểm thử", true, "0398682231",
                 "nhasi@example.com", "Nha sĩ"));
         lh.setDichVu(new DichVu("DV001", tenDV, 100_000, 30, null, true,
                 new LoaiDichVu("LDV01", "Điều trị bệnh lý", MucThue.THUE_0)));

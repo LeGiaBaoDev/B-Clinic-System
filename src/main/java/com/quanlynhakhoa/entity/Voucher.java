@@ -2,13 +2,15 @@ package com.quanlynhakhoa.entity;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class Voucher {
     private String maVoucher;
     private String tenVoucher;
     private boolean loaiGiam;
-    private double giaGiam;
-    private double giaTriGiamToiDa;
+    private BigDecimal giaGiam = BigDecimal.ZERO;
+    private BigDecimal giaTriGiamToiDa = BigDecimal.ZERO;
     private LocalDate ngayBatDau;
     private LocalDate ngayKetThuc;
     private boolean trangThai = true;
@@ -38,6 +40,12 @@ public class Voucher {
         this.trangThai = other.trangThai;
     }
 
+    public Voucher(String ma,String ten,boolean loai,BigDecimal giaGiam,BigDecimal toiDa,
+            LocalDate tu,LocalDate den,boolean trangThai) {
+        this(ma,ten,loai,giaGiam.doubleValue(),toiDa==null?0:toiDa.doubleValue(),tu,den,trangThai);
+        setGiaGiam(giaGiam);setGiaTriGiamToiDa(toiDa==null?BigDecimal.ZERO:toiDa);
+    }
+
     public String getMaVoucher() {
         return maVoucher;
     }
@@ -65,32 +73,32 @@ public class Voucher {
     }
 
     public void setLoaiGiam(boolean loaiGiam) {
-        if (loaiGiam && giaGiam > 100) {
+        if (loaiGiam && giaGiam.compareTo(BigDecimal.valueOf(100)) > 0) {
             throw new IllegalArgumentException("Giá trị giảm phần trăm không được vượt quá 100");
         }
         this.loaiGiam = loaiGiam;
     }
 
     public double getGiaGiam() {
-        return giaGiam;
+        return giaGiam.doubleValue();
     }
 
     public void setGiaGiam(double giaGiam) {
         if (!Double.isFinite(giaGiam) || giaGiam <= 0 || (loaiGiam && giaGiam > 100)) {
             throw new IllegalArgumentException("Giá trị giảm không hợp lệ");
         }
-        this.giaGiam = giaGiam;
+        this.giaGiam = ChiTietHoaDon.tien(BigDecimal.valueOf(giaGiam));
     }
 
     public double getGiaTriGiamToiDa() {
-        return giaTriGiamToiDa;
+        return giaTriGiamToiDa.doubleValue();
     }
 
     public void setGiaTriGiamToiDa(double giaTriGiamToiDa) {
         if (!Double.isFinite(giaTriGiamToiDa) || giaTriGiamToiDa < 0) {
             throw new IllegalArgumentException("Giá trị giảm tối đa không được âm");
         }
-        this.giaTriGiamToiDa = giaTriGiamToiDa;
+        this.giaTriGiamToiDa = ChiTietHoaDon.tien(BigDecimal.valueOf(giaTriGiamToiDa));
     }
 
     public LocalDate getNgayBatDau() {
@@ -127,16 +135,21 @@ public class Voucher {
         return trangThai && !ngay.isBefore(ngayBatDau) && !ngay.isAfter(ngayKetThuc);
     }
 
-    public double tinhTienGiam(double tongTien) {
-        if (tongTien <= 0) {
-            return 0;
-        }
-        double giam = loaiGiam ? Math.round(tongTien * giaGiam / 100) : giaGiam;
-        if (loaiGiam && giaTriGiamToiDa > 0) {
-            giam = Math.min(giam, giaTriGiamToiDa);
-        }
-        return Math.min(giam, tongTien);
+    public BigDecimal getGiaGiamChinhXac() { return giaGiam; }
+    public BigDecimal getGiaTriGiamToiDaChinhXac() { return giaTriGiamToiDa; }
+    public void setGiaGiam(BigDecimal value) {
+        value=ChiTietHoaDon.tien(value);
+        if(value.signum()<=0 || loaiGiam && value.compareTo(BigDecimal.valueOf(100))>0) throw new IllegalArgumentException("Giá trị giảm không hợp lệ.");
+        giaGiam=value;
     }
+    public void setGiaTriGiamToiDa(BigDecimal value) { giaTriGiamToiDa=ChiTietHoaDon.tien(value); }
+    public BigDecimal tinhTienGiam(BigDecimal tongTien) {
+        if(tongTien==null || tongTien.signum()<=0) return BigDecimal.ZERO;
+        BigDecimal giam=loaiGiam?tongTien.multiply(giaGiam).divide(BigDecimal.valueOf(100),0,RoundingMode.HALF_UP):giaGiam;
+        if(loaiGiam && giaTriGiamToiDa.signum()>0) giam=giam.min(giaTriGiamToiDa);
+        return giam.min(tongTien);
+    }
+    public double tinhTienGiam(double tongTien) { return tinhTienGiam(BigDecimal.valueOf(tongTien)).doubleValue(); }
 
     @Override
     public boolean equals(Object o) {

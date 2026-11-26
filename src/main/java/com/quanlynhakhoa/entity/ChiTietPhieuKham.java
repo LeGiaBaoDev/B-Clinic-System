@@ -2,15 +2,18 @@ package com.quanlynhakhoa.entity;
 
 import com.quanlynhakhoa.util.DinhDang;
 import java.util.Objects;
+import java.math.BigDecimal;
+import com.quanlynhakhoa.entity.enums.LoaiGTGT;
 
 public class ChiTietPhieuKham {
     private int maCTPK;
     private String trieuChung;
     private String chanDoan;
-    private double donGia;
+    private BigDecimal donGia = BigDecimal.ZERO;
     private int soLuong;
     private String donViTinh;
     private double mucThueGTGT;
+    private LoaiGTGT loaiGTGT=LoaiGTGT.KHONG_CHIU_THUE;
     private String ketQuaDieuTri;
     private PhieuKham phieuKham;
     private DichVu dichVu;
@@ -41,10 +44,17 @@ public class ChiTietPhieuKham {
         this.soLuong = other.soLuong;
         this.donViTinh = other.donViTinh;
         this.mucThueGTGT = other.mucThueGTGT;
+        this.loaiGTGT=other.loaiGTGT;
         this.ketQuaDieuTri = other.ketQuaDieuTri;
         this.phieuKham = other.phieuKham;
         this.dichVu = other.dichVu;
         this.nhaSi = other.nhaSi;
+    }
+
+    public ChiTietPhieuKham(int ma,String trieuChung,String chanDoan,BigDecimal donGia,int soLuong,
+            String donViTinh,double mucThue,String ketQua,PhieuKham phieu,DichVu dichVu,NhanVien nhaSi) {
+        this(ma,trieuChung,chanDoan,donGia.doubleValue(),soLuong,donViTinh,mucThue,ketQua,phieu,dichVu,nhaSi);
+        setDonGia(donGia);
     }
 
     public int getMaCTPK() {
@@ -77,15 +87,22 @@ public class ChiTietPhieuKham {
         this.chanDoan = DinhDang.toiDa(chanDoan, DinhDang.NOI_DUNG_TOI_DA, "Chẩn đoán");
     }
 
+    public BigDecimal getDonGiaChinhXac() { return donGia; }
+    public void setDonGia(BigDecimal value) {
+        value=ChiTietHoaDon.tien(value);
+        if(value.signum()<=0) throw new IllegalArgumentException("Đơn giá phải lớn hơn 0.");
+        donGia=value;
+    }
+
     public double getDonGia() {
-        return donGia;
+        return donGia.doubleValue();
     }
 
     public void setDonGia(double donGia) {
         if (donGia <= 0) {
             throw new IllegalArgumentException("Đơn giá phải lớn hơn 0");
         }
-        this.donGia = donGia;
+        this.donGia = ChiTietHoaDon.tien(BigDecimal.valueOf(donGia));
     }
 
     public int getSoLuong() {
@@ -110,6 +127,12 @@ public class ChiTietPhieuKham {
         this.donViTinh = donViTinh.trim();
     }
 
+    public LoaiGTGT getLoaiGTGT() { return loaiGTGT; }
+    public void setLoaiGTGT(LoaiGTGT value) {
+        if(value==null || value==LoaiGTGT.KHONG_CHIU_THUE && mucThueGTGT!=0) throw new IllegalArgumentException("Loại GTGT không khớp thuế suất.");
+        loaiGTGT=value;
+    }
+
     public double getMucThueGTGT() {
         return mucThueGTGT;
     }
@@ -119,6 +142,7 @@ public class ChiTietPhieuKham {
             throw new IllegalArgumentException("Mức thuế GTGT chỉ nhận 0, 5 hoặc 10");
         }
         this.mucThueGTGT = mucThueGTGT;
+        if(mucThueGTGT>0)loaiGTGT=LoaiGTGT.CHIU_THUE;
     }
 
     public String getKetQuaDieuTri() {
@@ -162,16 +186,22 @@ public class ChiTietPhieuKham {
         this.nhaSi = nhaSi;
     }
 
+    public BigDecimal getThanhTienChinhXac() { return donGia.multiply(BigDecimal.valueOf(soLuong)); }
+    public BigDecimal getTienThueChinhXac() {
+        return getThanhTienChinhXac().multiply(BigDecimal.valueOf(mucThueGTGT))
+                .divide(BigDecimal.valueOf(100),0,java.math.RoundingMode.HALF_UP);
+    }
+
     public double getThanhTien() {
-        return soLuong * donGia;
+        return getThanhTienChinhXac().doubleValue();
     }
 
     public double getTienThue() {
-        return Math.round(getThanhTien() * mucThueGTGT / 100);
+        return getTienThueChinhXac().doubleValue();
     }
 
     public double getThanhTienSauThue() {
-        return getThanhTien() + getTienThue();
+        return getThanhTienChinhXac().add(getTienThueChinhXac()).doubleValue();
     }
 
     @Override

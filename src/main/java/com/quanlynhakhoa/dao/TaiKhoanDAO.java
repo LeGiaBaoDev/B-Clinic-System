@@ -188,7 +188,7 @@ public class TaiKhoanDAO {
         try {
             return JdbcHelper.transaction(c -> {
                 PhanQuyen.quyen(c, VaiTro.QUANLY);
-                new NhanVienDAO().them(c, nv);
+                new NhanVienDAO().them(c, nv, tk.getVaiTro());
                 tk.setNhanVien(nv);
 
                 them(c, tk);
@@ -266,10 +266,7 @@ public class TaiKhoanDAO {
         yeuCau(tk.getNhanVien() != null, "Thiếu nhân viên để tạo tài khoản.");
         NhanVien nv = new NhanVienDAO().layTheoMa(c, tk.getNhanVien().getMaNV());
         yeuCau(nv != null, "Nhân viên không tồn tại.");
-        // Giữ khóa tới khi commit để hai lần tạo đồng thời không chọn cùng tên trống.
-        List<String> daDung = JdbcHelper.query(c,
-                "SELECT tenTK FROM TaiKhoan WITH(TABLOCKX,HOLDLOCK)", r -> r.getString(1));
-        String ten = QuyTacTaiKhoan.tenDangNhap(nv.getHoTenNV(), tk.getVaiTro(), daDung);
+        String ten = QuyTacTaiKhoan.tenDangNhap(nv.getMaNV(), tk.getVaiTro());
         new TaiKhoan(null, ten, QuyTacTaiKhoan.MAT_KHAU_MAC_DINH, tk.getVaiTro(), tk.isTrangThai(), nv);
 
         String ma = MaSinh.maMoi(c, MaSinh.Bang.TAI_KHOAN, null);

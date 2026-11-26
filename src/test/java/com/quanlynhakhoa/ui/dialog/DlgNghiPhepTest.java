@@ -20,7 +20,7 @@ class DlgNghiPhepTest {
     private final TaiKhoan manager=user("001",VaiTro.QUANLY),dentist=user("002",VaiTro.NHASI);
     private final LocalDate day=LocalDate.now().plusDays(10);
     private Don current;private boolean affected,failCheck;private final AtomicInteger approved=new AtomicInteger(),sent=new AtomicInteger();private String refused;
-    private TaiKhoan user(String id,VaiTro role){return new TaiKhoan("TK"+id,"test"+id,"[Ẩn]",role,true,new NhanVien("NV"+id,"Nguyễn Văn Anh",true,"0912345678","test@example.com","Nha sĩ"));}
+    private TaiKhoan user(String id,VaiTro role){return new TaiKhoan("TK"+id,"test"+id,"[Ẩn]",role,true,new NhanVien(com.quanlynhakhoa.util.QuyTacTaiKhoan.tienTo(role)+id,"Nguyễn Văn Anh",true,"0912345678","test@example.com","Nha sĩ"));}
     private LichLamViec ca(){return new LichLamViec("LLV00001",day,CaTruc.CA_SANG,LocalTime.of(8,0),LocalTime.NOON,TrangThaiLichLamViec.DA_PHAN_CONG,null,dentist.getNhanVien());}
     private final DonNghiPhepDAO dao=new DonNghiPhepDAO(){
         public List<Don> layDonQuanLy(){assertFalse(SwingUtilities.isEventDispatchThread());return List.of(current);}
